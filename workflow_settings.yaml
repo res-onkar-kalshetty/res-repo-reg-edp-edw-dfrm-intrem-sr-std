@@ -1,0 +1,11 @@
+defaultProject: rsr-bi-group-dev-c874
+defaultLocation: europe-west1
+defaultDataset: dataform
+defaultAssertionDataset: dataform_assertions
+dataformCoreVersion: 3.0.0
+vars:
+    client_code: msp_bee_emea_pwc
+    region: _emea
+    ds_name: db_emea_pwc
+    solution: ""
+    solution_tool: ""

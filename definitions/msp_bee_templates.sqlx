@@ -1,0 +1,37 @@
+config {
+    type: "operations",
+    name: `msp_bee_templates`,
+    dependencies: "msp_bee_template_requisition",
+    description: 'This file creates the  stdrv layer for all msp beeline clients'
+}
+-- SELECT * FROM ${ref("msp_bee_template_requisition")};
+EXECUTE IMMEDIATE
+  FORMAT("""
+        CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+select * from ${ref("msp_bee_template_requisition")});
+""");
+/**EXECUTE IMMEDIATE
+  FORMAT("""
+        CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+select * from ${ref("msp_bee_template_assignment")});
+""");
+EXECUTE IMMEDIATE
+  FORMAT("""
+        CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_candidate_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+select * from `${ref("msp_bee_template_candidate")}`);
+""");
+EXECUTE IMMEDIATE
+  FORMAT("""
+        CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_assignment_trend_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+select * from ${ref("msp_bee_template_assignment_trend")});
+""");
+EXECUTE IMMEDIATE
+  FORMAT("""
+        CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_distribution_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+select * from ${ref("msp_bee_template_requisition_distribution")});
+""");
+EXECUTE IMMEDIATE
+  FORMAT("""
+        CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_spend_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+select * from ${ref("msp_bee_template_spend")});
+""");**/
