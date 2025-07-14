@@ -1,9 +1,11 @@
 config {
-    type: "table",
+    type: "operations",
     name: "msp_bee_template_assignment_trend",
     dependencies: ["msp_bee_template_assignment"],
-    description: 'This file creates the  stdrv layer '
+    description: 'This file creates the  stdrv layer ',
+    tags: 'msp_bee_template'
 }
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_assignment_trend_${dataform.projectConfig.vars.client_code}_dform_test` AS (
 WITH 
 derv_wo AS(
   select
@@ -184,4 +186,4 @@ assign.rsr_staffing_entity -- winter_release 2025
 FROM 
 	${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} assign
 	LEFT JOIN cal_comp ON assign.assignment_id = cal_comp.assignment_id 
-	LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM PARSE_DATE("%m/%d/%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM PARSE_DATE("%m/%d/%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER)
+	LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM PARSE_DATE("%m/%d/%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM PARSE_DATE("%m/%d/%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER))

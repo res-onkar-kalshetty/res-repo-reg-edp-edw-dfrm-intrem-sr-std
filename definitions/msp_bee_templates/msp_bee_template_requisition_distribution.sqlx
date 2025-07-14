@@ -1,9 +1,11 @@
 config {
-    type: "table",
+    type: "operations",
     name: "msp_bee_template_requisition_distribution",
+    tags: 'msp_bee_template',
     dependencies: ["msp_bee_template_requisition","msp_bee_template_assignment","msp_bee_template_candidate"],
     description: 'This file creates the  stdrv layer '
 }
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_distribution_${dataform.projectConfig.vars.client_code}_dform_test` AS (
 WITH
   wo_data AS (
   SELECT
@@ -235,4 +237,4 @@ LEFT OUTER JOIN  aggregates_wo_wsupp ON  job_posting_dist_data.req_id = aggregat
 LEFT OUTER JOIN  aggregates_job_seekers_wsupp ON  job_posting_dist_data.req_id = aggregates_job_seekers_wsupp.req_id AND job_posting_dist_data.supplier_code = aggregates_job_seekers_wsupp.supplier_code
 LEFT OUTER JOIN  ${dataform.projectConfig.vars.ds_name}.prs_supplier_${dataform.projectConfig.vars.client_code} supplier_data ON job_posting_dist_data.supplier_code = supplier_data.supplier_code
 LEFT OUTER JOIN  global_supplier_mapping ON  TRIM(LOWER(job_posting_dist_data.supplier)) = global_supplier_mapping.supplier  AND TRIM(LOWER(job_posting_dist_data.buyer)) = global_supplier_mapping.buyer
-LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(job_posting_dist_data.buyer_code) AND div_supp.supplier_code=job_posting_dist_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER)
+LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(job_posting_dist_data.buyer_code) AND div_supp.supplier_code=job_posting_dist_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER))

@@ -1,9 +1,11 @@
 config {
-    type: "table",
+    type: "operations",
     name: "msp_bee_template_spend",
     dependencies: ["msp_bee_template_requisition","msp_bee_template_assignment"],
-    description: 'This file creates the  stdrv layer '
+    description: 'This file creates the  stdrv layer ',
+    tags: 'msp_bee_template',
 }
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_spend_${dataform.projectConfig.vars.client_code}_dform_test` AS (
 SELECT buyer
 ,buyer_code
 ,main_document_id
@@ -872,4 +874,4 @@ end as tenure_discount_savings,
     LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(spend_data.buyer_code) AND div_supp.supplier_code=spend_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER)
     #cost_savings 2024 Fall Release 
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.msp_cost_saving cost_saving on cost_saving.client_code=spend_data.rsr_client_code and cast(spend_data.consolidated_invoice_approved_date as date) BETWEEN cost_saving.date_from AND cost_saving.date_to
-)
+))

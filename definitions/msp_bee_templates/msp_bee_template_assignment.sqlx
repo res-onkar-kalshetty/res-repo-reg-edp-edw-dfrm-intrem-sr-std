@@ -1,9 +1,11 @@
 config {
-    type: "table",
+    type: "operations",
     name: "msp_bee_template_assignment",
     dependencies: ["msp_bee_template_requisition"],
-    description: 'This file creates the  stdrv layer '
+    description: 'This file creates the  stdrv layer ',
+    tags: 'msp_bee_template'
 }
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code}_dform_test` AS (
 WITH fx_rates AS (
   SELECT
       CAST(fx_rate AS FLOAT64) AS fx_rate,
@@ -474,4 +476,4 @@ END AS worker_status,
     LEFT JOIN fx_rates fx_eur_savings ON assign.rsr_savings_currency = fx_eur_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_eur_savings.month AND fx_eur_savings.to_currency = 'EUR'
     LEFT JOIN fx_rates fx_gbp_savings ON assign.rsr_savings_currency = fx_gbp_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_gbp_savings.month AND fx_gbp_savings.to_currency = 'GBP'
     LEFT JOIN fx_rates fx_inr_savings ON assign.rsr_savings_currency = fx_inr_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_inr_savings.month AND fx_inr_savings.to_currency = 'INR'
-    LEFT JOIN fx_rates fx_cad_savings ON assign.rsr_savings_currency = fx_cad_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_cad_savings.month AND fx_cad_savings.to_currency = 'CAD'
+    LEFT JOIN fx_rates fx_cad_savings ON assign.rsr_savings_currency = fx_cad_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_cad_savings.month AND fx_cad_savings.to_currency = 'CAD')

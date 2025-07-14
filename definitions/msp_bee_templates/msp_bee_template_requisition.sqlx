@@ -1,8 +1,10 @@
 config {
-    type: "table",
+    type: "operations",
     name : "msp_bee_template_requisition",
-    description: 'This file creates the  stdrv layer '
+    description: 'This file creates the  stdrv layer ',
+    tags: 'msp_bee_template'
 }
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}_dform_test` AS (
 WITH candidate_data AS 
 (SELECT
 	buyer_code
@@ -184,4 +186,4 @@ select
   left join `db_common${dataform.projectConfig.vars.region}.global_state_mapping` gsm on req.state_province = gsm.vms_state
   left join `db_common${dataform.projectConfig.vars.region}.global_countries` gcr on lower(req.country)=lower(gcr.country)
   left join `db_common${dataform.projectConfig.vars.region}.global_job_posting_status` grs on grs.job_posting_status = req.req_status
-  left outer join db_common${dataform.projectConfig.vars.region}.global_sourcing as gbl_src on TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, '')))
+  left outer join db_common${dataform.projectConfig.vars.region}.global_sourcing as gbl_src on TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, ''))));

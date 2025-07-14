@@ -1,9 +1,11 @@
 config {
-    type: "table",
+    type: "operations",
     name: "msp_bee_template_candidate",
     dependencies: ["msp_bee_template_requisition","msp_bee_template_assignment"],
-    description: 'This file creates the  stdrv layer '
+    description: 'This file creates the  stdrv layer ',
+    tags: 'msp_bee_template'
 }
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_candidate_${dataform.projectConfig.vars.client_code}_dform_test` AS (
 with js_assingment_data as (select 
 				js_in.buyer
 				,js_in.buyer_code
@@ -307,4 +309,4 @@ LEFT JOIN fx_rates fx_eur ON candidate_assingment_req.currency = fx_eur.from_cur
 LEFT JOIN fx_rates fx_gbp ON candidate_assingment_req.currency = fx_gbp.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_gbp.month AND fx_gbp.to_currency = 'GBP'
 LEFT JOIN fx_rates fx_inr ON candidate_assingment_req.currency = fx_inr.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_inr.month AND fx_inr.to_currency = 'INR' 
 LEFT JOIN fx_rates fx_cad ON candidate_assingment_req.currency = fx_cad.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_cad.month AND fx_cad.to_currency = 'CAD' 
-LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(candidate_assingment_req.buyer_code) AND div_supp.supplier_code=candidate_assingment_req.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER)
+LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(candidate_assingment_req.buyer_code) AND div_supp.supplier_code=candidate_assingment_req.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER))

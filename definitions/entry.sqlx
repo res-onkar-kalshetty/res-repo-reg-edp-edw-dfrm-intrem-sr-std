@@ -1,0 +1,11 @@
+/*config {
+    type: "operations",
+    name : "entry",
+    description: 'This file creates the  stdrv layer ',
+    tag: 'generator'
+}
+
+DECLARE template_name string;*/
+
+
+
