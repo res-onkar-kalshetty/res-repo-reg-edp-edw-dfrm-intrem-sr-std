@@ -4,9 +4,9 @@ defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.0
 vars:
-    client_code: msp_bee_emea_pwc
+    client_code: msp_vn_emea_thales
     region: _emea
-    ds_name: db_emea_pwc
+    ds_name: db_emea_thales
     solution: ""
     solution_tool: ""
     
