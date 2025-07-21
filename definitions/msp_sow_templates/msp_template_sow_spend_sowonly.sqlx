@@ -1,11 +1,11 @@
 config {
-    type: "table",
+    type: "operations",
     name: "msp_template_spend_sowonly",
     tags: 'msp_template_sow',
     dependencies: ['msp_template_assignment_sowonly'],
     description: 'This file creates the  stdrv layer'
 }
-CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_spend_sowonly_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_spend_sowonly_${dataform.projectConfig.vars.client_code}` AS (
 SELECT buyer
 ,buyer_code
 ,main_document_id

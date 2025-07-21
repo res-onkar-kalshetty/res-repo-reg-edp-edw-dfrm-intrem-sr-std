@@ -1,10 +1,10 @@
 config {
-    type: "table",
+    type: "operations",
     name: "msp_template_assignment_sowonly",
     tags: 'msp_template_sow',
     description: 'This file creates the  stdrv layer'
 }
-CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_assignment_sowonly_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_assignment_sowonly_${dataform.projectConfig.vars.client_code}` AS (
 WITH fx_rates AS (
   SELECT
       CAST(fx_rate AS FLOAT64) AS fx_rate,

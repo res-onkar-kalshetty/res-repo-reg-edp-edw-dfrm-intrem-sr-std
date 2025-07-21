@@ -1,13 +1,15 @@
-defaultProject: rsr-bi-group-prd-701e
+defaultProject: rsr-bi-group-dev-c874
 defaultLocation: us-east1
 defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.0
 vars:
-    client_code: msp_fg_us_biogen
+    client_code: imsp_bee_nam_goto
     region: ""
-    ds_name: db_us_biogen
+    ds_name: db_nam_goto
     solution: ""
     solution_tool: ""
-    ph1: ""
-    ph2: ""
+    ph1_r: "stdrv_candidate_rpo_dflt_us_boston_consulting_group"
+    ph2_r: "stdrv_intrmed_requisition_rpo_dflt_us_boston_consulting_group"
+    ph1_c: "prs_candidate_rpo_dflt_us_boston_consulting_group"
+    ph2_c: "stdrv_intrmed_requisition_rpo_dflt_us_boston_consulting_group"

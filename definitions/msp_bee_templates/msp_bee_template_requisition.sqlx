@@ -1,196 +1,280 @@
 config {
-    type: "table",
-    name : "msp_bee_template_requisition",
+    type: "operations",
+    name: "msp_bee_template_requisition",
     description: 'This file creates the  stdrv layer ',
     tags: 'msp_bee_template'
 }
-CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}_dform_test` AS (
-WITH candidate_data AS 
-(SELECT
-	buyer_code
-	,req_id
-	,min(cand_submit_date) as first_cand_submitted_date
-	,count(distinct cand_id) as cand_submitted_cnt
-	,count(DISTINCT supplier) AS suppliers_responded_cnt
-from `${dataform.projectConfig.vars.ds_name}.prs_candidate_${dataform.projectConfig.vars.client_code}`
-group by req_id,buyer_code
-),req_temp_data AS
-(select 
-	req_temp_in.req_id,
-	req_temp_in.buyer_code,
-  case
-    when LOWER(req_temp_in.max_template_bill_rate_st_basis) = 'hourly' then req_temp_in.max_template_bill_rate_st_hr 
-    when LOWER(req_temp_in.max_template_bill_rate_st_basis) = 'daily' then (req_temp_in.max_template_bill_rate_st_hr /(req_in.hours_per_week/req_in.days_per_week))
-    when LOWER(req_temp_in.max_template_bill_rate_st_basis) = 'monthly' then (req_temp_in.max_template_bill_rate_st_hr /((req_in.hours_per_week/req_in.days_per_week)*4.33))
-    when LOWER(req_temp_in.max_template_bill_rate_st_basis) = 'weekly' then (req_temp_in.max_template_bill_rate_st_hr /(req_in.hours_per_week))
-  end as max_template_bill_rate_st_hr,
-	
-FROM ${dataform.projectConfig.vars.ds_name}.prs_requisition_template_${dataform.projectConfig.vars.client_code} req_temp_in
-left join `${dataform.projectConfig.vars.ds_name}.prs_requisition_${dataform.projectConfig.vars.client_code}` req_in on req_in.req_id= req_temp_in.req_id
-),wo_data AS (
-  SELECT
-  
-      count(assignment_id) AS hired_cnt,
+
+CREATE OR REPLACE TABLE
+  `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}` AS (
+  WITH
+    candidate_data AS (
+    SELECT
+      buyer_code,
+      req_id,
+      MIN(cand_submit_date) AS first_cand_submitted_date,
+      COUNT(DISTINCT cand_id) AS cand_submitted_cnt,
+      COUNT(DISTINCT supplier) AS suppliers_responded_cnt
+    FROM
+      `${dataform.projectConfig.vars.ds_name}.prs_candidate_${dataform.projectConfig.vars.client_code}`
+    GROUP BY
+      req_id,
+      buyer_code ),
+    req_temp_data AS (
+    SELECT
+      req_temp_in.req_id,
+      req_temp_in.buyer_code,
+      CASE
+        WHEN LOWER(req_temp_in.max_template_bill_rate_st_basis) = 'hourly' THEN req_temp_in.max_template_bill_rate_st_hr
+        WHEN LOWER(req_temp_in.max_template_bill_rate_st_basis) = 'daily' THEN (req_temp_in.max_template_bill_rate_st_hr /(req_in.hours_per_week/req_in.days_per_week))
+        WHEN LOWER(req_temp_in.max_template_bill_rate_st_basis) = 'monthly' THEN (req_temp_in.max_template_bill_rate_st_hr /((req_in.hours_per_week/req_in.days_per_week)*4.33))
+        WHEN LOWER(req_temp_in.max_template_bill_rate_st_basis) = 'weekly' THEN (req_temp_in.max_template_bill_rate_st_hr /(req_in.hours_per_week))
+    END
+      AS max_template_bill_rate_st_hr,
+    FROM
+      ${dataform.projectConfig.vars.ds_name}.prs_requisition_template_${dataform.projectConfig.vars.client_code} req_temp_in
+    LEFT JOIN
+      `${dataform.projectConfig.vars.ds_name}.prs_requisition_${dataform.projectConfig.vars.client_code}` req_in
+    ON
+      req_in.req_id= req_temp_in.req_id ),
+    wo_data AS (
+    SELECT
+      COUNT(assignment_id) AS hired_cnt,
       buyer_code,
       main_document_id
     FROM
-      ${dataform.projectConfig.vars.ds_name}.prs_assignment_${dataform.projectConfig.vars.client_code} 
-    GROUP BY buyer_code,main_document_id
-),
-req_dist_prs as (
-   Select 
-    case when job_posting_decline_date is not NULL then 'Declined' else req_distribution_status end as req_distribution_status,
-    case when job_posting_decline_date is not NULL then 'Declined' else decline_reason end as decline_reason,
-      *except(req_distribution_status,decline_reason) 
-      from ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code}
-),
-req_dist_data AS
-(
-	SELECT
-      count(DISTINCT CASE
-        WHEN coalesce(req_distribution_status, 'na') <> 'Declined' THEN supplier
-        ELSE CAST(NULL as STRING)
-      END) AS suppliers_posted_cnt,
-      min(req_distribution_date) AS earliest_req_dist_date,
+      ${dataform.projectConfig.vars.ds_name}.prs_assignment_${dataform.projectConfig.vars.client_code}
+    GROUP BY
+      buyer_code,
+      main_document_id ),
+    req_dist_prs AS (
+    SELECT
+      CASE
+        WHEN job_posting_decline_date IS NOT NULL THEN 'Declined'
+        ELSE req_distribution_status
+    END
+      AS req_distribution_status,
+      CASE
+        WHEN job_posting_decline_date IS NOT NULL THEN 'Declined'
+        ELSE decline_reason
+    END
+      AS decline_reason,
+      *EXCEPT(req_distribution_status,
+        decline_reason)
+    FROM
+      ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code} ),
+    req_dist_data AS (
+    SELECT
+      COUNT(DISTINCT
+        CASE
+          WHEN COALESCE(req_distribution_status, 'na') <> 'Declined' THEN supplier
+          ELSE CAST(NULL AS STRING)
+      END
+        ) AS suppliers_posted_cnt,
+      MIN(req_distribution_date) AS earliest_req_dist_date,
       buyer_code,
       req_id
     FROM
       req_dist_prs
-    GROUP BY buyer_code,req_id
-)
-
-select 
-  req.buyer,
-  req.buyer_code ,
-  req.req_id ,
-  req.req_title , 
-  req.labor_type ,
-  req.sourcing_type,
-  req.sourcing_type_template,
-  IFNULL(
-    gbl_src.sourcing_dw,
-    CASE WHEN cand.cand_submitted_cnt <= 1 AND req_dist.suppliers_posted_cnt <= 1
-         THEN 'Pre-ID'
+    GROUP BY
+      buyer_code,
+      req_id )
+  SELECT
+    req.buyer,
+    req.buyer_code,
+    req.req_id,
+    req.req_title,
+    req.labor_type,
+    req.sourcing_type,
+    req.sourcing_type_template,
+    IFNULL( gbl_src.sourcing_dw,
+      CASE
+        WHEN cand.cand_submitted_cnt <= 1 AND req_dist.suppliers_posted_cnt <= 1 THEN 'Pre-ID'
         ELSE 'Recruited'
     END
-    ) AS rsr_sourced_type,
-  req.req_status,
-  req.req_owner,
-  COALESCE(req.req_type, req.posting_type) AS req_type,
-  req.posting_type,
-  case when req.req_status not in ('Open', 'On Hold', 'Pending') then req.close_reason else NULL end as close_reason,
-  case when req.req_status like 'Cancelled' then (case when req.req_status not in ('Open', 'On Hold', 'Pending') then req.close_reason else NULL end) else NULL end as withdraw_reason,
-  req.business_unit_code,
-  req.business_unit,
-  req.site,
-  req.site_code,
-  req.division,
-  req.location_code, 
-  req.location,
-  req.req_category,
-  req.city,
-  req.state_province,
-  req.country,
-  req.zip_postal_code,
-  req.first_respond_date,
-  req.req_approved_date,
-  COALESCE(req.job_posting_filled_date, req.job_posting_cancelled_date) as req_closed_date, 
-  req.req_create_date,
-  req.req_end_date,
-  req.req_respond_by_date as req_responded_by_date,
-  req.req_start_date,
-  req.req_submit_date as req_submitted_date,
-  req.req_first_approved_date,
-  req.req_creator_name,
-  req.req_distributor_name,
-  req.req_coordinator_name,
-  case
-    when LOWER(req.max_requested_bill_rate_basis) = 'hourly' then req.max_requested_bill_rate 
-    when LOWER(req.max_requested_bill_rate_basis) = 'daily' then (req.max_requested_bill_rate /(req.hours_per_week/req.days_per_week))
-    when LOWER(req.max_requested_bill_rate_basis) = 'monthly' then (req.max_requested_bill_rate /((req.hours_per_week/req.days_per_week)*4.33))
-    when LOWER(req.max_requested_bill_rate_basis) = 'weekly' then (req.max_requested_bill_rate /(req.hours_per_week))
-  end as max_requested_bill_rate_st_hr,
-  case
-    when LOWER(req.max_requested_bill_rate_basis) = 'hourly' then req.max_requested_pay_rate 
-    when LOWER(req.max_requested_bill_rate_basis) = 'daily' then (req.max_requested_pay_rate /(req.hours_per_week/days_per_week))
-    when LOWER(req.max_requested_bill_rate_basis) = 'monthly' then (req.max_requested_pay_rate /((req.hours_per_week/days_per_week)*4.33))
-    when LOWER(req.max_requested_bill_rate_basis) = 'weekly' then (req.max_requested_pay_rate /(req.hours_per_week))
-  end as max_requested_pay_rate_st_hr,
-  req.min_requested_bill_rate_st_hr,
-  req.min_requested_pay_rate_st_hr,
-  req.hours_per_week,
-  req.hours_per_day,
-  req.msp_code,
-  req.msp,
-  req.start_day_of_week,
-  req.positions_requested_cnt,
-  req.positions_remaining_cnt,
-  req_temp.max_template_bill_rate_st_hr,
-  -- gjcr.closed_reason_dw as rsr_close_reason,
-  CASE 
-    WHEN IFNULL(gjcr.closed_reason_dw, '') <> '' THEN gjcr.closed_reason_dw
-    WHEN IFNULL(case when req.req_status not in ('Open', 'On Hold', 'Pending') then req.close_reason else NULL end,'') = '' THEN 'Undisclosed'
-    ELSE 'Unmapped'
-  END AS rsr_close_reason,
-  CASE 
-    WHEN IFNULL(glt.labor_type_dw, '') <> '' THEN glt.labor_type_dw
-    WHEN IFNULL(req.labor_type, '') = '' THEN 'Undisclosed'
-    ELSE 'Unmapped'
-  END AS rsr_labor_type,
-  -- gsm.rsr_state,
-  CASE 
-    WHEN IFNULL(gsm.rsr_state, '') <> '' THEN gsm.rsr_state
-    WHEN IFNULL(req.state_province, '') = '' THEN 'Undisclosed'
-    ELSE 'Unmapped'
-  END AS rsr_state,
-  -- gcr.rsr_country,
- CASE 
-    WHEN IFNULL(gcr.rsr_country, '') <> '' THEN gcr.rsr_country
-    WHEN IFNULL(req.country, '') = '' THEN 'Undisclosed'
-    ELSE 'Unmapped'
-  END AS rsr_country,
-  -- gcr.rsr_region,
-  CASE 
-    WHEN IFNULL(gcr.rsr_region, '') <> '' THEN gcr.rsr_region
-    WHEN IFNULL(req.country, '') = '' THEN 'Undisclosed'
-    ELSE 'Unmapped'
-  END AS rsr_region,
-  gcr.country AS rsr_country_code,
-  CURRENT_DATE() as current_date,
-  
-  CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_approved_date, CAST(current_timestamp() as DATETIME)) AS INT64) AS req_aging_cd,
-  round(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_approved_date, CAST(current_timestamp() as DATETIME)),2) AS req_aging_bd,
-
-  CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_create_date, req.req_approved_date) AS INT64) AS create_to_approve_cd,
-  round(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_create_date, req.req_approved_date),2) AS create_to_approve_bd,
-
-  CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_approved_date, cand.first_cand_submitted_date) AS INT64) AS time_to_submit_first_cand_cd,
-  round(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_approved_date, cand.first_cand_submitted_date),2) AS time_to_submit_first_cand_bd,
-  grs.rsr_job_posting_status as rsr_req_status, -- job posting status
-  assing.hired_cnt,
-  cand.cand_submitted_cnt,
-  req_dist.suppliers_posted_cnt,
-  cand.suppliers_responded_cnt,
-  cand.first_cand_submitted_date,
-  req_dist.earliest_req_dist_date,
-  -- Fields used for other derv views
-  req.dist_list,
-  req.primary_cost_center,
-  req.req_title_classification,
-  '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
-  req.rsr_processed_date,
-  req.currency,
-  req.days_per_week,
-  req.service_type, -- needed for assignment MST, added by SB
-  req.rsr_staffing_entity -- winter_release 2025
-  from `${dataform.projectConfig.vars.ds_name}.prs_requisition_${dataform.projectConfig.vars.client_code}` req
-  left join req_dist_data as req_dist ON req.req_id = req_dist.req_id
-  left join candidate_data AS cand ON req.req_id = cand.req_id
-  left join req_temp_data AS req_temp ON req.req_id= req_temp.req_id
-  left join wo_data AS assing on req.req_id = assing.main_document_id
-  left join `db_common${dataform.projectConfig.vars.region}.global_jp_closed_reason` gjcr on (case when req.req_status not in ('Open', 'On Hold', 'Pending') then req.close_reason end) = gjcr.close_reason
-  left join `db_common${dataform.projectConfig.vars.region}.global_labor_type` glt on req.labor_type = glt.vms_labor_type
-  left join `db_common${dataform.projectConfig.vars.region}.global_state_mapping` gsm on req.state_province = gsm.vms_state
-  left join `db_common${dataform.projectConfig.vars.region}.global_countries` gcr on lower(req.country)=lower(gcr.country)
-  left join `db_common${dataform.projectConfig.vars.region}.global_job_posting_status` grs on grs.job_posting_status = req.req_status
-  left outer join db_common${dataform.projectConfig.vars.region}.global_sourcing as gbl_src on TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, ''))))
+      ) AS rsr_sourced_type,
+    req.req_status,
+    req.req_owner,
+    COALESCE(req.req_type, req.posting_type) AS req_type,
+    req.posting_type,
+    CASE
+      WHEN req.req_status NOT IN ('Open', 'On Hold', 'Pending') THEN req.close_reason
+      ELSE NULL
+  END
+    AS close_reason,
+    CASE
+      WHEN req.req_status LIKE 'Cancelled' THEN (CASE
+        WHEN req.req_status NOT IN ('Open',
+        'On Hold',
+        'Pending') THEN req.close_reason
+        ELSE NULL
+    END
+      )
+      ELSE NULL
+  END
+    AS withdraw_reason,
+    req.business_unit_code,
+    req.business_unit,
+    req.site,
+    req.site_code,
+    req.division,
+    req.location_code,
+    req.location,
+    req.req_category,
+    req.city,
+    req.state_province,
+    req.country,
+    req.zip_postal_code,
+    req.first_respond_date,
+    req.req_approved_date,
+    COALESCE(req.job_posting_filled_date, req.job_posting_cancelled_date) AS req_closed_date,
+    req.req_create_date,
+    req.req_end_date,
+    req.req_respond_by_date AS req_responded_by_date,
+    req.req_start_date,
+    req.req_submit_date AS req_submitted_date,
+    req.req_first_approved_date,
+    req.req_creator_name,
+    req.req_distributor_name,
+    req.req_coordinator_name,
+    CASE
+      WHEN LOWER(req.max_requested_bill_rate_basis) = 'hourly' THEN req.max_requested_bill_rate
+      WHEN LOWER(req.max_requested_bill_rate_basis) = 'daily' THEN (req.max_requested_bill_rate /(req.hours_per_week/req.days_per_week))
+      WHEN LOWER(req.max_requested_bill_rate_basis) = 'monthly' THEN (req.max_requested_bill_rate /((req.hours_per_week/req.days_per_week)*4.33))
+      WHEN LOWER(req.max_requested_bill_rate_basis) = 'weekly' THEN (req.max_requested_bill_rate /(req.hours_per_week))
+  END
+    AS max_requested_bill_rate_st_hr,
+    CASE
+      WHEN LOWER(req.max_requested_bill_rate_basis) = 'hourly' THEN req.max_requested_pay_rate
+      WHEN LOWER(req.max_requested_bill_rate_basis) = 'daily' THEN (req.max_requested_pay_rate /(req.hours_per_week/days_per_week))
+      WHEN LOWER(req.max_requested_bill_rate_basis) = 'monthly' THEN (req.max_requested_pay_rate /((req.hours_per_week/days_per_week)*4.33))
+      WHEN LOWER(req.max_requested_bill_rate_basis) = 'weekly' THEN (req.max_requested_pay_rate /(req.hours_per_week))
+  END
+    AS max_requested_pay_rate_st_hr,
+    req.min_requested_bill_rate_st_hr,
+    req.min_requested_pay_rate_st_hr,
+    req.hours_per_week,
+    req.hours_per_day,
+    req.msp_code,
+    req.msp,
+    req.start_day_of_week,
+    req.positions_requested_cnt,
+    req.positions_remaining_cnt,
+    req_temp.max_template_bill_rate_st_hr,
+    -- gjcr.closed_reason_dw as rsr_close_reason,
+    CASE
+      WHEN IFNULL(gjcr.closed_reason_dw, '') <> '' THEN gjcr.closed_reason_dw
+      WHEN IFNULL(CASE
+        WHEN req.req_status NOT IN ('Open', 'On Hold', 'Pending') THEN req.close_reason
+        ELSE NULL
+    END
+      ,'') = '' THEN 'Undisclosed'
+      ELSE 'Unmapped'
+  END
+    AS rsr_close_reason,
+    CASE
+      WHEN IFNULL(glt.labor_type_dw, '') <> '' THEN glt.labor_type_dw
+      WHEN IFNULL(req.labor_type, '') = '' THEN 'Undisclosed'
+      ELSE 'Unmapped'
+  END
+    AS rsr_labor_type,
+    -- gsm.rsr_state,
+    CASE
+      WHEN IFNULL(gsm.rsr_state, '') <> '' THEN gsm.rsr_state
+      WHEN IFNULL(req.state_province, '') = '' THEN 'Undisclosed'
+      ELSE 'Unmapped'
+  END
+    AS rsr_state,
+    -- gcr.rsr_country,
+    CASE
+      WHEN IFNULL(gcr.rsr_country, '') <> '' THEN gcr.rsr_country
+      WHEN IFNULL(req.country, '') = '' THEN 'Undisclosed'
+      ELSE 'Unmapped'
+  END
+    AS rsr_country,
+    -- gcr.rsr_region,
+    CASE
+      WHEN IFNULL(gcr.rsr_region, '') <> '' THEN gcr.rsr_region
+      WHEN IFNULL(req.country, '') = '' THEN 'Undisclosed'
+      ELSE 'Unmapped'
+  END
+    AS rsr_region,
+    gcr.country AS rsr_country_code,
+    CURRENT_DATE() AS current_date,
+    CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_approved_date,
+        CAST(CURRENT_TIMESTAMP() AS DATETIME)) AS INT64) AS req_aging_cd,
+    ROUND(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_approved_date,
+        CAST(CURRENT_TIMESTAMP() AS DATETIME)),2) AS req_aging_bd,
+    CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_create_date,
+        req.req_approved_date) AS INT64) AS create_to_approve_cd,
+    ROUND(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_create_date,
+        req.req_approved_date),2) AS create_to_approve_bd,
+    CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_approved_date,
+        cand.first_cand_submitted_date) AS INT64) AS time_to_submit_first_cand_cd,
+    ROUND(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_approved_date,
+        cand.first_cand_submitted_date),2) AS time_to_submit_first_cand_bd,
+    grs.rsr_job_posting_status AS rsr_req_status,
+    -- job posting status
+    assing.hired_cnt,
+    cand.cand_submitted_cnt,
+    req_dist.suppliers_posted_cnt,
+    cand.suppliers_responded_cnt,
+    cand.first_cand_submitted_date,
+    req_dist.earliest_req_dist_date,
+    -- Fields used for other derv views
+    req.dist_list,
+    req.primary_cost_center,
+    req.req_title_classification,
+    '${dataform.projectConfig.vars.client_code}' AS rsr_client_code,
+    req.rsr_processed_date,
+    req.currency,
+    req.days_per_week,
+    req.service_type,
+    -- needed for assignment MST, added by SB
+    req.rsr_staffing_entity
+    -- winter_release 2025
+  FROM
+    `${dataform.projectConfig.vars.ds_name}.prs_requisition_${dataform.projectConfig.vars.client_code}` req
+  LEFT JOIN
+    req_dist_data AS req_dist
+  ON
+    req.req_id = req_dist.req_id
+  LEFT JOIN
+    candidate_data AS cand
+  ON
+    req.req_id = cand.req_id
+  LEFT JOIN
+    req_temp_data AS req_temp
+  ON
+    req.req_id= req_temp.req_id
+  LEFT JOIN
+    wo_data AS assing
+  ON
+    req.req_id = assing.main_document_id
+  LEFT JOIN
+    `db_common${dataform.projectConfig.vars.region}.global_jp_closed_reason` gjcr
+  ON
+    (CASE
+        WHEN req.req_status NOT IN ('Open', 'On Hold', 'Pending') THEN req.close_reason
+    END
+      ) = gjcr.close_reason
+  LEFT JOIN
+    `db_common${dataform.projectConfig.vars.region}.global_labor_type` glt
+  ON
+    req.labor_type = glt.vms_labor_type
+  LEFT JOIN
+    `db_common${dataform.projectConfig.vars.region}.global_state_mapping` gsm
+  ON
+    req.state_province = gsm.vms_state
+  LEFT JOIN
+    `db_common${dataform.projectConfig.vars.region}.global_countries` gcr
+  ON
+    LOWER(req.country)=LOWER(gcr.country)
+  LEFT JOIN
+    `db_common${dataform.projectConfig.vars.region}.global_job_posting_status` grs
+  ON
+    grs.job_posting_status = req.req_status
+  LEFT OUTER JOIN
+    db_common${dataform.projectConfig.vars.region}.global_sourcing AS gbl_src
+  ON
+    TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, ''))))
