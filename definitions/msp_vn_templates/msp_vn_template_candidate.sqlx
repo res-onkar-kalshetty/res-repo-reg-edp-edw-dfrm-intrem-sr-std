@@ -1,12 +1,12 @@
 config {
-    type: "operations",
+    type: "table",
     name: "msp_vn_template_candidate",
     tags: 'msp_vn_template',
     dependencies: "msp_vn_template_assignment",
     description: 'This file creates the  stdrv layer '
 }
 CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_candidate_${dataform.projectConfig.vars.client_code}_dform_test` AS (
-with js_assingment_data as (select
+with js_assingment_data as (select 
 				js_in.buyer
 				,js_in.buyer_code
 				,js_in.req_id
@@ -15,7 +15,7 @@ with js_assingment_data as (select
 				,js_in.supplier
 				,js_in.cand_status
 				,js_in.cand_submit_date
-				,js_in.cand_withdraw_reason as withdrawn_reason
+				,js_in.cand_withdraw_reason as withdrawn_reason 
 				,js_in.cand_rejected_reason as rejected_reason
 				,js_in.currency
 				,js_in.cand_available_date
@@ -48,9 +48,9 @@ with js_assingment_data as (select
 				,js_in.cand_offer_accepted_date -- vndly specific change, approved by Sawyer/John/Swarup 3/29/24
 				,js_in.rsr_processed_date
 				,js_in.rsr_staffing_entity -- winter_release 2025
-
+				,assingment_in.worker_start_date
 				from ${dataform.projectConfig.vars.ds_name}.prs_candidate_${dataform.projectConfig.vars.client_code} js_in
-				left join ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code}_dform_test assingment_in
+				left join ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} assingment_in  
 				ON js_in.buyer = assingment_in.buyer AND js_in.cand_id= assingment_in.cand_id and js_in.req_id = assingment_in.main_document_id)
 ,req_data AS (SELECT
 buyer
@@ -90,7 +90,7 @@ buyer
 ,rsr_req_status
 ,primary_cost_center
 ,rsr_sourced_type
-FROM ${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}_dform_test )
+FROM ${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code} )
 ,fx_rates AS (
   SELECT
       CAST(fx_rate AS FLOAT64) AS fx_rate,
@@ -113,7 +113,7 @@ FROM ${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.project
     TRIM(LOWER(gbl_sup_map_in.supplier)) AS supplier,
     gbl_sup_map_in.suppliername_dw,
   FROM
-    db_common${dataform.projectConfig.vars.region}.global_supplier_mapping AS gbl_sup_map_in
+    db_common${dataform.projectConfig.vars.region}.global_supplier_mapping AS gbl_sup_map_in 
 ), global_js_status_mapping AS (
   SELECT
     DISTINCT TRIM(LOWER(job_seeker_status)) AS job_seeker_status,
@@ -164,77 +164,77 @@ candidate_assingment.buyer
 ,candidate_assingment.uploaded
 ,req.primary_cost_center
 ,CASE
-	WHEN candidate_assingment.currency = 'USD'
+	WHEN candidate_assingment.currency = 'USD' 
 		THEN ROUND(candidate_assingment.presented_bill_rate_st_hr, 4)
 	ELSE ROUND((fx_usd.fx_rate * candidate_assingment.presented_bill_rate_st_hr), 4)
 END AS presented_bill_rate_st_hr_usd
 ,CASE
-	WHEN candidate_assingment.currency = 'USD'
+	WHEN candidate_assingment.currency = 'USD' 
 		THEN ROUND( candidate_assingment.presented_bill_rate_supplier_st_hr, 4)
 	ELSE ROUND((fx_usd.fx_rate * candidate_assingment.presented_bill_rate_supplier_st_hr), 4)
 END AS supplier_presented_bill_rate_st_hr_usd
 ,CASE
-	WHEN candidate_assingment.currency  = 'USD'
+	WHEN candidate_assingment.currency  = 'USD' 
 		THEN ROUND(candidate_assingment.presented_pay_rate_st_hr, 4)
 	ELSE ROUND((fx_usd.fx_rate * candidate_assingment.presented_pay_rate_st_hr), 4)
 END AS presented_pay_rate_st_hr_usd
 ,CASE
-	WHEN candidate_assingment.currency  = 'EUR'
+	WHEN candidate_assingment.currency  = 'EUR' 
 		THEN ROUND(candidate_assingment.presented_bill_rate_st_hr, 4)
 	ELSE ROUND((fx_eur.fx_rate * candidate_assingment.presented_bill_rate_st_hr), 4)
-END AS presented_bill_rate_st_hr_eur
+END AS presented_bill_rate_st_hr_eur 
 ,CASE
-	WHEN candidate_assingment.currency  = 'EUR'
+	WHEN candidate_assingment.currency  = 'EUR' 
 		THEN ROUND( candidate_assingment.presented_bill_rate_supplier_st_hr, 4)
 	ELSE ROUND((fx_eur.fx_rate * candidate_assingment.presented_bill_rate_supplier_st_hr), 4)
 END AS supplier_presented_bill_rate_st_hr_eur
 ,CASE
-	WHEN candidate_assingment.currency = 'EUR'
+	WHEN candidate_assingment.currency = 'EUR' 
 		THEN ROUND(candidate_assingment.presented_pay_rate_st_hr, 4)
 	ELSE ROUND((fx_eur.fx_rate * candidate_assingment.presented_pay_rate_st_hr), 4)
 END AS presented_pay_rate_st_hr_eur
 ,CASE
-	WHEN candidate_assingment.currency = 'GBP'
+	WHEN candidate_assingment.currency = 'GBP' 
 		THEN ROUND(candidate_assingment.presented_bill_rate_st_hr, 4)
 	ELSE ROUND((fx_gbp.fx_rate * candidate_assingment.presented_bill_rate_st_hr), 4)
 END AS presented_bill_rate_st_hr_gbp
 ,CASE
-	WHEN candidate_assingment.currency  = 'GBP'
+	WHEN candidate_assingment.currency  = 'GBP' 
 		THEN ROUND( candidate_assingment.presented_bill_rate_supplier_st_hr, 4)
 	ELSE ROUND((fx_gbp.fx_rate * candidate_assingment.presented_bill_rate_supplier_st_hr), 4)
 END AS supplier_presented_bill_rate_st_hr_gbp
 ,CASE
-	WHEN candidate_assingment.currency  = 'GBP'
+	WHEN candidate_assingment.currency  = 'GBP' 
 		THEN ROUND(candidate_assingment.presented_pay_rate_st_hr, 4)
 	ELSE ROUND((fx_gbp.fx_rate * candidate_assingment.presented_pay_rate_st_hr), 4)
 END AS presented_pay_rate_st_hr_gbp
 ,CASE
-	WHEN candidate_assingment.currency = 'INR'
+	WHEN candidate_assingment.currency = 'INR' 
 		THEN ROUND(candidate_assingment.presented_bill_rate_st_hr, 4)
 	ELSE ROUND((fx_inr.fx_rate * candidate_assingment.presented_bill_rate_st_hr), 4)
 END AS presented_bill_rate_st_hr_inr
 ,CASE
-	WHEN candidate_assingment.currency = 'INR'
+	WHEN candidate_assingment.currency = 'INR' 
 		THEN ROUND(candidate_assingment.presented_bill_rate_supplier_st_hr, 4)
 	ELSE ROUND((fx_inr.fx_rate * candidate_assingment.presented_bill_rate_supplier_st_hr), 4)
 END AS supplier_presented_bill_rate_st_hr_inr
 ,CASE
-	WHEN candidate_assingment.currency = 'INR'
+	WHEN candidate_assingment.currency = 'INR' 
 		THEN ROUND( candidate_assingment.presented_pay_rate_st_hr, 4)
 	ELSE ROUND((fx_inr.fx_rate * candidate_assingment.presented_pay_rate_st_hr), 4)
 END AS presented_pay_rate_st_hr_inr
 ,CASE
-	WHEN candidate_assingment.currency = 'CAD'
+	WHEN candidate_assingment.currency = 'CAD' 
 		THEN ROUND( candidate_assingment.presented_bill_rate_st_hr, 4)
 	ELSE ROUND((fx_cad.fx_rate * candidate_assingment.presented_bill_rate_st_hr), 4)
 END AS presented_bill_rate_st_hr_cad
 ,CASE
-	WHEN candidate_assingment.currency = 'CAD'
+	WHEN candidate_assingment.currency = 'CAD' 
 		THEN ROUND(  candidate_assingment.presented_bill_rate_supplier_st_hr, 4)
 	ELSE ROUND((fx_cad.fx_rate * candidate_assingment.presented_bill_rate_supplier_st_hr), 4)
 END AS supplier_presented_bill_rate_st_hr_cad
 ,CASE
-	WHEN candidate_assingment.currency = 'CAD'
+	WHEN candidate_assingment.currency = 'CAD' 
 		THEN ROUND(candidate_assingment.presented_pay_rate_st_hr, 4)
 	ELSE ROUND((fx_cad.fx_rate * candidate_assingment.presented_pay_rate_st_hr), 4)
 END AS presented_pay_rate_st_hr_cad
@@ -281,9 +281,9 @@ END AS supplier_erp_id
 ,candidate_assingment.sourcing_type_wk_mapped
 ,candidate_assingment.sourcing_type_wo_mapped
 ,req.max_template_bill_rate_st_hr
-,(CASE
+,(CASE 
 	WHEN req.max_template_bill_rate_st_hr >= candidate_assingment.presented_bill_rate_supplier_st_hr THEN 'Compliant'
-	ELSE
+	ELSE 
 		CASE
             WHEN candidate_assingment.presented_bill_rate_supplier_st_hr <  (CAST('1.15' AS NUMERIC) * req.max_template_bill_rate_st_hr) THEN 'Non-Compliant - Under 115% Max Bill Rate'
             ELSE 'Non-Compliant - Over 115% Max Bill Rate'
@@ -296,7 +296,7 @@ end) AS compliance_vs_max_template_bill_rate
 ,global_supp_map.suppliername_dw AS rsr_supplier
 ,req.rsr_req_status
 ,ifnull(req.rsr_sourced_type,'Recruited') as rsr_sourced_type
-,IFNULL(global_js_status_mapping.submittal_status_dw, NULL) AS rsr_cand_status
+,IFNULL(global_js_status_mapping.submittal_status_dw, NULL) AS rsr_cand_status 
 ,CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_approved_date, candidate_assingment.cand_submit_date) AS INT64) as approved_to_submit_cd
 ,ROUND(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_approved_date, candidate_assingment.cand_submit_date), 4)AS approved_to_submit_bd
 ,CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday( candidate_assingment.cand_submit_date,candidate_assingment.cand_shortlisted_date) AS INT64) as submit_to_shortlist_cd
@@ -307,6 +307,7 @@ end) AS compliance_vs_max_template_bill_rate
 ,CAST(NULL AS STRING) AS preferred_supplier_status
 ,req_dist_data.min_req_dist_date AS req_distribution_date
 ,candidate_assingment.rsr_staffing_entity -- winter_release 2025
+,candidate_assingment.worker_start_date
 FROM js_assingment_data as candidate_assingment
 LEFT JOIN req_data as req ON candidate_assingment.buyer = req.buyer AND candidate_assingment .req_id= req.req_id
 LEFT JOIN req_dist_data ON candidate_assingment.buyer_code = req_dist_data.buyer_code AND candidate_assingment.supplier_code = req_dist_data.supplier_code AND candidate_assingment.req_id = req_dist_data.req_id
@@ -316,6 +317,7 @@ LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_calendar_445 AS 
 LEFT JOIN fx_rates fx_usd ON candidate_assingment.currency = fx_usd.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_usd.month AND fx_usd.to_currency = 'USD'
 LEFT JOIN fx_rates fx_eur ON candidate_assingment.currency = fx_eur.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_eur.month AND fx_eur.to_currency = 'EUR'
 LEFT JOIN fx_rates fx_gbp ON candidate_assingment.currency = fx_gbp.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_gbp.month AND fx_gbp.to_currency = 'GBP'
-LEFT JOIN fx_rates fx_inr ON candidate_assingment.currency = fx_inr.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_inr.month AND fx_inr.to_currency = 'INR'
-LEFT JOIN fx_rates fx_cad ON candidate_assingment.currency = fx_cad.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_cad.month AND fx_cad.to_currency = 'CAD'
-LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(candidate_assingment.buyer_code) AND div_supp.supplier_code=candidate_assingment.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(candidate_assingment.cand_submit_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(candidate_assingment.cand_submit_date AS DATE)) AS INTEGER))
+LEFT JOIN fx_rates fx_inr ON candidate_assingment.currency = fx_inr.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_inr.month AND fx_inr.to_currency = 'INR' 
+LEFT JOIN fx_rates fx_cad ON candidate_assingment.currency = fx_cad.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_cad.month AND fx_cad.to_currency = 'CAD' 
+LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(candidate_assingment.buyer_code) AND div_supp.supplier_code=candidate_assingment.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(candidate_assingment.cand_submit_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(candidate_assingment.cand_submit_date AS DATE)) AS INTEGER)
+)

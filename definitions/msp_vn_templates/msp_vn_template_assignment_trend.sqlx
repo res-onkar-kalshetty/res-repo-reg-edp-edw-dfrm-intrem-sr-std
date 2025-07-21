@@ -1,5 +1,5 @@
 config {
-    type: "operations",
+    type: "table",
     name: "msp_vn_template_assignment_trend",
     tags: 'msp_vn_template',
     dependencies: "msp_vn_template_assignment",
