@@ -1,5 +1,5 @@
 config {
-    type: "operations",
+    type: "table",
     name: "msp_bee_template_assignment",
     dependencies: ["msp_bee_template_requisition"],
     description: 'This file creates the  stdrv layer ',
@@ -21,13 +21,13 @@ WITH fx_rates AS (
   asg_v0.cand_offer_accepted_date AS cand_offer_accepted_date_initial,
   EXTRACT(DATE FROM Function_library${dataform.projectConfig.vars.region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])) AS rsr_assignment_control_date,
   DATE_TRUNC(EXTRACT(DATE FROM Function_library${dataform.projectConfig.vars.region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])),MONTH) AS rsr_assignment_control_date_monthstart,
-  -- #cost_savings 2024 Fall Release
+  #cost_savings 2024 Fall Release
   savings.currency AS rsr_savings_currency,
   savings.perm_recruitment_fee_fixed,
   savings.rehire_onboarding_hours
   FROM ${dataform.projectConfig.vars.ds_name}.prs_assignment_${dataform.projectConfig.vars.client_code} AS asg
     LEFT OUTER JOIN ${dataform.projectConfig.vars.ds_name}.prs_assignment_v0_${dataform.projectConfig.vars.client_code} AS asg_v0 ON asg.assignment_id = asg_v0.assignment_id
-    -- #cost_savings 2024 Fall Release
+    #cost_savings 2024 Fall Release
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.msp_cost_saving savings on savings.client_code=asg.rsr_client_code and cast(asg_v0.assignment_create_date as date) BETWEEN savings.date_from AND savings.date_to
 
 ), worker AS (
@@ -173,7 +173,7 @@ SELECT
     worker.rsr_worker_country,
     -- global_state_mapping.rsr_state AS rsr_state,
     CASE 
-      WHEN IFNULL(global_state_mapping.vms_state, '') <> '' THEN global_state_mapping.vms_state
+      WHEN IFNULL(global_state_mapping.rsr_state, '') <> '' THEN global_state_mapping.rsr_state
       WHEN IFNULL(assign.state_province, '') = '' THEN 'Undisclosed'
       ELSE 'Unmapped'
     END AS rsr_state,
@@ -366,7 +366,7 @@ END AS worker_status,
         ELSE assign_rates.pay_rate_st_hr * CAST(fx_cad.fx_rate AS NUMERIC)
     END AS pay_rate_st_hr_cad
     ,NULL AS preferred_supplier_status,
-    -- #cost_savings 2024 Fall Release
+    #cost_savings 2024 Fall Release
     assign.assignment_start_date,
     assign.assignment_end_date,
     assign.assignment_original_start_date,
@@ -471,9 +471,10 @@ END AS worker_status,
     LEFT JOIN fx_rates fx_inr ON assign_rates.currency = fx_inr.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_inr.month AND fx_inr.to_currency = 'INR' 
     LEFT JOIN fx_rates fx_cad ON assign_rates.currency = fx_cad.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_cad.month AND fx_cad.to_currency = 'CAD' 
     LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(assign.assignment_create_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(assign.assignment_create_date AS DATE)) AS INTEGER)
-    --  #cost_savings 2024 Fall Release
+     #cost_savings 2024 Fall Release
     LEFT JOIN fx_rates fx_usd_savings ON assign.rsr_savings_currency = fx_usd_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_usd_savings.month AND fx_usd_savings.to_currency = 'USD'
     LEFT JOIN fx_rates fx_eur_savings ON assign.rsr_savings_currency = fx_eur_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_eur_savings.month AND fx_eur_savings.to_currency = 'EUR'
     LEFT JOIN fx_rates fx_gbp_savings ON assign.rsr_savings_currency = fx_gbp_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_gbp_savings.month AND fx_gbp_savings.to_currency = 'GBP'
     LEFT JOIN fx_rates fx_inr_savings ON assign.rsr_savings_currency = fx_inr_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_inr_savings.month AND fx_inr_savings.to_currency = 'INR'
-    LEFT JOIN fx_rates fx_cad_savings ON assign.rsr_savings_currency = fx_cad_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_cad_savings.month AND fx_cad_savings.to_currency = 'CAD')
+    LEFT JOIN fx_rates fx_cad_savings ON assign.rsr_savings_currency = fx_cad_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_cad_savings.month AND fx_cad_savings.to_currency = 'CAD'
+)

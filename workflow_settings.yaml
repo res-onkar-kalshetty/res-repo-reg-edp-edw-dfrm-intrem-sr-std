@@ -1,13 +1,13 @@
-defaultProject: rsr-bi-group-dev-c874
-defaultLocation: europe-west1
+defaultProject: rsr-bi-group-prd-701e
+defaultLocation: us-east1
 defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.0
 vars:
-    client_code: msp_vn_emea_thales
-    region: _emea
-    ds_name: db_emea_thales
+    client_code: msp_fg_us_biogen
+    region: ""
+    ds_name: db_us_biogen
     solution: ""
     solution_tool: ""
-    
-
+    ph1: ""
+    ph2: ""

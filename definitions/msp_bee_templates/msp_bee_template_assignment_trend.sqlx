@@ -1,5 +1,5 @@
 config {
-    type: "operations",
+    type: "table",
     name: "msp_bee_template_assignment_trend",
     dependencies: ["msp_bee_template_assignment"],
     description: 'This file creates the  stdrv layer ',

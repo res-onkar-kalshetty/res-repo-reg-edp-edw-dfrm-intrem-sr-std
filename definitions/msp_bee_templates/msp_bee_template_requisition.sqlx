@@ -1,5 +1,5 @@
 config {
-    type: "operations",
+    type: "table",
     name : "msp_bee_template_requisition",
     description: 'This file creates the  stdrv layer ',
     tags: 'msp_bee_template'
@@ -36,7 +36,15 @@ left join `${dataform.projectConfig.vars.ds_name}.prs_requisition_${dataform.pro
     FROM
       ${dataform.projectConfig.vars.ds_name}.prs_assignment_${dataform.projectConfig.vars.client_code} 
     GROUP BY buyer_code,main_document_id
-),req_dist_data AS
+),
+req_dist_prs as (
+   Select 
+    case when job_posting_decline_date is not NULL then 'Declined' else req_distribution_status end as req_distribution_status,
+    case when job_posting_decline_date is not NULL then 'Declined' else decline_reason end as decline_reason,
+      *except(req_distribution_status,decline_reason) 
+      from ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code}
+),
+req_dist_data AS
 (
 	SELECT
       count(DISTINCT CASE
@@ -47,10 +55,9 @@ left join `${dataform.projectConfig.vars.ds_name}.prs_requisition_${dataform.pro
       buyer_code,
       req_id
     FROM
-      ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code} 
+      req_dist_prs
     GROUP BY buyer_code,req_id
 )
-
 
 select 
   req.buyer,
@@ -132,7 +139,7 @@ select
   END AS rsr_labor_type,
   -- gsm.rsr_state,
   CASE 
-    WHEN IFNULL(gsm.vms_state, '') <> '' THEN gsm.vms_state
+    WHEN IFNULL(gsm.rsr_state, '') <> '' THEN gsm.rsr_state
     WHEN IFNULL(req.state_province, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
   END AS rsr_state,
@@ -186,4 +193,4 @@ select
   left join `db_common${dataform.projectConfig.vars.region}.global_state_mapping` gsm on req.state_province = gsm.vms_state
   left join `db_common${dataform.projectConfig.vars.region}.global_countries` gcr on lower(req.country)=lower(gcr.country)
   left join `db_common${dataform.projectConfig.vars.region}.global_job_posting_status` grs on grs.job_posting_status = req.req_status
-  left outer join db_common${dataform.projectConfig.vars.region}.global_sourcing as gbl_src on TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, ''))));
+  left outer join db_common${dataform.projectConfig.vars.region}.global_sourcing as gbl_src on TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, ''))))

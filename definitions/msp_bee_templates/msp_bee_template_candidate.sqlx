@@ -1,5 +1,5 @@
 config {
-    type: "operations",
+    type: "table",
     name: "msp_bee_template_candidate",
     dependencies: ["msp_bee_template_requisition","msp_bee_template_assignment"],
     description: 'This file creates the  stdrv layer ',
@@ -90,6 +90,7 @@ with js_assingment_data as (select
 				,req.rsr_sourced_type
 				,js_in.rsr_processed_date
 				,js_in.rsr_staffing_entity -- winter_release 2025
+				,assingment_in.worker_start_date
 				from ${dataform.projectConfig.vars.ds_name}.prs_candidate_${dataform.projectConfig.vars.client_code} js_in
 				left join ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} assingment_in ON js_in.buyer = assingment_in.buyer AND js_in.cand_id= assingment_in.cand_id and js_in.req_id = assingment_in.main_document_id
 				left join ${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}  req on js_in.buyer = req.buyer AND js_in .req_id= req.req_id
@@ -299,6 +300,7 @@ end) AS compliance_vs_max_template_bill_rate
 ,NULL AS preferred_supplier_status
 ,req_dist_data.min_req_dist_date AS req_distribution_date
 ,candidate_assingment_req.rsr_staffing_entity -- winter_release 2025
+,candidate_assingment_req.worker_start_date
 FROM js_assingment_data as candidate_assingment_req
 LEFT JOIN req_dist_data ON candidate_assingment_req.buyer_code = req_dist_data.buyer_code AND candidate_assingment_req.supplier_code = req_dist_data.supplier_code AND candidate_assingment_req.req_id = req_dist_data.req_id
 LEFT JOIN  db_common${dataform.projectConfig.vars.region}.global_supplier_mapping AS global_supp_map ON candidate_assingment_req.buyer = global_supp_map.buyer AND candidate_assingment_req.supplier = global_supp_map.supplier
@@ -309,4 +311,6 @@ LEFT JOIN fx_rates fx_eur ON candidate_assingment_req.currency = fx_eur.from_cur
 LEFT JOIN fx_rates fx_gbp ON candidate_assingment_req.currency = fx_gbp.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_gbp.month AND fx_gbp.to_currency = 'GBP'
 LEFT JOIN fx_rates fx_inr ON candidate_assingment_req.currency = fx_inr.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_inr.month AND fx_inr.to_currency = 'INR' 
 LEFT JOIN fx_rates fx_cad ON candidate_assingment_req.currency = fx_cad.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_cad.month AND fx_cad.to_currency = 'CAD' 
-LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(candidate_assingment_req.buyer_code) AND div_supp.supplier_code=candidate_assingment_req.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER))
+LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(candidate_assingment_req.buyer_code) AND div_supp.supplier_code=candidate_assingment_req.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER)
+
+)

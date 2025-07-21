@@ -1,5 +1,5 @@
 config {
-    type: "operations",
+    type: "table",
     name: "msp_bee_template_requisition_distribution",
     tags: 'msp_bee_template',
     dependencies: ["msp_bee_template_requisition","msp_bee_template_assignment","msp_bee_template_candidate"],
@@ -42,18 +42,24 @@ WITH
 	${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code}
     GROUP BY
 	supplier_code),
+  req_dist as (
+    Select 
+    case when job_posting_decline_date is not NULL then 'Declined' else req_distribution_status end as req_distribution_status,
+    case when job_posting_decline_date is not NULL then 'Declined' else decline_reason end as decline_reason,
+      *except(req_distribution_status,decline_reason) from ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code}
+  ),
   aggregates_jp_dist_supp AS (
   SELECT
-    jp_dist.buyer_code,
-    jp_dist.req_id,
-    jp_dist.supplier,
-    COUNT(DISTINCT CASE WHEN COALESCE(jp_dist.req_distribution_status, 'na') <> 'Declined' THEN jp_dist.supplier ELSE 'NULL' END ) AS no_of_suppliers_posted
+    req_dist.buyer_code,
+    req_dist.req_id,
+    req_dist.supplier,
+    COUNT(DISTINCT CASE WHEN COALESCE(req_dist.req_distribution_status, 'na') <> 'Declined' THEN req_dist.supplier ELSE NULL END ) AS no_of_suppliers_posted
   FROM
-    ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code} jp_dist
+    req_dist 
   GROUP BY
-    jp_dist.buyer_code,
-    jp_dist.req_id,
-    jp_dist.supplier ),
+    req_dist.buyer_code,
+    req_dist.req_id,
+    req_dist.supplier ),
   job_seeker_data AS (
   SELECT
     js_in.buyer,
@@ -229,7 +235,7 @@ SELECT
   ,NULL AS preferred_supplier_status
   ,job_posting_data.rsr_close_reason,
 job_posting_dist_data.rsr_staffing_entity -- winter_release 2025
-FROM ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code} job_posting_dist_data
+FROM req_dist job_posting_dist_data
 LEFT OUTER JOIN aggregates_min_req_dist_date ON job_posting_dist_data.supplier_code = aggregates_min_req_dist_date.supplier_code
 LEFT OUTER JOIN  job_posting_data ON job_posting_data.req_id = job_posting_dist_data.req_id
 LEFT OUTER JOIN  aggregates_jp_dist_supp ON job_posting_dist_data.req_id = aggregates_jp_dist_supp.req_id AND job_posting_dist_data.supplier = aggregates_jp_dist_supp.supplier
