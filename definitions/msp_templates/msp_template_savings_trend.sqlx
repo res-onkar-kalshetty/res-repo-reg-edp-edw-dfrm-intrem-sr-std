@@ -1,5 +1,5 @@
 config {
-    type: "table",
+    type: "operations",
     name: "msp_template_savings_trend",
     tags: 'msp_template',
     dependencies: ['msp_template_requisition', 'msp_template_spend'],
@@ -7,7 +7,7 @@ config {
 }
 
 CREATE OR REPLACE TABLE
-  `${dataform.projectConfig.vars.ds_name}.stdrv_savings_trend_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+  `${dataform.projectConfig.vars.ds_name}.stdrv_savings_trend_${dataform.projectConfig.vars.client_code}` AS (
   WITH
     calendar AS (
     SELECT

@@ -1,10 +1,10 @@
 config {
-    type: "table",
+    type: "operations",
     name: "msp_template_sow_trend",
     tags: 'msp_template_sow',
     description: 'This file creates the  stdrv layer'
 }
-CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_sow_trend_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_sow_trend_${dataform.projectConfig.vars.client_code}` AS (
 WITH date_calc AS (
   SELECT
     sow_details.buyer,

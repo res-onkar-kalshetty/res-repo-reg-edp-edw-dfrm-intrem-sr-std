@@ -1,12 +1,12 @@
 config {
-    type: "table",
+    type: "operations",
     name: 'msp_template_candidate',
     tags: 'msp_template',
 	schema: `${dataform.projectConfig.vars.ds_name}`,
     dependencies: ['msp_template_requisition', 'msp_template_assignment'],
     description: 'This file creates the  stdrv layer'
 }
-CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_candidate_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_candidate_${dataform.projectConfig.vars.client_code}` AS (
 with js_assingment_data as (select 
 				js_in.buyer
 				,js_in.buyer_code

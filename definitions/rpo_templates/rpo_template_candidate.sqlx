@@ -1,10 +1,10 @@
 config {
-    type: "table",
+    type: "operations",
     name: "rpo_template_candidate",
     tags: 'rpo_template',
     description: 'This file creates the  stdrv layer'
 }
-CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_candidate_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_candidate_${dataform.projectConfig.vars.client_code}` AS (
 /* QUERY DOCUMENTATION
 -- TYPE: candidate, single report, non-transactional
 -- deduped_cand CTE de-duplicates the cand data by req_id, cand_id using rules agreed upon by BPs, Blue data, and Data Solutions
@@ -31,7 +31,7 @@ WITH deduped_cand AS (
     FROM (
         SELECT *
             ,ROW_NUMBER() OVER () AS row_num
-        FROM ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph1}
+        FROM ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph1_c}
     )
 ),
 req_mst as (
@@ -44,7 +44,7 @@ req_mst as (
         ELSE 'Unmapped'
      END AS rsr_state
      from
-     ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph2} req
+     ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph2_c} req
      LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_countries gcr on IFNULL(lower(req.country), '') = lower(gcr.country)
      LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_state_mapping gsm on IFNULL(req.state_province, '') = gsm.vms_state
 
@@ -290,7 +290,7 @@ FROM (
         ,	req.country as 	req_country
 
         FROM deduped_cand cand
-        LEFT JOIN ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph2} req ON cand.req_id = req.req_id
+        LEFT JOIN ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph2_c} req ON cand.req_id = req.req_id
         LEFT JOIN req_mst ON cand.req_id = req_mst.req_id
         LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_source_detail sd ON IFNULL(cand.source_detail, '') = sd.source_detail
         LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_internal_external ie ON IFNULL(cand.internal_external, '') = ie.internal_external

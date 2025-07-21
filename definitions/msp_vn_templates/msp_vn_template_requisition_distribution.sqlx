@@ -1,11 +1,11 @@
 config {
-    type: "table",
+    type: "operations",
     name: "msp_vn_template_requisition_distribution",
     tags: 'msp_vn_template',
     dependencies: "msp_vn_template_assignment",
     description: 'This file creates the  stdrv layer '
 }
-CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_distribution_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_distribution_${dataform.projectConfig.vars.client_code}` AS (
 WITH
 -- Vyndly specific logic to identify one row by req_id_supplier_code in case of duplicates
   job_posting_dist_data AS (
@@ -24,7 +24,7 @@ WITH
     wo_in.assignment_id,
     wo_in.assignment_create_date_initial
   FROM
-    ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code}_dform_test AS wo_in ),
+    ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} AS wo_in ),
   aggregates_wo_wsupp AS (
   SELECT
     wo_data.buyer,
@@ -158,7 +158,7 @@ job_posting_data as (
   rsr_country,
   currency,
   rsr_close_reason
-  FROM ${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}_dform_test
+  FROM ${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}
 )
 SELECT
   job_posting_dist_data.buyer,

@@ -1,10 +1,10 @@
 config {
-    type: "table",
+    type: "operations",
     name: "msp_vn_template_requisition",
     tags: 'msp_vn_template',
     description: 'This file creates the  stdrv layer '
 }
-CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}` AS (
 WITH candidate_data AS 
 (SELECT
 	buyer_code

@@ -1,10 +1,11 @@
 config {
-    type: "table",
+    type: "operations",
     name: "rpo_template_requisition",
+    dependencies: "rpo_template_candidate",
     tags: 'rpo_template',
     description: 'This file creates the  stdrv layer'
 }
-CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}` AS (
 /* QUERY DOCUMENTATION
 -- TYPE: requisition, non-transactional
 -- outermost query contains calcuations that take fields from subquery1 as input
@@ -54,7 +55,7 @@ FROM (
         ,COUNT(stdz_cand.cand_offer_accepted_date) AS cand_offers_accepted_cnt
         -- cand_hired_cnt
         ,COUNT(stdz_cand.cand_hired_date) AS cand_hired_cnt
-        FROM ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph1} stdz_cand
+        FROM ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph1_r} stdz_cand
         GROUP BY stdz_cand.req_id
     )
 
@@ -169,7 +170,7 @@ FROM (
     ,CAST(COALESCE(req.days_on_hold_cd, ROUND((req.days_on_hold_bd / 5) * 7), 0) AS INT64) AS days_on_hold_cd
     ,req.rsr_processed_date
 
-    FROM ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph2} req
+    FROM ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph2_r} req
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_calendar_mapping cal_map ON req.closed_date = CAST(cal_map.Day as DATE FORMAT 'MM/DD/YYYY')
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_labor_type AS lt ON IFNULL(req.labor_type, '') = lt.labor_type
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_job_grade AS jg ON req.buyer = jg.buyer_code AND IFNULL(req.job_grade, '') = jg.job_grade

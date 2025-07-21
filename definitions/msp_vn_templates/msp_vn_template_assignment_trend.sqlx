@@ -1,11 +1,11 @@
 config {
-    type: "table",
+    type: "operations",
     name: "msp_vn_template_assignment_trend",
     tags: 'msp_vn_template',
     dependencies: "msp_vn_template_assignment",
     description: 'This file creates the  stdrv layer'
 }
-CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_assignment_trend_${dataform.projectConfig.vars.client_code}_dform_test` AS (
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_assignment_trend_${dataform.projectConfig.vars.client_code}` AS (
 WITH
 derv_wo AS(
   select
@@ -27,7 +27,7 @@ derv_wo AS(
 	gbl_cal_445.reporting_week_date as reporting_date_445_week,
     gbl_cal_445.week
     FROM
-    ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code}_dform_test req_assign_in
+    ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} req_assign_in
 	CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(DATE_TRUNC(CAST(req_assign_in.worker_start_date AS DATE), WEEK), CAST(req_assign_in.reporting_date_ends AS DATE), INTERVAL 1 WEEK)) r_dates
 	left join db_common${dataform.projectConfig.vars.region}.global_calendar_445 gbl_cal_445 ON r_dates = PARSE_DATE('%m/%d/%Y',gbl_cal_445.day)
 ),
@@ -182,6 +182,6 @@ SELECT
 	assign.rsr_staffing_entity -- winter_release 2025
 
 FROM
-	${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code}_dform_test assign
+	${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} assign
 	LEFT JOIN cal_comp ON assign.assignment_id = cal_comp.assignment_id AND assign.main_document_id = cal_comp.main_document_id
   LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM PARSE_DATE("%m/%d/%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM PARSE_DATE("%m/%d/%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER))
