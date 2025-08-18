@@ -8,520 +8,500 @@ config {
 
 CREATE OR REPLACE TABLE
   `${dataform.projectConfig.vars.ds_name}.stdrv_spend_${dataform.projectConfig.vars.client_code}` AS (
+  SELECT buyer
+,buyer_code
+,main_document_id
+,assignment_id
+,statement_of_work_id
+,consolidated_invoice_id
+,parent_invoice_id
+,invoice_id
+,invoice_line_item_id
+,invoice_approved_date
+,consolidated_invoice_approved_date
+,invoice_line_item_date
+,main_document_type
+,invoice_type
+,invoice_line_item_type
+,main_document_title
+,billable_hours
+,line_item_amount
+,invoice_line_item_amt
+,invoice_tax_adj_amt
+,invoice_amount
+,msp_amt
+,msp_line_item_amt
+,msp_invoice_tax_adj_amt
+,supplier_bill_rate_st_hr
+,bill_rate_st_hr
+,pay_rate_st_hr
+,currency
+,cost_center_code
+,cost_center
+,legal_entity
+,supplier_code
+,supplier
+,calendar_reporting_month_date
+,reporting_date_445_month
+,reporting_date_445_week
+,supplier_primary_diversity_type
+,supplier_small_business
+,supplier_diverse_small
+,supplier_erp_id
+,max_template_bill_rate_st_hr
+,labor_type
+,primary_cost_center
+,max_requested_bill_rate_st_hr
+,presented_bill_rate_st_hr
+,assignment_bill_rate_st_hr
+,assignment_bill_rate_st_hr_initial
+,usd_fx_rate
+,eur_fx_rate
+,gbp_fx_rate
+,inr_fx_rate
+,cad_fx_rate
+,rsr_labor_type
+,rsr_sourced_type
+,rsr_supplier
+,rsr_state
+,rsr_country
+,rsr_region
+,req_type
+,`current_date`
+,reporting_date
+,invoice_year_calendar
+,year_calendar
+,month_calendar
+,month_name_calendar
+,invoice_bill_rate_st_hr
+,negotiated_savings
+,savings_under_max_rate
+,savings_vs_requested_rate
+,spend_in_usd
+,spend_in_eur
+,spend_in_gbp
+,spend_in_inr
+,spend_in_cad
+,sourcing_type_wo_mapped
+,sourcing_type_wk_mapped
+,business_unit_code
+,business_unit
+,site
+,city
+,state_province
+,country
+,contingent_vs_sow
+,reporting_date_ends
+,bill_rate_st_hr_usd
+,bill_rate_st_hr_eur
+,bill_rate_st_hr_gbp
+,bill_rate_st_hr_inr
+,bill_rate_st_hr_cad
+,pay_rate_st_hr_usd
+,pay_rate_st_hr_eur
+,pay_rate_st_hr_gbp
+,pay_rate_st_hr_inr
+,pay_rate_st_hr_cad
+,rsr_client_code
+,rsr_processed_date
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(negotiated_savings as FLOAT64)
+    ELSE negotiated_savings * usd_fx_rate
+END AS negotiated_savings_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(negotiated_savings as FLOAT64)
+    ELSE negotiated_savings * eur_fx_rate
+END AS negotiated_savings_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(negotiated_savings as FLOAT64)
+    ELSE negotiated_savings * gbp_fx_rate
+END AS negotiated_savings_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(negotiated_savings as FLOAT64)
+    ELSE negotiated_savings * inr_fx_rate
+END AS negotiated_savings_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(negotiated_savings as FLOAT64)
+    ELSE negotiated_savings * cad_fx_rate
+END AS negotiated_savings_in_cad
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(savings_vs_requested_rate as FLOAT64)
+    ELSE savings_vs_requested_rate * usd_fx_rate
+END AS savings_vs_requested_rate_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(savings_vs_requested_rate as FLOAT64)
+    ELSE savings_vs_requested_rate * eur_fx_rate
+END AS savings_vs_requested_rate_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(savings_vs_requested_rate as FLOAT64)
+    ELSE savings_vs_requested_rate * gbp_fx_rate
+END AS savings_vs_requested_rate_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(savings_vs_requested_rate as FLOAT64)
+    ELSE savings_vs_requested_rate * inr_fx_rate
+END AS savings_vs_requested_rate_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(savings_vs_requested_rate as FLOAT64)
+    ELSE savings_vs_requested_rate * cad_fx_rate
+END AS savings_vs_requested_rate_in_cad
+,NULL AS preferred_supplier_status
+
+#cost_savings 2024 Fall Release
+,initial_negotiated_savings
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(initial_negotiated_savings as FLOAT64)
+    ELSE initial_negotiated_savings * usd_fx_rate
+END AS initial_negotiated_savings_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(initial_negotiated_savings as FLOAT64)
+    ELSE initial_negotiated_savings * eur_fx_rate
+END AS initial_negotiated_savings_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(initial_negotiated_savings as FLOAT64)
+    ELSE initial_negotiated_savings * gbp_fx_rate
+END AS initial_negotiated_savings_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(initial_negotiated_savings as FLOAT64)
+    ELSE initial_negotiated_savings * inr_fx_rate
+END AS initial_negotiated_savings_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(initial_negotiated_savings as FLOAT64)
+    ELSE initial_negotiated_savings * cad_fx_rate
+END AS initial_negotiated_savings_in_cad
+
+,savings_vs_max_rate
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(savings_vs_max_rate as FLOAT64)
+    ELSE savings_vs_max_rate * usd_fx_rate
+END AS savings_vs_max_rate_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(savings_vs_max_rate as FLOAT64)
+    ELSE savings_vs_max_rate * eur_fx_rate
+END AS savings_vs_max_rate_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(savings_vs_max_rate as FLOAT64)
+    ELSE savings_vs_max_rate * gbp_fx_rate
+END AS savings_vs_max_rate_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(savings_vs_max_rate as FLOAT64)
+    ELSE savings_vs_max_rate * inr_fx_rate
+END AS savings_vs_max_rate_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(savings_vs_max_rate as FLOAT64)
+    ELSE savings_vs_max_rate * cad_fx_rate
+END AS savings_vs_max_rate_in_cad
+
+,extension_negotiated_savings
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(extension_negotiated_savings as FLOAT64)
+    ELSE extension_negotiated_savings * usd_fx_rate
+END AS extension_negotiated_savings_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(extension_negotiated_savings as FLOAT64)
+    ELSE extension_negotiated_savings * eur_fx_rate
+END AS extension_negotiated_savings_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(extension_negotiated_savings as FLOAT64)
+    ELSE extension_negotiated_savings * gbp_fx_rate
+END AS extension_negotiated_savings_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(extension_negotiated_savings as FLOAT64)
+    ELSE extension_negotiated_savings * inr_fx_rate
+END AS extension_negotiated_savings_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(extension_negotiated_savings as FLOAT64)
+    ELSE extension_negotiated_savings * cad_fx_rate
+END AS extension_negotiated_savings_in_cad
+
+,direct_sourcing_savings
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(direct_sourcing_savings as FLOAT64)
+    ELSE direct_sourcing_savings * usd_fx_rate
+END AS direct_sourcing_savings_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(direct_sourcing_savings as FLOAT64)
+    ELSE direct_sourcing_savings * eur_fx_rate
+END AS direct_sourcing_savings_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(direct_sourcing_savings as FLOAT64)
+    ELSE direct_sourcing_savings * gbp_fx_rate
+END AS direct_sourcing_savings_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(direct_sourcing_savings as FLOAT64)
+    ELSE direct_sourcing_savings * inr_fx_rate
+END AS direct_sourcing_savings_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(direct_sourcing_savings as FLOAT64)
+    ELSE direct_sourcing_savings * cad_fx_rate
+END AS direct_sourcing_savings_in_cad
+
+,payroll_savings
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(payroll_savings as FLOAT64)
+    ELSE payroll_savings * usd_fx_rate
+END AS payroll_savings_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(payroll_savings as FLOAT64)
+    ELSE payroll_savings * eur_fx_rate
+END AS payroll_savings_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(payroll_savings as FLOAT64)
+    ELSE payroll_savings * gbp_fx_rate
+END AS payroll_savings_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(payroll_savings as FLOAT64)
+    ELSE payroll_savings * inr_fx_rate
+END AS payroll_savings_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(payroll_savings as FLOAT64)
+    ELSE payroll_savings * cad_fx_rate
+END AS payroll_savings_in_cad
+
+,prior_state_savings
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(prior_state_savings as FLOAT64)
+    ELSE prior_state_savings * usd_fx_rate
+END AS prior_state_savings_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(prior_state_savings as FLOAT64)
+    ELSE prior_state_savings * eur_fx_rate
+END AS prior_state_savings_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(prior_state_savings as FLOAT64)
+    ELSE prior_state_savings * gbp_fx_rate
+END AS prior_state_savings_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(prior_state_savings as FLOAT64)
+    ELSE prior_state_savings * inr_fx_rate
+END AS prior_state_savings_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(prior_state_savings as FLOAT64)
+    ELSE prior_state_savings * cad_fx_rate
+END AS prior_state_savings_in_cad
+
+,savings_vs_highest_rate
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(savings_vs_highest_rate as FLOAT64)
+    ELSE savings_vs_highest_rate * usd_fx_rate
+END AS savings_vs_highest_rate_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(savings_vs_highest_rate as FLOAT64)
+    ELSE savings_vs_highest_rate * eur_fx_rate
+END AS savings_vs_highest_rate_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(savings_vs_highest_rate as FLOAT64)
+    ELSE savings_vs_highest_rate * gbp_fx_rate
+END AS savings_vs_highest_rate_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(savings_vs_highest_rate as FLOAT64)
+    ELSE savings_vs_highest_rate * inr_fx_rate
+END AS savings_vs_highest_rate_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(savings_vs_highest_rate as FLOAT64)
+    ELSE savings_vs_highest_rate * cad_fx_rate
+END AS savings_vs_highest_rate_in_cad
+
+,qualified_cand_savings
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(qualified_cand_savings as FLOAT64)
+    ELSE qualified_cand_savings * usd_fx_rate
+END AS qualified_cand_savings_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(qualified_cand_savings as FLOAT64)
+    ELSE qualified_cand_savings * eur_fx_rate
+END AS qualified_cand_savings_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(qualified_cand_savings as FLOAT64)
+    ELSE qualified_cand_savings * gbp_fx_rate
+END AS qualified_cand_savings_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(qualified_cand_savings as FLOAT64)
+    ELSE qualified_cand_savings * inr_fx_rate
+END AS qualified_cand_savings_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(qualified_cand_savings as FLOAT64)
+    ELSE qualified_cand_savings * cad_fx_rate
+END AS qualified_cand_savings_in_cad
+
+,previous_years_bill_rate_savings
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(previous_years_bill_rate_savings as FLOAT64)
+    ELSE previous_years_bill_rate_savings * usd_fx_rate
+END AS previous_years_bill_rate_savings_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(previous_years_bill_rate_savings as FLOAT64)
+    ELSE previous_years_bill_rate_savings * eur_fx_rate
+END AS previous_years_bill_rate_savings_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(previous_years_bill_rate_savings as FLOAT64)
+    ELSE previous_years_bill_rate_savings * gbp_fx_rate
+END AS previous_years_bill_rate_savings_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(previous_years_bill_rate_savings as FLOAT64)
+    ELSE previous_years_bill_rate_savings * inr_fx_rate
+END AS previous_years_bill_rate_savings_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(previous_years_bill_rate_savings as FLOAT64)
+    ELSE previous_years_bill_rate_savings * cad_fx_rate
+END AS previous_years_bill_rate_savings_in_cad
+
+,tenure_discount_effective_date
+
+,tenure_discount_savings
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(tenure_discount_savings as FLOAT64)
+    ELSE tenure_discount_savings * usd_fx_rate
+END AS tenure_discount_savings_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(tenure_discount_savings as FLOAT64)
+    ELSE tenure_discount_savings * eur_fx_rate
+END AS tenure_discount_savings_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(tenure_discount_savings as FLOAT64)
+    ELSE tenure_discount_savings * gbp_fx_rate
+END AS tenure_discount_savings_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(tenure_discount_savings as FLOAT64)
+    ELSE tenure_discount_savings * inr_fx_rate
+END AS tenure_discount_savings_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(tenure_discount_savings as FLOAT64)
+    ELSE tenure_discount_savings * cad_fx_rate
+END AS tenure_discount_savings_in_cad
+#Winter_release 2025
+,rsr_staffing_entity
+,spend_business_unit
+,spend_business_unit_code
+,suppressed_title,
+pii_found,
+process_status,
+suppression_type,
+llm_cleaned,
+title_cleaned,
+ms_category_1,
+ms_category_2,
+onet_career_pathway,
+onet_job_family,
+onet_career_cluster,
+onet_occupation,
+soc_major_group,
+soc_minor_group,
+soc_broad_group,
+onet_detailed_occupation,
+bg_categorization,
+tk_categorization,
+rand_categorization,
+rmi_categorization,
+R1_label,
+R2_label,
+R3_label,
+R4_label,
+R5_label,
+R6_label,
+location_level_1,
+location_level_2,
+location_level_3,
+location_level_4,
+location_level_5,
+location_level_6,
+location_level_7,
+location_level_8,
+location_level_1a,
+location_level_2a
+
+
+FROM (
+WITH spend_data AS (
   SELECT
-    buyer,
-    buyer_code,
-    main_document_id,
-    assignment_id,
-    statement_of_work_id,
-    consolidated_invoice_id,
-    parent_invoice_id,
-    invoice_id,
-    invoice_line_item_id,
-    invoice_approved_date,
-    consolidated_invoice_approved_date,
-    invoice_line_item_date,
-    main_document_type,
-    invoice_type,
-    invoice_line_item_type,
-    main_document_title,
-    billable_hours,
-    line_item_amount,
-    invoice_line_item_amt,
-    invoice_tax_adj_amt,
-    invoice_amount,
-    msp_amt,
-    msp_line_item_amt,
-    msp_invoice_tax_adj_amt,
-    supplier_bill_rate_st_hr,
-    bill_rate_st_hr,
-    pay_rate_st_hr,
-    currency,
-    cost_center_code,
-    cost_center,
-    legal_entity,
-    supplier_code,
-    supplier,
-    calendar_reporting_month_date,
-    reporting_date_445_month,
-    reporting_date_445_week,
-    supplier_primary_diversity_type,
-    supplier_small_business,
-    supplier_diverse_small,
-    supplier_erp_id,
-    max_template_bill_rate_st_hr,
-    labor_type,
-    primary_cost_center,
-    max_requested_bill_rate_st_hr,
-    presented_bill_rate_st_hr,
-    assignment_bill_rate_st_hr,
-    assignment_bill_rate_st_hr_initial,
-    usd_fx_rate,
-    eur_fx_rate,
-    gbp_fx_rate,
-    inr_fx_rate,
-    cad_fx_rate,
-    rsr_labor_type,
-    rsr_sourced_type,
-    rsr_supplier,
-    rsr_state,
-    rsr_country,
-    rsr_region,
-    req_type,
-    `current_date`,
-    reporting_date,
-    invoice_year_calendar,
-    year_calendar,
-    month_calendar,
-    month_name_calendar,
-    invoice_bill_rate_st_hr,
-    negotiated_savings,
-    savings_under_max_rate,
-    savings_vs_requested_rate,
-    spend_in_usd,
-    spend_in_eur,
-    spend_in_gbp,
-    spend_in_inr,
-    spend_in_cad,
-    sourcing_type_wo_mapped,
-    sourcing_type_wk_mapped,
-    business_unit_code,
-    business_unit,
-    site,
-    city,
-    state_province,
-    country,
-    contingent_vs_sow,
-    reporting_date_ends,
-    bill_rate_st_hr_usd,
-    bill_rate_st_hr_eur,
-    bill_rate_st_hr_gbp,
-    bill_rate_st_hr_inr,
-    bill_rate_st_hr_cad,
-    pay_rate_st_hr_usd,
-    pay_rate_st_hr_eur,
-    pay_rate_st_hr_gbp,
-    pay_rate_st_hr_inr,
-    pay_rate_st_hr_cad,
-    rsr_client_code,
-    rsr_processed_date,
-    CASE
-      WHEN UPPER(currency) = 'USD' THEN CAST(negotiated_savings AS FLOAT64)
-      ELSE negotiated_savings * usd_fx_rate
-  END
-    AS negotiated_savings_in_usd,
-    CASE
-      WHEN UPPER(currency) = 'EUR' THEN CAST(negotiated_savings AS FLOAT64)
-      ELSE negotiated_savings * eur_fx_rate
-  END
-    AS negotiated_savings_in_eur,
-    CASE
-      WHEN UPPER(currency) = 'GBP' THEN CAST(negotiated_savings AS FLOAT64)
-      ELSE negotiated_savings * gbp_fx_rate
-  END
-    AS negotiated_savings_in_gbp,
-    CASE
-      WHEN UPPER(currency) = 'INR' THEN CAST(negotiated_savings AS FLOAT64)
-      ELSE negotiated_savings * inr_fx_rate
-  END
-    AS negotiated_savings_in_inr,
-    CASE
-      WHEN UPPER(currency) = 'CAD' THEN CAST(negotiated_savings AS FLOAT64)
-      ELSE negotiated_savings * cad_fx_rate
-  END
-    AS negotiated_savings_in_cad,
-    CASE
-      WHEN UPPER(currency) = 'USD' THEN CAST(savings_vs_requested_rate AS FLOAT64)
-      ELSE savings_vs_requested_rate * usd_fx_rate
-  END
-    AS savings_vs_requested_rate_in_usd,
-    CASE
-      WHEN UPPER(currency) = 'EUR' THEN CAST(savings_vs_requested_rate AS FLOAT64)
-      ELSE savings_vs_requested_rate * eur_fx_rate
-  END
-    AS savings_vs_requested_rate_in_eur,
-    CASE
-      WHEN UPPER(currency) = 'GBP' THEN CAST(savings_vs_requested_rate AS FLOAT64)
-      ELSE savings_vs_requested_rate * gbp_fx_rate
-  END
-    AS savings_vs_requested_rate_in_gbp,
-    CASE
-      WHEN UPPER(currency) = 'INR' THEN CAST(savings_vs_requested_rate AS FLOAT64)
-      ELSE savings_vs_requested_rate * inr_fx_rate
-  END
-    AS savings_vs_requested_rate_in_inr,
-    CASE
-      WHEN UPPER(currency) = 'CAD' THEN CAST(savings_vs_requested_rate AS FLOAT64)
-      ELSE savings_vs_requested_rate * cad_fx_rate
-  END
-    AS savings_vs_requested_rate_in_cad,
-    NULL AS preferred_supplier_status,
-    --  #cost_savings 2024 Fall Release,
-    initial_negotiated_savings,
-    CASE
-      WHEN UPPER(currency) = 'USD' THEN CAST(initial_negotiated_savings AS FLOAT64)
-      ELSE initial_negotiated_savings * usd_fx_rate
-  END
-    AS initial_negotiated_savings_in_usd,
-    CASE
-      WHEN UPPER(currency) = 'EUR' THEN CAST(initial_negotiated_savings AS FLOAT64)
-      ELSE initial_negotiated_savings * eur_fx_rate
-  END
-    AS initial_negotiated_savings_in_eur,
-    CASE
-      WHEN UPPER(currency) = 'GBP' THEN CAST(initial_negotiated_savings AS FLOAT64)
-      ELSE initial_negotiated_savings * gbp_fx_rate
-  END
-    AS initial_negotiated_savings_in_gbp,
-    CASE
-      WHEN UPPER(currency) = 'INR' THEN CAST(initial_negotiated_savings AS FLOAT64)
-      ELSE initial_negotiated_savings * inr_fx_rate
-  END
-    AS initial_negotiated_savings_in_inr,
-    CASE
-      WHEN UPPER(currency) = 'CAD' THEN CAST(initial_negotiated_savings AS FLOAT64)
-      ELSE initial_negotiated_savings * cad_fx_rate
-  END
-    AS initial_negotiated_savings_in_cad,
-    savings_vs_max_rate,
-    CASE
-      WHEN UPPER(currency) = 'USD' THEN CAST(savings_vs_max_rate AS FLOAT64)
-      ELSE savings_vs_max_rate * usd_fx_rate
-  END
-    AS savings_vs_max_rate_in_usd,
-    CASE
-      WHEN UPPER(currency) = 'EUR' THEN CAST(savings_vs_max_rate AS FLOAT64)
-      ELSE savings_vs_max_rate * eur_fx_rate
-  END
-    AS savings_vs_max_rate_in_eur,
-    CASE
-      WHEN UPPER(currency) = 'GBP' THEN CAST(savings_vs_max_rate AS FLOAT64)
-      ELSE savings_vs_max_rate * gbp_fx_rate
-  END
-    AS savings_vs_max_rate_in_gbp,
-    CASE
-      WHEN UPPER(currency) = 'INR' THEN CAST(savings_vs_max_rate AS FLOAT64)
-      ELSE savings_vs_max_rate * inr_fx_rate
-  END
-    AS savings_vs_max_rate_in_inr,
-    CASE
-      WHEN UPPER(currency) = 'CAD' THEN CAST(savings_vs_max_rate AS FLOAT64)
-      ELSE savings_vs_max_rate * cad_fx_rate
-  END
-    AS savings_vs_max_rate_in_cad,
-    extension_negotiated_savings,
-    CASE
-      WHEN UPPER(currency) = 'USD' THEN CAST(extension_negotiated_savings AS FLOAT64)
-      ELSE extension_negotiated_savings * usd_fx_rate
-  END
-    AS extension_negotiated_savings_in_usd,
-    CASE
-      WHEN UPPER(currency) = 'EUR' THEN CAST(extension_negotiated_savings AS FLOAT64)
-      ELSE extension_negotiated_savings * eur_fx_rate
-  END
-    AS extension_negotiated_savings_in_eur,
-    CASE
-      WHEN UPPER(currency) = 'GBP' THEN CAST(extension_negotiated_savings AS FLOAT64)
-      ELSE extension_negotiated_savings * gbp_fx_rate
-  END
-    AS extension_negotiated_savings_in_gbp,
-    CASE
-      WHEN UPPER(currency) = 'INR' THEN CAST(extension_negotiated_savings AS FLOAT64)
-      ELSE extension_negotiated_savings * inr_fx_rate
-  END
-    AS extension_negotiated_savings_in_inr,
-    CASE
-      WHEN UPPER(currency) = 'CAD' THEN CAST(extension_negotiated_savings AS FLOAT64)
-      ELSE extension_negotiated_savings * cad_fx_rate
-  END
-    AS extension_negotiated_savings_in_cad,
-    direct_sourcing_savings,
-    CASE
-      WHEN UPPER(currency) = 'USD' THEN CAST(direct_sourcing_savings AS FLOAT64)
-      ELSE direct_sourcing_savings * usd_fx_rate
-  END
-    AS direct_sourcing_savings_in_usd,
-    CASE
-      WHEN UPPER(currency) = 'EUR' THEN CAST(direct_sourcing_savings AS FLOAT64)
-      ELSE direct_sourcing_savings * eur_fx_rate
-  END
-    AS direct_sourcing_savings_in_eur,
-    CASE
-      WHEN UPPER(currency) = 'GBP' THEN CAST(direct_sourcing_savings AS FLOAT64)
-      ELSE direct_sourcing_savings * gbp_fx_rate
-  END
-    AS direct_sourcing_savings_in_gbp,
-    CASE
-      WHEN UPPER(currency) = 'INR' THEN CAST(direct_sourcing_savings AS FLOAT64)
-      ELSE direct_sourcing_savings * inr_fx_rate
-  END
-    AS direct_sourcing_savings_in_inr,
-    CASE
-      WHEN UPPER(currency) = 'CAD' THEN CAST(direct_sourcing_savings AS FLOAT64)
-      ELSE direct_sourcing_savings * cad_fx_rate
-  END
-    AS direct_sourcing_savings_in_cad,
-    payroll_savings,
-    CASE
-      WHEN UPPER(currency) = 'USD' THEN CAST(payroll_savings AS FLOAT64)
-      ELSE payroll_savings * usd_fx_rate
-  END
-    AS payroll_savings_in_usd,
-    CASE
-      WHEN UPPER(currency) = 'EUR' THEN CAST(payroll_savings AS FLOAT64)
-      ELSE payroll_savings * eur_fx_rate
-  END
-    AS payroll_savings_in_eur,
-    CASE
-      WHEN UPPER(currency) = 'GBP' THEN CAST(payroll_savings AS FLOAT64)
-      ELSE payroll_savings * gbp_fx_rate
-  END
-    AS payroll_savings_in_gbp,
-    CASE
-      WHEN UPPER(currency) = 'INR' THEN CAST(payroll_savings AS FLOAT64)
-      ELSE payroll_savings * inr_fx_rate
-  END
-    AS payroll_savings_in_inr,
-    CASE
-      WHEN UPPER(currency) = 'CAD' THEN CAST(payroll_savings AS FLOAT64)
-      ELSE payroll_savings * cad_fx_rate
-  END
-    AS payroll_savings_in_cad,
-    prior_state_savings,
-    CASE
-      WHEN UPPER(currency) = 'USD' THEN CAST(prior_state_savings AS FLOAT64)
-      ELSE prior_state_savings * usd_fx_rate
-  END
-    AS prior_state_savings_in_usd,
-    CASE
-      WHEN UPPER(currency) = 'EUR' THEN CAST(prior_state_savings AS FLOAT64)
-      ELSE prior_state_savings * eur_fx_rate
-  END
-    AS prior_state_savings_in_eur,
-    CASE
-      WHEN UPPER(currency) = 'GBP' THEN CAST(prior_state_savings AS FLOAT64)
-      ELSE prior_state_savings * gbp_fx_rate
-  END
-    AS prior_state_savings_in_gbp,
-    CASE
-      WHEN UPPER(currency) = 'INR' THEN CAST(prior_state_savings AS FLOAT64)
-      ELSE prior_state_savings * inr_fx_rate
-  END
-    AS prior_state_savings_in_inr,
-    CASE
-      WHEN UPPER(currency) = 'CAD' THEN CAST(prior_state_savings AS FLOAT64)
-      ELSE prior_state_savings * cad_fx_rate
-  END
-    AS prior_state_savings_in_cad,
-    savings_vs_highest_rate,
-    CASE
-      WHEN UPPER(currency) = 'USD' THEN CAST(savings_vs_highest_rate AS FLOAT64)
-      ELSE savings_vs_highest_rate * usd_fx_rate
-  END
-    AS savings_vs_highest_rate_in_usd,
-    CASE
-      WHEN UPPER(currency) = 'EUR' THEN CAST(savings_vs_highest_rate AS FLOAT64)
-      ELSE savings_vs_highest_rate * eur_fx_rate
-  END
-    AS savings_vs_highest_rate_in_eur,
-    CASE
-      WHEN UPPER(currency) = 'GBP' THEN CAST(savings_vs_highest_rate AS FLOAT64)
-      ELSE savings_vs_highest_rate * gbp_fx_rate
-  END
-    AS savings_vs_highest_rate_in_gbp,
-    CASE
-      WHEN UPPER(currency) = 'INR' THEN CAST(savings_vs_highest_rate AS FLOAT64)
-      ELSE savings_vs_highest_rate * inr_fx_rate
-  END
-    AS savings_vs_highest_rate_in_inr,
-    CASE
-      WHEN UPPER(currency) = 'CAD' THEN CAST(savings_vs_highest_rate AS FLOAT64)
-      ELSE savings_vs_highest_rate * cad_fx_rate
-  END
-    AS savings_vs_highest_rate_in_cad,
-    qualified_cand_savings,
-    CASE
-      WHEN UPPER(currency) = 'USD' THEN CAST(qualified_cand_savings AS FLOAT64)
-      ELSE qualified_cand_savings * usd_fx_rate
-  END
-    AS qualified_cand_savings_in_usd,
-    CASE
-      WHEN UPPER(currency) = 'EUR' THEN CAST(qualified_cand_savings AS FLOAT64)
-      ELSE qualified_cand_savings * eur_fx_rate
-  END
-    AS qualified_cand_savings_in_eur,
-    CASE
-      WHEN UPPER(currency) = 'GBP' THEN CAST(qualified_cand_savings AS FLOAT64)
-      ELSE qualified_cand_savings * gbp_fx_rate
-  END
-    AS qualified_cand_savings_in_gbp,
-    CASE
-      WHEN UPPER(currency) = 'INR' THEN CAST(qualified_cand_savings AS FLOAT64)
-      ELSE qualified_cand_savings * inr_fx_rate
-  END
-    AS qualified_cand_savings_in_inr,
-    CASE
-      WHEN UPPER(currency) = 'CAD' THEN CAST(qualified_cand_savings AS FLOAT64)
-      ELSE qualified_cand_savings * cad_fx_rate
-  END
-    AS qualified_cand_savings_in_cad,
-    previous_years_bill_rate_savings,
-    CASE
-      WHEN UPPER(currency) = 'USD' THEN CAST(previous_years_bill_rate_savings AS FLOAT64)
-      ELSE previous_years_bill_rate_savings * usd_fx_rate
-  END
-    AS previous_years_bill_rate_savings_in_usd,
-    CASE
-      WHEN UPPER(currency) = 'EUR' THEN CAST(previous_years_bill_rate_savings AS FLOAT64)
-      ELSE previous_years_bill_rate_savings * eur_fx_rate
-  END
-    AS previous_years_bill_rate_savings_in_eur,
-    CASE
-      WHEN UPPER(currency) = 'GBP' THEN CAST(previous_years_bill_rate_savings AS FLOAT64)
-      ELSE previous_years_bill_rate_savings * gbp_fx_rate
-  END
-    AS previous_years_bill_rate_savings_in_gbp,
-    CASE
-      WHEN UPPER(currency) = 'INR' THEN CAST(previous_years_bill_rate_savings AS FLOAT64)
-      ELSE previous_years_bill_rate_savings * inr_fx_rate
-  END
-    AS previous_years_bill_rate_savings_in_inr,
-    CASE
-      WHEN UPPER(currency) = 'CAD' THEN CAST(previous_years_bill_rate_savings AS FLOAT64)
-      ELSE previous_years_bill_rate_savings * cad_fx_rate
-  END
-    AS previous_years_bill_rate_savings_in_cad,
-    tenure_discount_effective_date,
-    tenure_discount_savings,
-    CASE
-      WHEN UPPER(currency) = 'USD' THEN CAST(tenure_discount_savings AS FLOAT64)
-      ELSE tenure_discount_savings * usd_fx_rate
-  END
-    AS tenure_discount_savings_in_usd,
-    CASE
-      WHEN UPPER(currency) = 'EUR' THEN CAST(tenure_discount_savings AS FLOAT64)
-      ELSE tenure_discount_savings * eur_fx_rate
-  END
-    AS tenure_discount_savings_in_eur,
-    CASE
-      WHEN UPPER(currency) = 'GBP' THEN CAST(tenure_discount_savings AS FLOAT64)
-      ELSE tenure_discount_savings * gbp_fx_rate
-  END
-    AS tenure_discount_savings_in_gbp,
-    CASE
-      WHEN UPPER(currency) = 'INR' THEN CAST(tenure_discount_savings AS FLOAT64)
-      ELSE tenure_discount_savings * inr_fx_rate
-  END
-    AS tenure_discount_savings_in_inr,
-    CASE
-      WHEN UPPER(currency) = 'CAD' THEN CAST(tenure_discount_savings AS FLOAT64)
-      ELSE tenure_discount_savings * cad_fx_rate
-  END
-    AS tenure_discount_savings_in_cad,
-    --  #Winter_release 2025,
-    rsr_staffing_entity,
-    spend_business_unit,
-    spend_business_unit_code
-  FROM (
-    WITH
-      spend_data AS (
-      SELECT
-        spend_in.buyer,
-        spend_in.buyer_code,
-        spend_in.rsr_client_code,
-        spend_in.main_document_id,
-        spend_in.assignment_id,
-        spend_in.consolidated_invoice_id,
-        spend_in.statement_of_work_id,
-        spend_in.parent_invoice_id,
-        spend_in.invoice_id,
-        spend_in.invoice_line_item_id,
-        spend_in.invoice_approved_date,
-        spend_in.consolidated_invoice_approved_date,
-        spend_in.invoice_line_item_date,
-        spend_in.main_document_type,
-        spend_in.invoice_type,
-        spend_in.invoice_line_item_type,
-        spend_in.main_document_title,
-        spend_in.billable_hours,
-        spend_in.invoice_line_item_amt,
-        /*
-        CASE
-        WHEN LOWER(invoice_line_item_type) LIKE 'regular%' THEN
-        CASE
-        WHEN LOWER(bill_rate_st_basis)='hourly' THEN invoice_amount
-        ELSE CAST(NULL AS NUMERIC)
-        END
-        ELSE CAST(NULL AS NUMERIC)
-        END AS line_item_amount,
-        */
-        spend_in.invoice_amount AS line_item_amount,
-        spend_in.invoice_tax_adj_amt,
-        spend_in.invoice_amount,
-        spend_in.msp_amt,
-        spend_in.msp_line_item_amt,
-        spend_in.msp_invoice_tax_adj_amt,
-        -- **** conversions for other rate types is not included here since hrs/week and all..
-        -- not available at spend. Agreed by Rob to leave it like this for now
-        CASE
-          WHEN LOWER(invoice_line_item_type) LIKE 'regular%' THEN CASE
-          WHEN LOWER(bill_rate_st_basis)='hourly' THEN bill_rate_st_hr
-          ELSE CAST(NULL AS NUMERIC)
-          -- **** add conversions for other rate types later
-      END
-          ELSE CAST(NULL AS NUMERIC)
-      END
-        AS bill_rate_st_hr,
-        CASE
-          WHEN LOWER(invoice_line_item_type) LIKE 'regular%' THEN CASE
-          WHEN LOWER(pay_rate_st_basis)='hourly' THEN pay_rate_st_hr
-          ELSE CAST(NULL AS NUMERIC)
-          -- **** add conversions for other rate types later
-      END
-          ELSE CAST(NULL AS NUMERIC)
-      END
-        AS pay_rate_st_hr,
-        spend_in.supplier_bill_rate_st_hr,
-        spend_in.currency,
-        spend_in.cost_center_code,
-        spend_in.cost_center,
-        spend_in.legal_entity,
-        spend_in.supplier_code,
-        spend_in.supplier,
-        CASE
-          WHEN LOWER(invoice_line_item_type) LIKE 'regular%' THEN CASE
-          WHEN LOWER(bill_rate_st_basis)='hourly' THEN billable_hours
-          ELSE CAST(NULL AS NUMERIC)
-          -- **** add conversions for other rate types later
-      END
-          ELSE CAST(NULL AS NUMERIC)
-      END
-        AS view_billable_hours_st_hr,
-        -- CASE
-        --   WHEN spend_in.main_document_id LIKE '%JP%' THEN 'Time Materials'
-        --   WHEN spend_in.main_document_id LIKE '%TQ%' THEN 'SOW'
-        --   ELSE 'NULL'
-        -- END AS tm_sow,
-        DATE(CASE
-          WHEN spend_in.consolidated_invoice_approved_date IS NULL THEN spend_in.invoice_approved_date
-          ELSE spend_in.consolidated_invoice_approved_date
-      END
-        ) AS reporting_date,
-      spend_in.rsr_processed_date,
-      -- #cost_savings 2024
+      spend_in.buyer,
+      spend_in.buyer_code,
+      spend_in.rsr_client_code,
+      spend_in.main_document_id,
+      spend_in.assignment_id,
+      spend_in.consolidated_invoice_id,
+      spend_in.statement_of_work_id,
+      spend_in.parent_invoice_id,
+      spend_in.invoice_id,
+      spend_in.invoice_line_item_id,
+      spend_in.invoice_approved_date,
+      spend_in.consolidated_invoice_approved_date,
+      spend_in.invoice_line_item_date,
+      spend_in.main_document_type,
+      spend_in.invoice_type,
+      spend_in.invoice_line_item_type,
+      spend_in.main_document_title,
+      spend_in.billable_hours,
+      spend_in.invoice_line_item_amt,
+      /*
       CASE
-        WHEN spend_in.invoice_line_item_id LIKE '%TS%' OR spend_in.invoice_line_item_type = 'Time Sheet' OR LOWER(spend_in.invoice_line_item_type) LIKE 'regular%' THEN TRUE
-        ELSE FALSE
-    END
-      AS timesheet_regular_flag,
-      -- # Winter release 2025 
-      spend_in.business_unit,
-      spend_in.business_unit_code,
-      spend_in.rsr_staffing_entity
+        WHEN LOWER(invoice_line_item_type) LIKE 'regular%' THEN
+          CASE
+            WHEN LOWER(bill_rate_st_basis)='hourly' THEN invoice_amount
+            ELSE CAST(NULL AS NUMERIC)
+          END
+        ELSE CAST(NULL AS NUMERIC)
+      END AS line_item_amount,
+      */
+      spend_in.invoice_amount AS line_item_amount,
+      spend_in.invoice_tax_adj_amt,
+      spend_in.invoice_amount,
+      spend_in.msp_amt,
+      spend_in.msp_line_item_amt,
+      spend_in.msp_invoice_tax_adj_amt,
+      -- **** conversions for other rate types is not included here since hrs/week and all..
+      -- not available at spend. Agreed by Rob to leave it like this for now
+      CASE
+        WHEN LOWER(invoice_line_item_type) LIKE 'regular%' THEN
+          CASE
+            WHEN LOWER(bill_rate_st_basis)='hourly' THEN bill_rate_st_hr
+            ELSE CAST(NULL AS NUMERIC) -- **** add conversions for other rate types later
+          END
+        ELSE CAST(NULL AS NUMERIC)
+      END AS bill_rate_st_hr,
+      CASE
+        WHEN LOWER(invoice_line_item_type) LIKE 'regular%' THEN
+          CASE
+            WHEN LOWER(pay_rate_st_basis)='hourly' THEN pay_rate_st_hr
+            ELSE CAST(NULL AS NUMERIC) -- **** add conversions for other rate types later
+          END
+        ELSE CAST(NULL AS NUMERIC)
+      END AS pay_rate_st_hr,
+      spend_in.supplier_bill_rate_st_hr,
+      spend_in.currency,
+      spend_in.cost_center_code,
+      spend_in.cost_center,
+      spend_in.legal_entity,
+      spend_in.supplier_code,
+      spend_in.supplier,
+      CASE
+        WHEN LOWER(invoice_line_item_type) LIKE 'regular%' THEN
+          CASE
+            WHEN LOWER(bill_rate_st_basis)='hourly' THEN billable_hours
+            ELSE CAST(NULL AS NUMERIC) -- **** add conversions for other rate types later
+          END
+        ELSE CAST(NULL AS NUMERIC)
+      END AS view_billable_hours_st_hr,
+      -- CASE
+      --   WHEN spend_in.main_document_id LIKE '%JP%' THEN 'Time Materials'
+      --   WHEN spend_in.main_document_id LIKE '%TQ%' THEN 'SOW'
+      --   ELSE 'NULL'
+      -- END AS tm_sow,
+      DATE(CASE
+        WHEN spend_in.consolidated_invoice_approved_date IS NULL THEN spend_in.invoice_approved_date
+        ELSE spend_in.consolidated_invoice_approved_date
+      END) AS reporting_date,
+      spend_in.rsr_processed_date,
+      #cost_savings 2024
+    case when spend_in.invoice_line_item_id LIKE '%TS%' OR spend_in.invoice_line_item_type = 'Time Sheet' OR LOWER(spend_in.invoice_line_item_type) LIKE 'regular%'
+    then True else False end as timesheet_regular_flag,
+	# Winter release 2025
+	spend_in.business_unit,
+	spend_in.business_unit_code,
+	spend_in.rsr_staffing_entity
     FROM
-      ${dataform.projectConfig.vars.ds_name}.prs_spend_${dataform.projectConfig.vars.client_code} AS spend_in ),
-    reqs_assignment_data AS (
-    SELECT
+      ${dataform.projectConfig.vars.ds_name}.prs_spend_${dataform.projectConfig.vars.client_code} AS spend_in
+), reqs_assignment_data AS (
+  SELECT
       req_asg_in.buyer,
       req_asg_in.buyer_code,
       req_asg_in.assignment_id,
@@ -532,7 +512,7 @@ CREATE OR REPLACE TABLE
       req_asg_in.primary_cost_center,
       req_asg_in.labor_type,
       req_asg_in.rsr_labor_type,
-      req_asg_in.sourcing_type_wo_mapped,
+	    req_asg_in.sourcing_type_wo_mapped,
       req_asg_in.sourcing_type_wk_mapped,
       req_asg_in.business_unit_code,
       req_asg_in.business_unit,
@@ -542,66 +522,56 @@ CREATE OR REPLACE TABLE
       req_asg_in.rsr_state,
       req_asg_in.country,
       req_asg_in.rsr_country,
-      req_asg_in.rsr_region,
-      req_asg_in.rsr_sourced_type,
-      req_asg_in.max_template_bill_rate_st_hr,
-      req_asg_in.reporting_date_ends,
+	    req_asg_in.rsr_region,
+	    req_asg_in.rsr_sourced_type,
+	    req_asg_in.max_template_bill_rate_st_hr,
+	    req_asg_in.reporting_date_ends,
       req_asg_in.req_type,
       req_asg_in.contingent_vs_sow,
-      -- #cost_savings 2024 Fall Release 
+      #cost_savings 2024 Fall Release
       req_asg_in.assignment_start_date,
       req_asg_in.assignment_end_date,
       req_asg_in.assignment_original_start_date,
       req_asg_in.assignment_original_end_date,
-      req_asg_in.main_document_id
-    FROM
-      ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} AS req_asg_in ),
-    gbl_sup_map AS (
-    SELECT
-      DISTINCT TRIM(LOWER(gbl_sup_map_in.buyer)) AS buyer,
-      TRIM(LOWER(gbl_sup_map_in.supplier)) AS supplier,
+	req_asg_in.main_document_id,
+  req_asg_in.main_document_title,
+
+    FROM ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} AS req_asg_in
+      
+)
+, gbl_sup_map AS (
+  SELECT DISTINCT
+      trim(lower(gbl_sup_map_in.buyer)) AS buyer,
+      trim(lower(gbl_sup_map_in.supplier)) AS supplier,
       gbl_sup_map_in.suppliername_dw,
     FROM
-      db_common${dataform.projectConfig.vars.region}.global_supplier_mapping AS gbl_sup_map_in ),
-    fx_rates AS (
-    SELECT
+      db_common${dataform.projectConfig.vars.region}.global_supplier_mapping AS gbl_sup_map_in
+), fx_rates AS (
+  SELECT
       CAST(fx_rate AS FLOAT64) AS fx_rate,
       from_currency,
       PARSE_DATE("%Y-%m-%d", month) AS month,
       to_currency
     FROM
-      db_common${dataform.projectConfig.vars.region}.global_fx_rates ),
-      --  #cost_savings 2024 Fall Release,
-    assignment_by_req AS (
-    SELECT
-      MAX(bill_rate_st_hr_initial) AS highest_assignment_bill_rate_st_hr_initial,
-      main_document_id
-    FROM
-      reqs_assignment_data
-    GROUP BY
-      main_document_id ), 
-      -- #cost_savings 2024 Fall Release,
-    candidate AS (
-    SELECT
-      MAX(presented_bill_rate_st_hr) AS maximum_presented_bill_rate_st_hr,
-      req_id
-    FROM
-      ${dataform.projectConfig.vars.ds_name}.prs_candidate_${dataform.projectConfig.vars.client_code}
-    WHERE
-      cand_shortlisted_date IS NOT NULL
-    GROUP BY
-      req_id),
-    avg_bill_rate AS (
-    SELECT
-      assignment_id,
-      AVG(bill_rate_st_hr) AS avg_bill_rate_st_hr
-    FROM
-      spend_data
-    WHERE
-      consolidated_invoice_approved_date >=DATE_SUB(CURRENT_DATE(), INTERVAL 1 YEAR)
-    GROUP BY
-      assignment_id )
-  SELECT
+      db_common${dataform.projectConfig.vars.region}.global_fx_rates
+)
+#cost_savings 2024 Fall Release
+,assignment_by_req as (
+  select max(bill_rate_st_hr_initial) as highest_assignment_bill_rate_st_hr_initial,
+  main_document_id from reqs_assignment_data group by main_document_id
+)
+#cost_savings 2024 Fall Release
+,candidate as (select max(presented_bill_rate_st_hr) as maximum_presented_bill_rate_st_hr,
+req_id from ${dataform.projectConfig.vars.ds_name}.prs_candidate_${dataform.projectConfig.vars.client_code} where cand_shortlisted_date is not null group by req_id)
+,avg_bill_rate as (
+  select
+  assignment_id,
+  avg(bill_rate_st_hr) as avg_bill_rate_st_hr
+  from spend_data 
+  where consolidated_invoice_approved_date >=DATE_SUB(current_date(), INTERVAL 1 YEAR)
+  group by assignment_id 
+)
+SELECT
     spend_data.buyer,
     spend_data.buyer_code,
     spend_data.main_document_id,
@@ -628,7 +598,7 @@ CREATE OR REPLACE TABLE
     spend_data.msp_invoice_tax_adj_amt,
     spend_data.supplier_bill_rate_st_hr,
     spend_data.bill_rate_st_hr,
-    spend_data.pay_rate_st_hr,
+    spend_data.pay_rate_st_hr,    
     spend_data.currency,
     spend_data.cost_center_code,
     spend_data.cost_center,
@@ -636,28 +606,24 @@ CREATE OR REPLACE TABLE
     spend_data.supplier_code,
     spend_data.supplier,
     PARSE_DATE("%m/%d/%Y", global_calendar_445.calendar_reporting_month_date) AS calendar_reporting_month_date,
-    PARSE_DATE("%m/%d/%Y",global_calendar_445.reporting_month_date) AS reporting_date_445_month,
-    PARSE_DATE("%m/%d/%Y",global_calendar_445.reporting_week_date) AS reporting_date_445_week,
+    PARSE_DATE("%m/%d/%Y",global_calendar_445.reporting_month_date) as reporting_date_445_month,
+	  PARSE_DATE("%m/%d/%Y",global_calendar_445.reporting_week_date) as reporting_date_445_week,
     CASE
       WHEN reqs_assignment_data.rsr_country='United States of America' THEN div_supp.primary_diversity_type
       ELSE CAST(NULL AS STRING)
-  END
-    AS supplier_primary_diversity_type,
+    END AS supplier_primary_diversity_type,
     CASE
       WHEN reqs_assignment_data.rsr_country='United States of America' THEN div_supp.small_business
       ELSE CAST(NULL AS STRING)
-  END
-    AS supplier_small_business,
+    END AS supplier_small_business,
     CASE
       WHEN reqs_assignment_data.rsr_country='United States of America' THEN div_supp.diverse_and_small
       ELSE CAST(NULL AS STRING)
-  END
-    AS supplier_diverse_small,
+    END AS supplier_diverse_small,
     CASE
       WHEN reqs_assignment_data.rsr_country='United States of America' THEN div_supp.supplier_id_erp
       ELSE CAST(NULL AS STRING)
-  END
-    AS supplier_erp_id,
+    END AS supplier_erp_id,
     reqs_assignment_data.max_template_bill_rate_st_hr,
     reqs_assignment_data.labor_type,
     reqs_assignment_data.primary_cost_center,
@@ -666,33 +632,28 @@ CREATE OR REPLACE TABLE
     reqs_assignment_data.bill_rate_st_hr AS assignment_bill_rate_st_hr,
     reqs_assignment_data.bill_rate_st_hr_initial AS assignment_bill_rate_st_hr_initial,
     CASE
-      WHEN UPPER(spend_data.currency) = 'USD' THEN 1.0
+      WHEN upper(spend_data.currency) = 'USD' THEN 1.0
       ELSE fx_usd.fx_rate
-  END
-    AS usd_fx_rate,
+    END AS usd_fx_rate,
     CASE
-      WHEN UPPER(spend_data.currency) = 'EUR' THEN 1.0
+      WHEN upper(spend_data.currency) = 'EUR' THEN 1.0
       ELSE fx_eur.fx_rate
-  END
-    AS eur_fx_rate,
+    END AS eur_fx_rate,
     CASE
-      WHEN UPPER(spend_data.currency) = 'GBP' THEN 1.0
+      WHEN upper(spend_data.currency) = 'GBP' THEN 1.0
       ELSE fx_gbp.fx_rate
-  END
-    AS gbp_fx_rate,
+    END AS gbp_fx_rate,
     CASE
-      WHEN UPPER(spend_data.currency) = 'INR' THEN 1.0
+      WHEN upper(spend_data.currency) = 'INR' THEN 1.0
       ELSE fx_inr.fx_rate
-  END
-    AS inr_fx_rate,
+    END AS inr_fx_rate,
     CASE
-      WHEN UPPER(spend_data.currency) = 'CAD' THEN 1.0
+      WHEN upper(spend_data.currency) = 'CAD' THEN 1.0
       ELSE fx_cad.fx_rate
-  END
-    AS cad_fx_rate,
+    END AS cad_fx_rate,
     reqs_assignment_data.rsr_labor_type,
-    IFNULL(reqs_assignment_data.rsr_sourced_type,'Recruited') AS rsr_sourced_type,
-    gbl_sup_map.suppliername_dw AS rsr_supplier,
+    ifnull(reqs_assignment_data.rsr_sourced_type,'Recruited') as rsr_sourced_type,
+    gbl_sup_map.suppliername_dw as rsr_supplier,
     reqs_assignment_data.rsr_state,
     reqs_assignment_data.rsr_country,
     reqs_assignment_data.rsr_region,
@@ -701,277 +662,295 @@ CREATE OR REPLACE TABLE
     req_type,
     CURRENT_DATE() AS `current_date`,
     spend_data.reporting_date,
-    CAST(EXTRACT(YEAR
-      FROM
-        CAST(spend_data.reporting_date AS DATE)) AS STRING) AS `invoice_year_calendar`,
-    CAST(EXTRACT(YEAR
-      FROM
-        CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AS `year_calendar`,
-    EXTRACT(MONTH
-    FROM
-      CAST(spend_data.reporting_date AS DATE)) AS `month_calendar`,
+    CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS STRING) AS `invoice_year_calendar`,
+    CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AS `year_calendar`,
+    EXTRACT(MONTH FROM CAST(spend_data.reporting_date AS DATE)) AS `month_calendar`,
     UPPER(FORMAT_DATETIME("%B", DATETIME(spend_data.reporting_date))) AS `month_name_calendar`,
     -- **** populate invoice bill rate as spend.bill_rate, confirmed with David. they will let us know if we need to update this at later point for other clients
     spend_data.bill_rate_st_hr AS invoice_bill_rate_st_hr,
     /*
     CASE WHEN spend_data.bill_rate_st_hr IS NULL THEN (
-    CASE WHEN SAFE_DIVIDE(ROUND(spend_data.line_item_amount, 4), ROUND(spend_data.view_billable_hours_st_hr, 4)) < 0.0000 THEN NULL
-    ELSE SAFE_DIVIDE(ROUND(spend_data.line_item_amount, 4), ROUND(spend_data.view_billable_hours_st_hr, 4)) END)
-    ELSE spend_data.bill_rate_st_hr END AS invoice_bill_rate_st_hr,
+         CASE WHEN SAFE_DIVIDE(ROUND(spend_data.line_item_amount, 4), ROUND(spend_data.view_billable_hours_st_hr, 4)) < 0.0000 THEN NULL
+              ELSE SAFE_DIVIDE(ROUND(spend_data.line_item_amount, 4), ROUND(spend_data.view_billable_hours_st_hr, 4)) END) 
+         ELSE spend_data.bill_rate_st_hr END AS invoice_bill_rate_st_hr,
     */
-    ROUND(CASE
-        WHEN spend_data.timesheet_regular_flag AND COALESCE(reqs_assignment_data.bill_rate_st_hr_initial,0) != 0 THEN ((reqs_assignment_data.presented_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount
-        ELSE CAST(0.0 AS FLOAT64)
-    END
-      , 4) AS negotiated_savings,
-    -- *** As per Jira ticket DF126-23728, Laura and Sawyer asked to use max_template_bill_rate_st_hr instead of ma_requested_bill_rate
+     ROUND(CASE
+      WHEN spend_data.timesheet_regular_flag
+        AND COALESCE(reqs_assignment_data.bill_rate_st_hr_initial,0) != 0 
+        THEN ((reqs_assignment_data.presented_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount
+      ELSE CAST(0.0 AS FLOAT64)
+    END, 4) AS negotiated_savings,
+-- *** As per Jira ticket DF126-23728, Laura and Sawyer asked to use max_template_bill_rate_st_hr instead of ma_requested_bill_rate
     ROUND((reqs_assignment_data.max_template_bill_rate_st_hr - reqs_assignment_data.bill_rate_st_hr_initial),4) AS savings_under_max_rate,
-    /*
+/*
     ROUND((reqs_assignment_data.max_requested_bill_rate_st_hr - reqs_assignment_data.bill_rate_st_hr_initial),4) AS savings_under_max_rate,
-    */
+*/
     ROUND(CASE
-        WHEN COALESCE(reqs_assignment_data.bill_rate_st_hr_initial,0) != 0 THEN ((reqs_assignment_data.max_requested_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount
-        ELSE CAST(NULL AS NUMERIC)
-    END
-      , 4) AS savings_vs_requested_rate,
+      WHEN COALESCE(reqs_assignment_data.bill_rate_st_hr_initial,0) != 0 
+        THEN ((reqs_assignment_data.max_requested_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount
+      ELSE CAST(NULL AS NUMERIC)
+    END, 4) AS savings_vs_requested_rate,
     CASE
-      WHEN UPPER(spend_data.currency) = 'USD' THEN CAST(spend_data.invoice_amount AS FLOAT64)
+      WHEN upper(spend_data.currency) = 'USD' THEN CAST(spend_data.invoice_amount as FLOAT64)
       ELSE spend_data.invoice_amount * fx_usd.fx_rate
-  END
-    AS spend_in_usd,
+    END AS spend_in_usd,
     CASE
-      WHEN UPPER(spend_data.currency) = 'EUR' THEN CAST(spend_data.invoice_amount AS FLOAT64)
+      WHEN upper(spend_data.currency) = 'EUR' THEN CAST(spend_data.invoice_amount as FLOAT64)
       ELSE spend_data.invoice_amount * fx_eur.fx_rate
-  END
-    AS spend_in_eur,
+    END AS spend_in_eur,
     CASE
-      WHEN UPPER(spend_data.currency) = 'GBP' THEN CAST(spend_data.invoice_amount AS FLOAT64)
+      WHEN upper(spend_data.currency) = 'GBP' THEN CAST(spend_data.invoice_amount as FLOAT64)
       ELSE spend_data.invoice_amount * fx_gbp.fx_rate
-  END
-    AS spend_in_gbp,
+    END AS spend_in_gbp,
     CASE
-      WHEN UPPER(spend_data.currency) = 'INR' THEN CAST(spend_data.invoice_amount AS FLOAT64)
+      WHEN upper(spend_data.currency) = 'INR' THEN CAST(spend_data.invoice_amount as FLOAT64)
       ELSE spend_data.invoice_amount * fx_inr.fx_rate
-  END
-    AS spend_in_inr,
+    END AS spend_in_inr,
     CASE
-      WHEN UPPER(spend_data.currency) = 'CAD' THEN CAST(spend_data.invoice_amount AS FLOAT64)
+      WHEN upper(spend_data.currency) = 'CAD' THEN CAST(spend_data.invoice_amount as FLOAT64)
       ELSE spend_data.invoice_amount * fx_cad.fx_rate
-  END
-    AS spend_in_cad,
+    END AS spend_in_cad,
     reqs_assignment_data.sourcing_type_wo_mapped,
     reqs_assignment_data.sourcing_type_wk_mapped,
-    reqs_assignment_data.business_unit_code AS business_unit_code,
-    reqs_assignment_data.business_unit AS business_unit,
+    reqs_assignment_data.business_unit_code as business_unit_code, 
+    reqs_assignment_data.business_unit as business_unit,
     reqs_assignment_data.site,
     reqs_assignment_data.city,
     reqs_assignment_data.state_province,
     reqs_assignment_data.country,
-    CASE
-      WHEN LOWER(spend_data.main_document_type) = LOWER('Contract') THEN 'Contingent'
-      WHEN LOWER(spend_data.main_document_type) = LOWER('Service Request') THEN 'Contingent'
-      WHEN LOWER(spend_data.main_document_type) = LOWER('Contingent Labor Request') THEN 'Contingent'
-      WHEN LOWER(spend_data.main_document_type) = LOWER('Job Posting') THEN 'Contingent'
-      WHEN LOWER(spend_data.main_document_type) = LOWER('Non-Employee Posting') THEN 'Contingent'
-      WHEN LOWER(spend_data.main_document_type) = LOWER('Requisition') THEN 'Contingent'
-      WHEN LOWER(spend_data.main_document_type) = LOWER('Contingent Labor') THEN 'Contingent'
-      WHEN LOWER(spend_data.main_document_type) = LOWER('Contingent Labour') THEN 'Contingent'
-      WHEN LOWER(spend_data.main_document_type) = LOWER('Statement of Work') THEN 'SOW'
-      WHEN LOWER(spend_data.main_document_type) = LOWER('Independent Contractor') THEN 'SOW'
-      WHEN LOWER(spend_data.main_document_type) = LOWER('SOW Contract') THEN 'SOW'
-      WHEN LOWER(spend_data.main_document_type) = LOWER('Project') THEN 'SOW'
-      ELSE spend_data.main_document_type
-  END
-    AS contingent_vs_sow,
+    CASE 
+    WHEN lower(spend_data.main_document_type) = lower('Contract') THEN 'Contingent'
+    WHEN lower(spend_data.main_document_type) = lower('Service Request') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Contingent Labor Request') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Job Posting') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Non-Employee Posting') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Requisition') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Contingent Labor') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Contingent Labour') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Statement of Work') THEN 'SOW'
+      WHEN lower(spend_data.main_document_type) = lower('Independent Contractor') THEN 'SOW'
+      WHEN lower(spend_data.main_document_type) = lower('SOW Contract') THEN 'SOW' 
+      WHEN lower(spend_data.main_document_type) = lower('Project') THEN 'SOW'
+      ELSE spend_data.main_document_type 
+    END as contingent_vs_sow,
     reqs_assignment_data.reporting_date_ends,
     CASE
-      WHEN UPPER(spend_data.currency) = 'USD' THEN CAST(spend_data.bill_rate_st_hr AS FLOAT64)
+      WHEN upper(spend_data.currency) = 'USD' THEN CAST(spend_data.bill_rate_st_hr as FLOAT64)
       ELSE spend_data.bill_rate_st_hr * fx_usd.fx_rate
-  END
-    bill_rate_st_hr_usd,
-    CASE
-      WHEN UPPER(spend_data.currency) = 'EUR' THEN CAST(spend_data.bill_rate_st_hr AS FLOAT64)
+    END bill_rate_st_hr_usd,
+     CASE
+      WHEN upper(spend_data.currency) = 'EUR' THEN CAST(spend_data.bill_rate_st_hr as FLOAT64)
       ELSE spend_data.bill_rate_st_hr * fx_eur.fx_rate
-  END
-    bill_rate_st_hr_eur,
+    END bill_rate_st_hr_eur,
     CASE
-      WHEN UPPER(spend_data.currency) = 'GBP' THEN CAST(spend_data.bill_rate_st_hr AS FLOAT64)
+      WHEN upper(spend_data.currency) = 'GBP' THEN CAST(spend_data.bill_rate_st_hr as FLOAT64)
       ELSE spend_data.bill_rate_st_hr * fx_gbp.fx_rate
-  END
-    bill_rate_st_hr_gbp,
+    END bill_rate_st_hr_gbp,
     CASE
-      WHEN UPPER(spend_data.currency) = 'INR' THEN CAST(spend_data.bill_rate_st_hr AS FLOAT64)
+      WHEN upper(spend_data.currency) = 'INR' THEN CAST(spend_data.bill_rate_st_hr as FLOAT64)
       ELSE spend_data.bill_rate_st_hr * fx_inr.fx_rate
-  END
-    bill_rate_st_hr_inr,
+    END bill_rate_st_hr_inr,
     CASE
-      WHEN UPPER(spend_data.currency) = 'CAD' THEN CAST(spend_data.bill_rate_st_hr AS FLOAT64)
+      WHEN upper(spend_data.currency) = 'CAD' THEN CAST(spend_data.bill_rate_st_hr as FLOAT64)
       ELSE spend_data.bill_rate_st_hr * fx_cad.fx_rate
-  END
-    bill_rate_st_hr_cad,
+    END bill_rate_st_hr_cad,
     CASE
-      WHEN UPPER(spend_data.currency) = 'USD' THEN CAST(spend_data.pay_rate_st_hr AS FLOAT64)
+      WHEN upper(spend_data.currency) = 'USD' THEN CAST(spend_data.pay_rate_st_hr as FLOAT64)
       ELSE spend_data.pay_rate_st_hr * fx_usd.fx_rate
-  END
-    pay_rate_st_hr_usd,
+    END pay_rate_st_hr_usd,
     CASE
-      WHEN UPPER(spend_data.currency) = 'EUR' THEN CAST(spend_data.pay_rate_st_hr AS FLOAT64)
+      WHEN upper(spend_data.currency) = 'EUR' THEN CAST(spend_data.pay_rate_st_hr as FLOAT64)
       ELSE spend_data.pay_rate_st_hr * fx_eur.fx_rate
-  END
-    pay_rate_st_hr_eur,
+    END pay_rate_st_hr_eur,
     CASE
-      WHEN UPPER(spend_data.currency) = 'GBP' THEN CAST(spend_data.pay_rate_st_hr AS FLOAT64)
+      WHEN upper(spend_data.currency) = 'GBP' THEN CAST(spend_data.pay_rate_st_hr as FLOAT64)
       ELSE spend_data.pay_rate_st_hr * fx_gbp.fx_rate
-  END
-    pay_rate_st_hr_gbp,
+    END pay_rate_st_hr_gbp,
     CASE
-      WHEN UPPER(spend_data.currency) = 'INR' THEN CAST(spend_data.pay_rate_st_hr AS FLOAT64)
+      WHEN upper(spend_data.currency) = 'INR' THEN CAST(spend_data.pay_rate_st_hr as FLOAT64)
       ELSE spend_data.pay_rate_st_hr * fx_inr.fx_rate
-  END
-    pay_rate_st_hr_inr,
-    CASE
-      WHEN UPPER(spend_data.currency) = 'CAD' THEN CAST(spend_data.pay_rate_st_hr AS FLOAT64)
+    END pay_rate_st_hr_inr,
+ CASE
+      WHEN upper(spend_data.currency) = 'CAD' THEN CAST(spend_data.pay_rate_st_hr as FLOAT64)
       ELSE spend_data.pay_rate_st_hr * fx_cad.fx_rate
-  END
-    pay_rate_st_hr_cad,
-    spend_data.rsr_client_code,
-    spend_data.rsr_processed_date,
-    -- #cost_savings 2024 Fall Release
-    CASE
-      WHEN reqs_assignment_data.max_requested_bill_rate_st_hr > 0 AND reqs_assignment_data.bill_rate_st_hr_initial > 0 AND spend_data.timesheet_regular_flag AND reqs_assignment_data.bill_rate_st_hr_initial < reqs_assignment_data.max_requested_bill_rate_st_hr THEN ROUND((((reqs_assignment_data.max_requested_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount), 4)
-      ELSE CAST(NULL AS FLOAT64)
-  END
-    AS savings_vs_max_rate,
-    CASE
-      WHEN reqs_assignment_data.presented_bill_rate_st_hr > 0 AND reqs_assignment_data.bill_rate_st_hr_initial > 0 AND spend_data.timesheet_regular_flag AND reqs_assignment_data.bill_rate_st_hr_initial< reqs_assignment_data.presented_bill_rate_st_hr THEN ROUND((((reqs_assignment_data.presented_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount), 4)
-      ELSE CAST(NULL AS FLOAT64)
-  END
-    AS initial_negotiated_savings,
-    CASE
-      WHEN reqs_assignment_data.bill_rate_st_hr_initial > 0 AND spend_data.bill_rate_st_hr > 0 AND spend_data.bill_rate_st_hr < reqs_assignment_data.bill_rate_st_hr_initial AND spend_data.timesheet_regular_flag THEN ROUND((((reqs_assignment_data.bill_rate_st_hr_initial / spend_data.bill_rate_st_hr) * spend_data.invoice_amount) - spend_data.invoice_amount), 4)
-      ELSE CAST(NULL AS FLOAT64)
-  END
-    AS extension_negotiated_savings,
-    CASE
-      WHEN (cost_saving.previous_rsr_payroll_markup_percent/100) > 0 AND (cost_saving.rsr_payroll_markup_percent/100) > 0 AND reqs_assignment_data.rsr_sourced_type LIKE "%Payroll%" AND spend_data.timesheet_regular_flag THEN (spend_data.invoice_amount * (1+(cost_saving.previous_rsr_payroll_markup_percent/100))) / (1 + (cost_saving.rsr_payroll_markup_percent/100)) - spend_data.invoice_amount
-      ELSE CAST(NULL AS FLOAT64)
-  END
-    AS payroll_savings,
-    CASE
-      WHEN gbl_sup_map.suppliername_dw LIKE '%RSR%' AND reqs_assignment_data.rsr_sourced_type LIKE '%Direct%' AND spend_data.timesheet_regular_flag THEN (spend_data.invoice_amount * ((1+(cost_saving.supplier_markup_percent/100)) / (1+(cost_saving.rsr_direct_sourcing_markup_percent/100)))) - spend_data.invoice_amount
-      ELSE CAST(NULL AS FLOAT64)
-  END
-    AS direct_sourcing_savings,
-    CASE
-      WHEN reqs_assignment_data.rsr_sourced_type LIKE "%Recruited%" AND gbl_sup_map.suppliername_dw NOT LIKE '%RSR%' AND spend_data.timesheet_regular_flag AND cost_saving.supplier_markup_percent < cost_saving.previous_supplier_markup_percent THEN (spend_data.invoice_amount / (1+(cost_saving.supplier_markup_percent/100))) * (1 + (cost_saving.previous_supplier_markup_percent/100) ) - spend_data.invoice_amount
-      ELSE CAST(NULL AS FLOAT64)
-  END
-    AS prior_state_savings,
-    CASE
-      WHEN reqs_assignment_data.bill_rate_st_hr_initial<>0 AND highest_assignment_bill_rate_st_hr_initial > reqs_assignment_data.bill_rate_st_hr_initial AND spend_data.timesheet_regular_flag THEN ((highest_assignment_bill_rate_st_hr_initial / reqs_assignment_data.bill_rate_st_hr_initial) -1) * spend_data.invoice_amount
-      ELSE CAST(NULL AS FLOAT64)
-  END
-    AS savings_vs_highest_rate,
-    CASE
-      WHEN reqs_assignment_data.bill_rate_st_hr_initial<>0 AND spend_data.timesheet_regular_flag THEN ((maximum_presented_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial )-1)* spend_data.invoice_amount
-      ELSE CAST(NULL AS FLOAT64)
-  END
-    AS qualified_cand_savings,
-    CASE
-      WHEN spend_data.bill_rate_st_hr <>0 AND spend_data.timesheet_regular_flag AND spend_data.bill_rate_st_hr < avg_bill_rate.avg_bill_rate_st_hr THEN ((avg_bill_rate.avg_bill_rate_st_hr / spend_data.bill_rate_st_hr ) -1) * spend_data.invoice_amount
-      ELSE CAST(NULL AS FLOAT64)
-  END
-    AS previous_years_bill_rate_savings,
-    CAST(CASE
-        WHEN cost_saving.tenure_discount_length_cd > 0 AND reqs_assignment_data.assignment_original_start_date IS NOT NULL THEN DATE_ADD(reqs_assignment_data.assignment_original_start_date, INTERVAL CAST(cost_saving.tenure_discount_length_cd AS int) day)
-    END
-      AS date) AS tenure_discount_effective_date,
-    CASE
-      WHEN CAST(spend_data.consolidated_invoice_approved_date AS DATE) >= (CAST(CASE
-          WHEN cost_saving.tenure_discount_length_cd > 0
-        AND reqs_assignment_data.assignment_original_start_date IS NOT NULL THEN DATE_ADD(reqs_assignment_data.assignment_original_start_date, INTERVAL CAST(cost_saving.tenure_discount_length_cd AS int) day)
-      END
-        AS DATE))
-    AND spend_data.timesheet_regular_flag THEN ( spend_data.invoice_amount / (1 - (cost_saving.tenure_discount_percent/100)) ) - spend_data.invoice_amount
-      ELSE CAST(NULL AS FLOAT64)
-  END
-    AS tenure_discount_savings,
-    -- #winter_release 2025 
-    spend_data.rsr_staffing_entity,
-    spend_data.business_unit AS spend_business_unit,
-    spend_data.business_unit_code AS spend_business_unit_code
-  FROM
-    spend_data
-  LEFT JOIN
-    reqs_assignment_data
-  ON
-    spend_data.assignment_id = reqs_assignment_data.assignment_id
-  LEFT JOIN
-    assignment_by_req
-  ON
-    assignment_by_req.main_document_id = spend_data.main_document_id
-  LEFT JOIN
-    avg_bill_rate
-  ON
-    spend_data.assignment_id=avg_bill_rate.assignment_id
-  LEFT JOIN
-    candidate
-  ON
-    spend_data.main_document_id=candidate.req_id
-  LEFT JOIN
-    gbl_sup_map
-  ON
-    TRIM(LOWER(spend_data.supplier)) = TRIM(LOWER(gbl_sup_map.supplier))
-    AND TRIM(LOWER(spend_data.buyer)) = TRIM(LOWER(gbl_sup_map.buyer))
-  LEFT JOIN
-    db_common${dataform.projectConfig.vars.region}.global_calendar_445 AS global_calendar_445
-  ON
-    spend_data.reporting_date = PARSE_DATE("%m/%d/%Y", global_calendar_445.day)
-  LEFT JOIN
-    fx_rates AS fx_usd
-  ON
-    TRIM(LOWER(spend_data.currency)) = TRIM(LOWER(fx_usd.from_currency))
-    AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_usd.month
-    AND TRIM(UPPER(fx_usd.to_currency)) = 'USD'
-  LEFT JOIN
-    fx_rates AS fx_eur
-  ON
-    TRIM(LOWER(spend_data.currency)) = TRIM(LOWER(fx_eur.from_currency))
-    AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_eur.Month
-    AND TRIM(UPPER(fx_eur.to_currency)) = 'EUR'
-  LEFT JOIN
-    fx_rates AS fx_gbp
-  ON
-    TRIM(LOWER(spend_data.currency)) = TRIM(LOWER(fx_gbp.from_currency))
-    AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_gbp.month
-    AND TRIM(UPPER(fx_gbp.to_currency)) = 'GBP'
-  LEFT JOIN
-    fx_rates AS fx_inr
-  ON
-    TRIM(LOWER(spend_data.currency)) = TRIM(LOWER(fx_inr.from_currency))
-    AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_inr.month
-    AND TRIM(UPPER(fx_inr.to_currency)) = 'INR'
-  LEFT JOIN
-    fx_rates AS fx_cad
-  ON
-    TRIM(LOWER(spend_data.currency)) = TRIM(LOWER(fx_cad.from_currency))
-    AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_cad.month
-    AND TRIM(UPPER(fx_cad.to_currency)) = 'CAD'
-  LEFT JOIN
-    db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp
-  ON
-    LOWER(div_supp.customer_code)=LOWER(spend_data.buyer_code)
-    AND div_supp.supplier_code=spend_data.supplier_code
-    AND div_supp.fiscal_year=CAST(EXTRACT(YEAR
-      FROM
-        CAST(spend_data.reporting_date AS DATE)) AS INTEGER)
-    AND div_supp.accounting_period=CAST(EXTRACT(MONTH
-      FROM
-        CAST(spend_data.reporting_date AS DATE)) AS INTEGER) 
-        -- #cost_savings 2024 Fall Release
-  LEFT JOIN
-    db_common${dataform.projectConfig.vars.region}.msp_cost_saving cost_saving
-  ON
-    cost_saving.client_code=spend_data.rsr_client_code
-    AND CAST(spend_data.consolidated_invoice_approved_date AS date) BETWEEN cost_saving.date_from
-    AND cost_saving.date_to ))
+    END pay_rate_st_hr_cad,
+  
+	spend_data.rsr_client_code,
+  spend_data.rsr_processed_date,
+    #cost_savings 2024 Fall Release
+case 
+when reqs_assignment_data.max_requested_bill_rate_st_hr > 0 
+and reqs_assignment_data.bill_rate_st_hr_initial > 0
+and spend_data.timesheet_regular_flag 
+and reqs_assignment_data.bill_rate_st_hr_initial < reqs_assignment_data.max_requested_bill_rate_st_hr
+then ROUND((((reqs_assignment_data.max_requested_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount), 4)
+ELSE CAST(NULL AS FLOAT64)
+ end as savings_vs_max_rate,
+   
+CASE 
+WHEN reqs_assignment_data.presented_bill_rate_st_hr > 0 
+AND reqs_assignment_data.bill_rate_st_hr_initial > 0 
+and spend_data.timesheet_regular_flag  
+and reqs_assignment_data.bill_rate_st_hr_initial< reqs_assignment_data.presented_bill_rate_st_hr
+THEN ROUND((((reqs_assignment_data.presented_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount), 4) ELSE CAST(NULL AS FLOAT64) END 
+as initial_negotiated_savings,
+ 
+ case 
+ when reqs_assignment_data.bill_rate_st_hr_initial > 0 
+ and spend_data.bill_rate_st_hr > 0 
+ and spend_data.bill_rate_st_hr < reqs_assignment_data.bill_rate_st_hr_initial 
+ and spend_data.timesheet_regular_flag 
+ then ROUND((((reqs_assignment_data.bill_rate_st_hr_initial / spend_data.bill_rate_st_hr) * spend_data.invoice_amount) - spend_data.invoice_amount), 4)
+ELSE CAST(NULL AS FLOAT64)
+end as extension_negotiated_savings,
+
+
+case 
+when (cost_saving.previous_rsr_payroll_markup_percent/100)  > 0 
+and (cost_saving.rsr_payroll_markup_percent/100) > 0 
+and reqs_assignment_data.rsr_sourced_type like "%Payroll%" 
+AND spend_data.timesheet_regular_flag 
+then (spend_data.invoice_amount * (1+(cost_saving.previous_rsr_payroll_markup_percent/100))) / (1 + (cost_saving.rsr_payroll_markup_percent/100)) - spend_data.invoice_amount
+ELSE CAST(NULL AS FLOAT64)
+end as payroll_savings,
+
+
+case 
+when gbl_sup_map.suppliername_dw like '%RSR%' 
+and reqs_assignment_data.rsr_sourced_type like '%Direct%' 
+and spend_data.timesheet_regular_flag
+then (spend_data.invoice_amount * ((1+(cost_saving.supplier_markup_percent/100)) / (1+(cost_saving.rsr_direct_sourcing_markup_percent/100)))) - spend_data.invoice_amount 
+ELSE CAST(NULL AS FLOAT64)
+end as direct_sourcing_savings,
+
+
+case 
+when reqs_assignment_data.rsr_sourced_type like "%Recruited%" and
+gbl_sup_map.suppliername_dw not like '%RSR%'  and
+spend_data.timesheet_regular_flag and
+cost_saving.supplier_markup_percent < cost_saving.previous_supplier_markup_percent
+then (spend_data.invoice_amount / (1+(cost_saving.supplier_markup_percent/100))) * (1 + (cost_saving.previous_supplier_markup_percent/100) ) - spend_data.invoice_amount 
+ELSE CAST(NULL AS FLOAT64)
+end 
+as prior_state_savings,
+
+
+case 
+when reqs_assignment_data.bill_rate_st_hr_initial<>0 
+and highest_assignment_bill_rate_st_hr_initial  > reqs_assignment_data.bill_rate_st_hr_initial
+and spend_data.timesheet_regular_flag  
+then ((highest_assignment_bill_rate_st_hr_initial  / reqs_assignment_data.bill_rate_st_hr_initial)  -1) * spend_data.invoice_amount 
+ELSE CAST(NULL AS FLOAT64) end 
+as savings_vs_highest_rate,
+
+
+case 
+when reqs_assignment_data.bill_rate_st_hr_initial<>0 
+and  spend_data.timesheet_regular_flag 
+then ((maximum_presented_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial )-1)* spend_data.invoice_amount 
+ELSE CAST(NULL AS FLOAT64) end 
+as qualified_cand_savings,
+
+
+case 
+when spend_data.bill_rate_st_hr <>0 
+and spend_data.timesheet_regular_flag 
+and spend_data.bill_rate_st_hr < avg_bill_rate.avg_bill_rate_st_hr
+then ((avg_bill_rate.avg_bill_rate_st_hr / spend_data.bill_rate_st_hr ) -1) * spend_data.invoice_amount 
+ELSE CAST(NULL AS FLOAT64) end 
+as previous_years_bill_rate_savings,
+
+
+cast(Case 
+when cost_saving.tenure_discount_length_cd > 0 
+and reqs_assignment_data.assignment_original_start_date is not null 
+then date_add(reqs_assignment_data.assignment_original_start_date, interval cast(cost_saving.tenure_discount_length_cd as int) day) 
+end as date) as tenure_discount_effective_date,
+
+
+Case 
+when Cast(spend_data.consolidated_invoice_approved_date as DATE) >=  
+(Cast(Case when cost_saving.tenure_discount_length_cd > 0 and reqs_assignment_data.assignment_original_start_date is not null then date_add(reqs_assignment_data.assignment_original_start_date, interval cast(cost_saving.tenure_discount_length_cd as int) day) end as  DATE))
+and spend_data.timesheet_regular_flag
+then ( spend_data.invoice_amount / (1 - (cost_saving.tenure_discount_percent/100)) ) - spend_data.invoice_amount
+ELSE CAST(NULL AS FLOAT64) 
+end as tenure_discount_savings,
+
+#winter_release 2025
+
+	spend_data.rsr_staffing_entity,
+	spend_data.business_unit as spend_business_unit,
+	spend_data.business_unit_code as spend_business_unit_code,
+  norm_jt.suppressed_title,
+norm_jt.pii_found,
+norm_jt.process_status,
+norm_jt.suppression_type,
+norm_jt.llm_cleaned,
+norm_jt.title_cleaned,
+norm_jt.ms_category_1,
+norm_jt.ms_category_2,
+norm_jt.onet_career_pathway,
+norm_jt.onet_job_family,
+norm_jt.onet_career_cluster,
+norm_jt.onet_occupation,
+norm_jt.soc_major_group,
+norm_jt.soc_minor_group,
+norm_jt.soc_broad_group,
+norm_jt.onet_detailed_occupation,
+norm_jt.bg_categorization,
+norm_jt.tk_categorization,
+norm_jt.rand_categorization,
+norm_jt.rmi_categorization,
+norm_jt.R1_label,
+norm_jt.R2_label,
+norm_jt.R3_label,
+norm_jt.R4_label,
+norm_jt.R5_label,
+norm_jt.R6_label,
+norm_loc.location_level_1,
+norm_loc.location_level_2,
+norm_loc.location_level_3,
+norm_loc.location_level_4,
+norm_loc.location_level_5,
+norm_loc.location_level_6,
+norm_loc.location_level_7,
+norm_loc.location_level_8,
+norm_loc.location_level_1a,
+norm_loc.location_level_2a
+	
+  FROM spend_data
+    LEFT JOIN reqs_assignment_data ON spend_data.assignment_id = reqs_assignment_data.assignment_id
+    LEFT JOIN assignment_by_req on assignment_by_req.main_document_id = spend_data.main_document_id
+    LEFT JOIN avg_bill_rate on spend_data.assignment_id=avg_bill_rate.assignment_id
+    LEFT JOIN candidate on spend_data.main_document_id=candidate.req_id
+    LEFT JOIN gbl_sup_map ON trim(lower(spend_data.supplier)) = trim(lower(gbl_sup_map.supplier))
+      AND trim(lower(spend_data.buyer)) = trim(lower(gbl_sup_map.buyer))
+    LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_calendar_445 AS global_calendar_445 
+      ON spend_data.reporting_date = PARSE_DATE("%m/%d/%Y", global_calendar_445.day)
+    LEFT JOIN fx_rates AS fx_usd 
+      ON trim(lower(spend_data.currency)) = trim(lower(fx_usd.from_currency))
+      AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_usd.month
+      AND trim(upper(fx_usd.to_currency)) = 'USD'
+    LEFT JOIN fx_rates AS fx_eur 
+      ON trim(lower(spend_data.currency)) = trim(lower(fx_eur.from_currency))
+      AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_eur.Month
+      AND trim(upper(fx_eur.to_currency)) = 'EUR'
+    LEFT JOIN fx_rates AS fx_gbp 
+      ON trim(lower(spend_data.currency)) = trim(lower(fx_gbp.from_currency))
+      AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_gbp.month
+      AND trim(upper(fx_gbp.to_currency)) = 'GBP'
+    LEFT JOIN fx_rates AS fx_inr 
+      ON trim(lower(spend_data.currency)) = trim(lower(fx_inr.from_currency))
+      AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_inr.month
+      AND trim(upper(fx_inr.to_currency)) = 'INR'
+    LEFT JOIN fx_rates AS fx_cad 
+      ON trim(lower(spend_data.currency)) = trim(lower(fx_cad.from_currency))
+      AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_cad.month
+      AND trim(upper(fx_cad.to_currency)) = 'CAD'
+    LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(spend_data.buyer_code) AND div_supp.supplier_code=spend_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER)
+    #cost_savings 2024 Fall Release 
+    LEFT JOIN db_common${dataform.projectConfig.vars.region}.msp_cost_saving cost_saving on cost_saving.client_code=spend_data.rsr_client_code and cast(spend_data.consolidated_invoice_approved_date as date) BETWEEN cost_saving.date_from AND cost_saving.date_to
+     LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on reqs_assignment_data.main_document_title = norm_jt.raw_job_title
+     LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(reqs_assignment_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(reqs_assignment_data.rsr_state, '') = COALESCE(norm_loc.state, '')
+  AND COALESCE(reqs_assignment_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( reqs_assignment_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(reqs_assignment_data.country, '') = COALESCE(norm_loc.country_code, '')
+))

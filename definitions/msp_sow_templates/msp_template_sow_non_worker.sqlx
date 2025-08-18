@@ -54,5 +54,4 @@ SELECT
 FROM ${dataform.projectConfig.vars.ds_name}.prs_sow_line_item_non_worker_${dataform.projectConfig.vars.client_code}  sow_nonworker
 LEFT JOIN ${dataform.projectConfig.vars.ds_name}.prs_sow_${dataform.projectConfig.vars.client_code}  sow_details ON sow_details.sow_id = sow_nonworker.sow_id
 LEFT JOIN ${dataform.projectConfig.vars.ds_name}.prs_supplier_${dataform.projectConfig.vars.client_code} sow_supplier ON sow_supplier.supplier_code = sow_nonworker.supplier_code
-LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_supplier_mapping gsm ON gsm.buyer = sow_nonworker.buyer AND gsm.supplier = sow_nonworker.supplier
-)
+LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_supplier_mapping gsm ON gsm.buyer = sow_nonworker.buyer AND gsm.supplier = sow_nonworker.supplier)

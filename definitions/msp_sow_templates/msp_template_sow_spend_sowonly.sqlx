@@ -463,5 +463,4 @@ SELECT
       AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_cad.month
       AND trim(upper(fx_cad.to_currency)) = 'CAD'
     LEFT JOIN db_aptus${dataform.projectConfig.vars.region}.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(spend_data.buyer_code) AND div_supp.supplier_code=spend_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER)
-)
-)
+))

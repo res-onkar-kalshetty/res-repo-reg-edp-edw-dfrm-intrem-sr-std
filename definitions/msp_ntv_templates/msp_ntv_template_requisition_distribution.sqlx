@@ -9,296 +9,284 @@ config {
 CREATE OR REPLACE TABLE
   `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_distribution_${dataform.projectConfig.vars.client_code}` AS (
   WITH
-    wo_data AS (
-    SELECT
-      wo_in.buyer,
-      wo_in.buyer_code,
-      wo_in.supplier,
-      wo_in.supplier_code,
-      wo_in.main_document_id,
-      wo_in.assignment_id,
-      wo_in.assignment_create_date_initial
-    FROM
-      ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} AS wo_in),
-    aggregates_wo_wsupp AS (
-    SELECT
-      wo_data.buyer,
-      wo_data.buyer_code,
-      wo_data.main_document_id,
-      wo_data.supplier,
-      wo_data.supplier_code,
-      MIN(wo_data.assignment_create_date_initial) AS min_assignment_create_date,
-      COUNT(assignment_id) AS no_hired_assignment
-    FROM
-      wo_data
-    GROUP BY
-      wo_data.buyer,
-      wo_data.buyer_code,
-      wo_data.main_document_id,
-      wo_data.supplier,
-      wo_data.supplier_code ),
-    aggregates_min_req_dist_date AS (
+  wo_data AS (
+  SELECT
+    wo_in.buyer,
+    wo_in.buyer_code,
+    wo_in.supplier,
+    wo_in.supplier_code,
+    wo_in.main_document_id,
+    wo_in.assignment_id,
+    wo_in.assignment_create_date_initial
+  FROM
+    ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} AS wo_in),
+  aggregates_wo_wsupp AS (
+  SELECT
+    wo_data.buyer,
+    wo_data.buyer_code,
+    wo_data.main_document_id,
+    wo_data.supplier,
+    wo_data.supplier_code,
+    MIN(wo_data.assignment_create_date_initial) AS min_assignment_create_date,
+    COUNT(assignment_id) AS no_hired_assignment
+  FROM
+    wo_data
+  GROUP BY
+    wo_data.buyer,
+     wo_data.buyer_code,
+    wo_data.main_document_id,
+    wo_data.supplier,
+    wo_data.supplier_code ),
+  aggregates_min_req_dist_date AS (
     SELECT
       supplier_code,
       MIN(req_initial_distribution_date) AS min_req_initial_distribution_date,
       MAX(req_initial_distribution_date) AS max_req_initial_distribution_date
-    FROM
-      ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code}
-    GROUP BY
-      supplier_code),
-    aggregates_jp_dist_supp AS (
-    SELECT
-      jp_dist.buyer_code,
-      jp_dist.req_id,
-      jp_dist.supplier,
-      COUNT(DISTINCT
-        CASE
-          WHEN COALESCE(jp_dist.req_distribution_status, 'na') <> 'Declined' THEN jp_dist.supplier
-          ELSE 'NULL'
-      END
-        ) AS no_of_suppliers_posted
-    FROM
-      ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code} jp_dist
-    GROUP BY
-      jp_dist.buyer_code,
-      jp_dist.req_id,
-      jp_dist.supplier ),
-    job_seeker_data AS (
-    SELECT
-      js_in.buyer,
-      js_in.buyer_code,
-      js_in.req_id,
-      js_in.supplier,
-      js_in.supplier_code,
-      js_in.cand_id,
-      js_in.cand_status,
-      js_in.cand_shortlisted_date,
-      js_in.cand_submit_date,
-      js_in.cand_first_submitted_date,
-      js_in.cand_first_interviewed_date,
-      js_in.cand_last_interviewed_date,
-      js_in.presented_bill_rate_st_hr,
-      global_js_status_mapping.submittal_status_dw,
-      CAST(global_js_status_mapping.rejected AS NUMERIC) AS rejected,
-      CAST(global_js_status_mapping.shortlisted AS NUMERIC) AS shortlisted,
-      CAST(global_js_status_mapping.interviewed AS NUMERIC) AS interviewed,
-      CAST(global_js_status_mapping.offered AS NUMERIC) AS offered,
-      CAST(global_js_status_mapping.hired AS NUMERIC) AS hired,
-      CAST(global_js_status_mapping.withdrawn AS NUMERIC) AS withdrawn
-    FROM
-      ${dataform.projectConfig.vars.ds_name}.stdrv_candidate_${dataform.projectConfig.vars.client_code} AS js_in
-    LEFT OUTER JOIN
-      db_common${dataform.projectConfig.vars.region}.global_js_status AS global_js_status_mapping
-    ON
-      TRIM(LOWER(js_in.cand_status)) = TRIM(LOWER(global_js_status_mapping.job_seeker_status)) ),
-    aggregates_job_seekers_wsupp AS (
-    SELECT
-      job_seeker_data.buyer_code,
-      job_seeker_data.req_id,
-      job_seeker_data.supplier,
-      job_seeker_data.supplier_code,
-      COUNT(DISTINCT job_seeker_data.cand_id) AS no_of_job_seekers,
-      COUNT(DISTINCT job_seeker_data.supplier) AS no_of_suppliers_responded,
-      MIN(cand_submit_date) AS min_candidate_submitted_date,
-      MIN(cand_first_submitted_date) AS first_candidate_submitted_date,
-      MIN(cand_first_interviewed_date) AS first_candidate_interview_date,
-      SUM(COALESCE(rejected, 0)) AS no_rejected,
-      SUM(COALESCE(interviewed, 0)) AS no_of_interviewed,
-      SUM(COALESCE(shortlisted, 0)) AS no_shortlisted,
-      SUM(COALESCE(offered, 0)) AS no_offered,
-      SUM(COALESCE(hired, 0)) AS no_hired,
-      SUM(COALESCE(withdrawn, 0)) AS no_withdrawn
-    FROM
-      job_seeker_data
-    GROUP BY
-      job_seeker_data.buyer_code,
-      job_seeker_data.req_id,
-      job_seeker_data.supplier,
-      job_seeker_data.supplier_code ),
-    global_supplier_mapping AS (
-    SELECT
-      DISTINCT TRIM(LOWER(gbl_sup_map_in.buyer)) AS buyer,
-      TRIM(LOWER(gbl_sup_map_in.supplier)) AS supplier,
-      gbl_sup_map_in.suppliername_dw,
-    FROM
-      db_common${dataform.projectConfig.vars.region}.global_supplier_mapping AS gbl_sup_map_in ),
-    job_posting_data AS (
-    SELECT
-      req_id,
-      buyer_code,
-      req_title,
-      labor_type,
-      rsr_labor_type,
-      primary_cost_center,
-      req_status,
-      close_reason AS close_reason_req,
-      business_unit,
-      business_unit_code,
-      req_category AS category,
-      site,
-      city,
-      rsr_state,
-      state_province,
-      country,
-      req_approved_date,
-      req_create_date,
-      req_closed_date,
-      max_requested_bill_rate_st_hr,
-      positions_requested_cnt,
-      CASE
-        WHEN sourcing_type IS NULL AND sourcing_type_template IS NULL THEN ""
-        WHEN sourcing_type IS NULL THEN sourcing_type_template
-        ELSE sourcing_type
-    END
-      AS sourced_type,
-      rsr_sourced_type,
-      max_template_bill_rate_st_hr AS max_template_bill_rate,
-      req_type,
-      rsr_req_status,
-      rsr_region,
-      rsr_country,
-      currency,
-      rsr_close_reason
-    FROM
-      ${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code} )
-  SELECT
-    job_posting_dist_data.buyer,
-    job_posting_dist_data.buyer_code,
-    job_posting_dist_data.req_id,
-    -- 03/26/2025, Change added for https://global-jira.randstadservices.com/browse/CPCT-13496
-    -- job_posting_dist_data.decline_reason,
-    CASE
-      WHEN aggregates_job_seekers_wsupp.no_of_job_seekers IS NULL AND LOWER(job_posting_data.req_status)='closed' THEN 'no candidates submitted'
-      ELSE NULL
-  END
-    AS decline_reason,
-    job_posting_dist_data.req_distribution_date,
-    job_posting_dist_data.req_initial_distribution_date,
-    job_posting_dist_data.dist_list,
-    job_posting_dist_data.supplier,
-    job_posting_dist_data.supplier_code,
-    job_posting_data.req_title,
-    job_posting_data.labor_type,
-    job_posting_data.rsr_labor_type,
-    job_posting_data.primary_cost_center,
-    job_posting_data.req_status,
-    job_posting_data.close_reason_req,
-    job_posting_data.business_unit,
-    job_posting_data.business_unit_code,
-    job_posting_data.category,
-    job_posting_data.site,
-    job_posting_data.city,
-    job_posting_data.state_province,
-    job_posting_data.country,
-    job_posting_data.req_approved_date,
-    job_posting_data.req_create_date,
-    job_posting_data.req_closed_date,
-    job_posting_data.max_requested_bill_rate_st_hr,
-    job_posting_data.positions_requested_cnt,
-    job_posting_data.currency,
-    supplier_data.supplier_status,
-    job_posting_data.sourced_type,
-    IFNULL(job_posting_data.rsr_sourced_type,'Recruited') AS rsr_sourced_type,
-    global_supplier_mapping.suppliername_dw AS rsr_supplier,
-    aggregates_wo_wsupp.min_assignment_create_date AS first_assignment_create_date_supplier,
-    aggregates_min_req_dist_date.min_req_initial_distribution_date,
-    aggregates_min_req_dist_date.max_req_initial_distribution_date,
-    CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(aggregates_min_req_dist_date.min_req_initial_distribution_date,
-        aggregates_min_req_dist_date.max_req_initial_distribution_date) AS INT64) AS active_supplier_duration,
-    aggregates_job_seekers_wsupp.first_candidate_submitted_date AS first_cand_submitted_date_supplier,
-    aggregates_job_seekers_wsupp.first_candidate_interview_date AS first_cand_interviewed_date_supplier,
-    CURRENT_DATE() AS current_date,
-    aggregates_wo_wsupp.no_hired_assignment AS hired_assignment_cnt_supplier,
-    aggregates_job_seekers_wsupp.no_of_job_seekers AS cand_submitted_cnt_supplier,
-    aggregates_job_seekers_wsupp.no_shortlisted AS shortlisted_cnt_supplier,
-    aggregates_job_seekers_wsupp.no_of_interviewed AS interviewed_cnt_supplier,
-    aggregates_job_seekers_wsupp.no_withdrawn AS withdrawn_cnt_supplier,
-    aggregates_job_seekers_wsupp.no_rejected AS rejected_cnt_supplier,
-    aggregates_job_seekers_wsupp.no_offered AS offered_cnt_supplier,
-    aggregates_job_seekers_wsupp.no_hired AS hired_cnt_supplier,
-    aggregates_jp_dist_supp.no_of_suppliers_posted AS posted_cnt_supplier,
-    aggregates_job_seekers_wsupp.no_of_suppliers_responded AS responded_cnt_supplier,
-    CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(job_posting_dist_data.req_distribution_date,
-        aggregates_job_seekers_wsupp.first_candidate_submitted_date) AS INT64) AS dist_to_submit_first_cand_in_cd,
-    CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(job_posting_dist_data.req_distribution_date,
-        aggregates_job_seekers_wsupp.first_candidate_interview_date) AS INT64) AS dist_to_interview_first_cand_in_cd,
-    job_posting_data.max_template_bill_rate,
-    job_posting_data.req_type,
-    CASE
-      WHEN job_posting_data.rsr_country='United States of America' THEN div_supp.primary_diversity_type
-      ELSE CAST(NULL AS STRING)
-  END
-    AS supplier_primary_diversity_type,
-    CASE
-      WHEN job_posting_data.rsr_country='United States of America' THEN div_supp.small_business
-      ELSE CAST(NULL AS STRING)
-  END
-    AS supplier_small_business,
-    CASE
-      WHEN job_posting_data.rsr_country='United States of America' THEN div_supp.diverse_and_small
-      ELSE CAST(NULL AS STRING)
-  END
-    AS supplier_diverse_small,
-    CASE
-      WHEN job_posting_data.rsr_country='United States of America' THEN div_supp.supplier_id_erp
-      ELSE CAST(NULL AS STRING)
-  END
-    AS supplier_erp_id,
-    job_posting_data.rsr_req_status,
-    job_posting_data.rsr_region,
-    'msp_ntv${dataform.projectConfig.vars.region}_mundipharma' AS rsr_client_code,
-    job_posting_data.rsr_country,
-    job_posting_data.rsr_state,
-    job_posting_dist_data.rsr_processed_date,
-    NULL AS preferred_supplier_status,
-    job_posting_data.rsr_close_reason,
-    job_posting_dist_data.rsr_staffing_entity
-    -- winter_release 2025
   FROM
-    ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code} job_posting_dist_data
+	${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code}
+  GROUP BY
+	supplier_code),
+  aggregates_jp_dist_supp AS (
+  SELECT
+    jp_dist.buyer_code,
+    jp_dist.req_id,
+    jp_dist.supplier,
+    COUNT(DISTINCT CASE WHEN COALESCE(jp_dist.req_distribution_status, 'na') <> 'Declined' THEN jp_dist.supplier ELSE 'NULL' END ) AS no_of_suppliers_posted
+  FROM
+    ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code} jp_dist
+  GROUP BY
+    jp_dist.buyer_code,
+    jp_dist.req_id,
+    jp_dist.supplier ),
+  job_seeker_data AS (
+  SELECT
+    js_in.buyer,
+    js_in.buyer_code,
+    js_in.req_id,
+    js_in.supplier,
+    js_in.supplier_code,
+    js_in.cand_id,
+    js_in.cand_status,
+    js_in.cand_shortlisted_date,
+    js_in.cand_submit_date,
+    js_in.cand_first_submitted_date,
+    js_in.cand_first_interviewed_date,
+    js_in.cand_last_interviewed_date,
+    js_in.presented_bill_rate_st_hr,
+    global_js_status_mapping.submittal_status_dw,
+    CAST(global_js_status_mapping.rejected AS NUMERIC) AS rejected,
+    CAST(global_js_status_mapping.shortlisted AS NUMERIC) AS shortlisted,
+    CAST(global_js_status_mapping.interviewed AS NUMERIC) AS interviewed,
+    CAST(global_js_status_mapping.offered AS NUMERIC) AS offered,
+    CAST(global_js_status_mapping.hired AS NUMERIC) AS hired,
+    CAST(global_js_status_mapping.withdrawn AS NUMERIC) AS withdrawn
+  FROM
+    ${dataform.projectConfig.vars.ds_name}.stdrv_candidate_${dataform.projectConfig.vars.client_code} AS js_in
   LEFT OUTER JOIN
-    aggregates_min_req_dist_date
+    db_common${dataform.projectConfig.vars.region}.global_js_status AS global_js_status_mapping
   ON
-    job_posting_dist_data.supplier_code = aggregates_min_req_dist_date.supplier_code
-  LEFT OUTER JOIN
-    job_posting_data
-  ON
-    job_posting_data.req_id = job_posting_dist_data.req_id
-  LEFT OUTER JOIN
-    aggregates_jp_dist_supp
-  ON
-    job_posting_dist_data.req_id = aggregates_jp_dist_supp.req_id
-    AND job_posting_dist_data.supplier = aggregates_jp_dist_supp.supplier
-  LEFT OUTER JOIN
-    aggregates_wo_wsupp
-  ON
-    job_posting_dist_data.req_id = aggregates_wo_wsupp.main_document_id
-    -- AND job_posting_dist_data.supplier_code = aggregates_wo_wsupp.supplier_code
-    AND LOWER(REGEXP_REPLACE(job_posting_dist_data.supplier, r"\s+", "")) = LOWER(REGEXP_REPLACE(aggregates_wo_wsupp.supplier, r"\s+", ""))
-  LEFT OUTER JOIN
-    aggregates_job_seekers_wsupp
-  ON
-    job_posting_dist_data.req_id = aggregates_job_seekers_wsupp.req_id
-    -- AND job_posting_dist_data.supplier_code = aggregates_job_seekers_wsupp.supplier_code
-    AND LOWER(REGEXP_REPLACE(job_posting_dist_data.supplier, r"\s+", "")) = LOWER(REGEXP_REPLACE(aggregates_job_seekers_wsupp.supplier, r"\s+", ""))
-  LEFT OUTER JOIN
-    ${dataform.projectConfig.vars.ds_name}.prs_supplier_${dataform.projectConfig.vars.client_code} supplier_data
-  ON
-    job_posting_dist_data.supplier = supplier_data.supplier
-    AND job_posting_dist_data.supplier_code = supplier_data.supplier_code
-  LEFT OUTER JOIN
-    global_supplier_mapping
-  ON
-    TRIM(LOWER(job_posting_dist_data.supplier)) = global_supplier_mapping.supplier
-    AND TRIM(LOWER(job_posting_dist_data.buyer)) = global_supplier_mapping.buyer
-  LEFT JOIN
-    db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp
-  ON
-    LOWER(div_supp.customer_code)=LOWER(job_posting_dist_data.buyer_code)
-    AND div_supp.supplier_code=job_posting_dist_data.supplier_code
-    AND div_supp.fiscal_year=CAST(EXTRACT(YEAR
-      FROM
-        CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER)
-    AND div_supp.accounting_period=CAST(EXTRACT(MONTH
-      FROM
-        CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER))
+    TRIM(LOWER(js_in.cand_status)) = TRIM(LOWER(global_js_status_mapping.job_seeker_status)) ),
+  aggregates_job_seekers_wsupp AS (
+  SELECT
+    job_seeker_data.buyer_code,
+    job_seeker_data.req_id,
+    job_seeker_data.supplier,
+    job_seeker_data.supplier_code,
+    COUNT(DISTINCT job_seeker_data.cand_id) AS no_of_job_seekers,
+    COUNT(DISTINCT job_seeker_data.supplier) AS no_of_suppliers_responded,
+    MIN(cand_submit_date) AS min_candidate_submitted_date,
+    MIN(cand_first_submitted_date) AS first_candidate_submitted_date,
+    MIN(cand_first_interviewed_date) AS first_candidate_interview_date,
+    SUM(COALESCE(rejected, 0)) AS no_rejected,
+    SUM(COALESCE(interviewed, 0)) AS no_of_interviewed,
+    SUM(COALESCE(shortlisted, 0)) AS no_shortlisted,
+    SUM(COALESCE(offered, 0)) AS no_offered,
+    SUM(COALESCE(hired, 0)) AS no_hired,
+    SUM(COALESCE(withdrawn, 0)) AS no_withdrawn
+FROM
+  job_seeker_data
+GROUP BY
+  job_seeker_data.buyer_code,
+  job_seeker_data.req_id,
+  job_seeker_data.supplier,
+  job_seeker_data.supplier_code ),
+global_supplier_mapping AS (
+  SELECT
+    DISTINCT TRIM(LOWER(gbl_sup_map_in.buyer)) AS buyer,
+    TRIM(LOWER(gbl_sup_map_in.supplier)) AS supplier,
+    gbl_sup_map_in.suppliername_dw,
+  FROM
+    db_common${dataform.projectConfig.vars.region}.global_supplier_mapping AS gbl_sup_map_in ),
+job_posting_data as (
+ SELECT
+  req_id,
+  buyer_code,
+  req_title,
+  labor_type,
+  rsr_labor_type,
+  primary_cost_center,
+  req_status,
+  close_reason AS close_reason_req,
+  business_unit,
+  business_unit_code,
+  req_category as category,
+  site,
+  city,
+  rsr_state,
+  state_province,
+  country,
+  req_approved_date,
+  req_create_date,
+  req_closed_date,
+  max_requested_bill_rate_st_hr,
+  positions_requested_cnt,
+  CASE when sourcing_type is null and  sourcing_type_template is null then ""
+  when sourcing_type is null then sourcing_type_template
+  else sourcing_type
+  end as sourced_type,
+  rsr_sourced_type,
+  max_template_bill_rate_st_hr as max_template_bill_rate,
+  req_type,
+  rsr_req_status,
+  rsr_region,
+  rsr_country,
+  currency,
+  rsr_close_reason
+  FROM ${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}
+)
+SELECT
+  job_posting_dist_data.buyer,
+  job_posting_dist_data.buyer_code,
+  job_posting_dist_data.req_id,
+  -- 03/26/2025, Change added for https://global-jira.randstadservices.com/browse/CPCT-13496	
+  -- job_posting_dist_data.decline_reason,
+  CASE WHEN aggregates_job_seekers_wsupp.no_of_job_seekers IS NULL and lower(job_posting_data.req_status)='closed'
+  Then 'no candidates submitted' ELSE NULL end as decline_reason,	
+  job_posting_dist_data.req_distribution_date,
+  job_posting_dist_data.req_initial_distribution_date,
+  job_posting_dist_data.dist_list,
+  job_posting_dist_data.supplier,
+  job_posting_dist_data.supplier_code,
+  job_posting_data.req_title,
+  job_posting_data.labor_type,
+  job_posting_data.rsr_labor_type,
+  job_posting_data.primary_cost_center,
+  job_posting_data.req_status,
+  job_posting_data.close_reason_req,
+  job_posting_data.business_unit,
+  job_posting_data.business_unit_code,
+  job_posting_data.category,
+  job_posting_data.site,
+  job_posting_data.city,
+  job_posting_data.state_province,
+  job_posting_data.country,
+  job_posting_data.req_approved_date,
+  job_posting_data.req_create_date,
+  job_posting_data.req_closed_date,
+  job_posting_data.max_requested_bill_rate_st_hr,
+  job_posting_data.positions_requested_cnt,
+  job_posting_data.currency,
+  supplier_data.supplier_status,
+  job_posting_data.sourced_type,
+  ifnull(job_posting_data.rsr_sourced_type,'Recruited') as rsr_sourced_type,
+  global_supplier_mapping.suppliername_dw AS rsr_supplier,
+  aggregates_wo_wsupp.min_assignment_create_date AS first_assignment_create_date_supplier,
+  aggregates_min_req_dist_date.min_req_initial_distribution_date,
+  aggregates_min_req_dist_date.max_req_initial_distribution_date,
+  CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(aggregates_min_req_dist_date.min_req_initial_distribution_date, aggregates_min_req_dist_date.max_req_initial_distribution_date) AS INT64) AS active_supplier_duration,
+  aggregates_job_seekers_wsupp.first_candidate_submitted_date AS first_cand_submitted_date_supplier,
+  aggregates_job_seekers_wsupp.first_candidate_interview_date AS first_cand_interviewed_date_supplier,
+  CURRENT_DATE() AS current_date,
+  aggregates_wo_wsupp.no_hired_assignment AS hired_assignment_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_of_job_seekers AS cand_submitted_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_shortlisted AS shortlisted_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_of_interviewed AS interviewed_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_withdrawn AS withdrawn_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_rejected AS rejected_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_offered AS offered_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_hired AS hired_cnt_supplier,
+  aggregates_jp_dist_supp.no_of_suppliers_posted AS posted_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_of_suppliers_responded AS responded_cnt_supplier,
+  CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(job_posting_dist_data.req_distribution_date,
+      aggregates_job_seekers_wsupp.first_candidate_submitted_date) AS INT64) AS dist_to_submit_first_cand_in_cd,
+  CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(job_posting_dist_data.req_distribution_date,
+      aggregates_job_seekers_wsupp.first_candidate_interview_date) AS INT64) AS dist_to_interview_first_cand_in_cd,
+  job_posting_data.max_template_bill_rate,
+  job_posting_data.req_type,
+  CASE
+	  WHEN job_posting_data.rsr_country='United States of America' THEN div_supp.primary_diversity_type
+	  ELSE CAST(NULL AS STRING)
+  END AS supplier_primary_diversity_type,
+  CASE
+	  WHEN job_posting_data.rsr_country='United States of America' THEN div_supp.small_business
+    ELSE CAST(NULL AS STRING)
+  END AS supplier_small_business,
+  CASE
+	  WHEN job_posting_data.rsr_country='United States of America' THEN div_supp.diverse_and_small
+    ELSE CAST(NULL AS STRING)
+  END AS supplier_diverse_small,
+  CASE
+	  WHEN job_posting_data.rsr_country='United States of America' THEN div_supp.supplier_id_erp
+    ELSE CAST(NULL AS STRING)
+  END AS supplier_erp_id,
+  job_posting_data.rsr_req_status,
+  job_posting_data.rsr_region,
+  '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
+  job_posting_data.rsr_country,
+  job_posting_data.rsr_state,
+  job_posting_dist_data.rsr_processed_date
+  ,NULL AS preferred_supplier_status
+  ,job_posting_data.rsr_close_reason,
+job_posting_dist_data.rsr_staffing_entity, -- winter_release 2025
+norm_jt.suppressed_title,
+norm_jt.pii_found,
+norm_jt.process_status,
+norm_jt.suppression_type,
+norm_jt.llm_cleaned,
+norm_jt.title_cleaned,
+norm_jt.ms_category_1,
+norm_jt.ms_category_2,
+norm_jt.onet_career_pathway,
+norm_jt.onet_job_family,
+norm_jt.onet_career_cluster,
+norm_jt.onet_occupation,
+norm_jt.soc_major_group,
+norm_jt.soc_minor_group,
+norm_jt.soc_broad_group,
+norm_jt.onet_detailed_occupation,
+norm_jt.bg_categorization,
+norm_jt.tk_categorization,
+norm_jt.rand_categorization,
+norm_jt.rmi_categorization,
+norm_jt.R1_label,
+norm_jt.R2_label,
+norm_jt.R3_label,
+norm_jt.R4_label,
+norm_jt.R5_label,
+norm_jt.R6_label,
+norm_loc.location_level_1,
+norm_loc.location_level_2,
+norm_loc.location_level_3,
+norm_loc.location_level_4,
+norm_loc.location_level_5,
+norm_loc.location_level_6,
+norm_loc.location_level_7,
+norm_loc.location_level_8,
+norm_loc.location_level_1a,
+norm_loc.location_level_2a
+FROM ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code} job_posting_dist_data
+LEFT OUTER JOIN aggregates_min_req_dist_date ON job_posting_dist_data.supplier_code = aggregates_min_req_dist_date.supplier_code
+LEFT OUTER JOIN  job_posting_data ON job_posting_data.req_id = job_posting_dist_data.req_id
+LEFT OUTER JOIN  aggregates_jp_dist_supp ON job_posting_dist_data.req_id = aggregates_jp_dist_supp.req_id AND job_posting_dist_data.supplier = aggregates_jp_dist_supp.supplier
+LEFT OUTER JOIN  aggregates_wo_wsupp ON  job_posting_dist_data.req_id = aggregates_wo_wsupp.main_document_id
+-- AND job_posting_dist_data.supplier_code = aggregates_wo_wsupp.supplier_code
+AND lower(regexp_replace(job_posting_dist_data.supplier, r"\s+", "")) = lower(regexp_replace(aggregates_wo_wsupp.supplier, r"\s+", ""))
+LEFT OUTER JOIN  aggregates_job_seekers_wsupp ON  job_posting_dist_data.req_id = aggregates_job_seekers_wsupp.req_id
+-- AND job_posting_dist_data.supplier_code = aggregates_job_seekers_wsupp.supplier_code
+AND lower(regexp_replace(job_posting_dist_data.supplier, r"\s+", "")) = lower(regexp_replace(aggregates_job_seekers_wsupp.supplier, r"\s+", ""))
+LEFT OUTER JOIN  ${dataform.projectConfig.vars.ds_name}.prs_supplier_${dataform.projectConfig.vars.client_code} supplier_data ON  job_posting_dist_data.supplier = supplier_data.supplier AND job_posting_dist_data.supplier_code = supplier_data.supplier_code
+LEFT OUTER JOIN  global_supplier_mapping ON  TRIM(LOWER(job_posting_dist_data.supplier)) = global_supplier_mapping.supplier  AND TRIM(LOWER(job_posting_dist_data.buyer)) = global_supplier_mapping.buyer
+LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(job_posting_dist_data.buyer_code) AND div_supp.supplier_code=job_posting_dist_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER)
+LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on job_posting_data.req_title = norm_jt.raw_job_title
+    LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(job_posting_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(job_posting_data.rsr_state, '') = COALESCE(norm_loc.state, '')
+  AND COALESCE(job_posting_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(job_posting_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(job_posting_data.country, '') = COALESCE(norm_loc.country_code, ''))

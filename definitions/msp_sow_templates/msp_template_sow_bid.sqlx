@@ -67,5 +67,4 @@ LEFT JOIN ${dataform.projectConfig.vars.ds_name}.prs_sow_v0_${dataform.projectCo
 LEFT JOIN ${dataform.projectConfig.vars.ds_name}.prs_supplier_${dataform.projectConfig.vars.client_code} supplier ON sow_bid.supplier_code = supplier.supplier_code
 LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_countries gcr on lower(sow.country)=lower(gcr.country)
 LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_supplier_mapping gsm ON gsm.buyer = sow_bid.buyer AND gsm.supplier = sow_bid.supplier
-LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_sow_classification gbl_sow ON gbl_sow.sub_categories_to_match_those_used_in_the_vms = sow.classification
-)
+LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_sow_classification gbl_sow ON gbl_sow.sub_categories_to_match_those_used_in_the_vms = sow.classification)

@@ -183,5 +183,4 @@ SELECT
 FROM 
 	${dataform.projectConfig.vars.ds_name}.stdrv_assignment_sowonly_${dataform.projectConfig.vars.client_code} assign
 	LEFT JOIN cal_comp ON assign.assignment_id = cal_comp.assignment_id AND assign.main_document_id = cal_comp.main_document_id
-  LEFT JOIN db_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM PARSE_DATE("%m/%d/%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM PARSE_DATE("%m/%d/%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER)
-)
+  LEFT JOIN db_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM PARSE_DATE("%m/%d/%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM PARSE_DATE("%m/%d/%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER))

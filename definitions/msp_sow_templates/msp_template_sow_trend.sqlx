@@ -83,5 +83,4 @@ LEFT JOIN ${dataform.projectConfig.vars.ds_name}.prs_supplier_${dataform.project
 LEFT JOIN min_week_calc ON min_week_calc.sow_id = date_calc.sow_id AND min_week_calc.reporting_month = date_calc.reporting_month AND min_week_calc.calendar_year = date_calc.calendar_year
 LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_countries gcr on lower(sow_details.country)=lower(gcr.country)
 LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_supplier_mapping gsm ON gsm.buyer = sow_details.buyer AND gsm.supplier = sow_details.supplier
-LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_sow_classification gbl_sow ON gbl_sow.sub_categories_to_match_those_used_in_the_vms = sow_details.classification
-)
+LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_sow_classification gbl_sow ON gbl_sow.sub_categories_to_match_those_used_in_the_vms = sow_details.classification)
