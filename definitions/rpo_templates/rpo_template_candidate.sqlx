@@ -191,6 +191,45 @@ FROM (
         ,subquery1.req_state_province
         ,subquery1.req_zip_postal_code
         ,subquery1.req_country
+        ,subquery1.suppressed_title,
+        subquery1.pii_found,
+        subquery1.process_status,
+        subquery1.suppression_type,
+        subquery1.llm_cleaned,
+        subquery1.title_cleaned,
+        subquery1.ms_category_1,
+        subquery1.ms_category_2,
+        subquery1.onet_career_pathway,
+        subquery1.onet_job_family,
+        subquery1.onet_career_cluster,
+        subquery1.onet_occupation,
+        subquery1.soc_major_group,
+        subquery1.soc_minor_group,
+        subquery1.soc_broad_group,
+        subquery1.onet_detailed_occupation,
+        subquery1.bg_categorization,
+        subquery1.tk_categorization,
+        subquery1.rand_categorization,
+        subquery1.rmi_categorization,
+        subquery1.R1_label,
+        subquery1.R2_label,
+        subquery1.R3_label,
+        subquery1.R4_label,
+        subquery1.R5_label,
+        subquery1.R6_label,
+        subquery1.location_level_1,
+        subquery1.location_level_2,
+        subquery1.location_level_3,
+        subquery1.location_level_4,
+        subquery1.location_level_5,
+        subquery1.location_level_6,
+        subquery1.location_level_7,
+        subquery1.location_level_8,
+        subquery1.location_level_1a,
+        subquery1.location_level_2a
+
+
+
 
     FROM (
         SELECT
@@ -287,8 +326,43 @@ FROM (
         ,req.city as req_city
         ,req.state_province as req_state_province
         ,req.zip_postal_code as req_zip_postal_code
-        ,	req.country as 	req_country
-
+        ,	req.country as 	req_country,
+        norm_jt.suppressed_title,
+        norm_jt.pii_found,
+        norm_jt.process_status,
+        norm_jt.suppression_type,
+        norm_jt.llm_cleaned,
+        norm_jt.title_cleaned,
+        norm_jt.ms_category_1,
+        norm_jt.ms_category_2,
+        norm_jt.onet_career_pathway,
+        norm_jt.onet_job_family,
+        norm_jt.onet_career_cluster,
+        norm_jt.onet_occupation,
+        norm_jt.soc_major_group,
+        norm_jt.soc_minor_group,
+        norm_jt.soc_broad_group,
+        norm_jt.onet_detailed_occupation,
+        norm_jt.bg_categorization,
+        norm_jt.tk_categorization,
+        norm_jt.rand_categorization,
+        norm_jt.rmi_categorization,
+        norm_jt.R1_label,
+        norm_jt.R2_label,
+        norm_jt.R3_label,
+        norm_jt.R4_label,
+        norm_jt.R5_label,
+        norm_jt.R6_label,
+        norm_loc.location_level_1,
+        norm_loc.location_level_2,
+        norm_loc.location_level_3,
+        norm_loc.location_level_4,
+        norm_loc.location_level_5,
+        norm_loc.location_level_6,
+        norm_loc.location_level_7,
+        norm_loc.location_level_8,
+        norm_loc.location_level_1a,
+        norm_loc.location_level_2a
         FROM deduped_cand cand
         LEFT JOIN ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph2_c} req ON cand.req_id = req.req_id
         LEFT JOIN req_mst ON cand.req_id = req_mst.req_id
@@ -299,6 +373,10 @@ FROM (
         LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_gender g ON IFNULL(cand.gender, '') = g.gender
         LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_disabled d ON IFNULL(cand.disabled, '') = d.disabled
         LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_veteran v ON IFNULL(cand.veteran, '') = v.veteran
+       LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
+       LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(req_mst.rsr_state, '') = COALESCE(norm_loc.state, '')
+  AND COALESCE(req.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(req_mst.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, '')
+
         WHERE cand.dedupe_rnk = 1
         ) subquery1
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_race_diverse rd ON subquery1.rsr_race = rd.rsr_race
@@ -306,5 +384,4 @@ FROM (
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_gender_diverse gd ON subquery1.rsr_gender = gd.rsr_gender
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_disabled_diverse dd ON subquery1.rsr_disabled = dd.rsr_disabled
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_veteran_diverse vd ON subquery1.rsr_veteran = vd.rsr_veteran
-    ) subquery2
-)
+    ) subquery2)

@@ -169,7 +169,42 @@ FROM (
     ,CAST(COALESCE(req.days_on_hold_bd, ROUND((req.days_on_hold_cd / 7) * 5), 0) AS INT64) AS days_on_hold_bd
     ,CAST(COALESCE(req.days_on_hold_cd, ROUND((req.days_on_hold_bd / 5) * 7), 0) AS INT64) AS days_on_hold_cd
     ,req.rsr_processed_date
-
+    ,norm_jt.suppressed_title,
+        norm_jt.pii_found,
+        norm_jt.process_status,
+        norm_jt.suppression_type,
+        norm_jt.llm_cleaned,
+        norm_jt.title_cleaned,
+        norm_jt.ms_category_1,
+        norm_jt.ms_category_2,
+        norm_jt.onet_career_pathway,
+        norm_jt.onet_job_family,
+        norm_jt.onet_career_cluster,
+        norm_jt.onet_occupation,
+        norm_jt.soc_major_group,
+        norm_jt.soc_minor_group,
+        norm_jt.soc_broad_group,
+        norm_jt.onet_detailed_occupation,
+        norm_jt.bg_categorization,
+        norm_jt.tk_categorization,
+        norm_jt.rand_categorization,
+        norm_jt.rmi_categorization,
+        norm_jt.R1_label,
+        norm_jt.R2_label,
+        norm_jt.R3_label,
+        norm_jt.R4_label,
+        norm_jt.R5_label,
+        norm_jt.R6_label,
+        norm_loc.location_level_1,
+        norm_loc.location_level_2,
+        norm_loc.location_level_3,
+        norm_loc.location_level_4,
+        norm_loc.location_level_5,
+        norm_loc.location_level_6,
+        norm_loc.location_level_7,
+        norm_loc.location_level_8,
+        norm_loc.location_level_1a,
+        norm_loc.location_level_2a
     FROM ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph2_r} req
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_calendar_mapping cal_map ON req.closed_date = CAST(cal_map.Day as DATE FORMAT 'MM/DD/YYYY')
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_labor_type AS lt ON IFNULL(req.labor_type, '') = lt.labor_type
@@ -180,5 +215,16 @@ FROM (
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_countries gcr on IFNULL(lower(req.country), '') = lower(gcr.country)
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_state_mapping gsm on IFNULL(req.state_province, '') = gsm.vms_state
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_global_standard_value_mapping rsm on rsm.buyer_code = req.buyer and rsm.req_status=req.req_status
-    ) subquery1
-)
+    LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
+    LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE 
+    WHEN IFNULL(gsm.vms_state, '') <> '' THEN gsm.vms_state
+    WHEN IFNULL(req.state_province, '') = '' THEN 'Undisclosed'
+    ELSE 'Unmapped'
+  END), '') = COALESCE(norm_loc.state, '')
+  AND COALESCE(req.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE((CASE 
+    WHEN IFNULL(gcr.rsr_country, '') <> '' THEN gcr.rsr_country
+    WHEN IFNULL(req.country, '') = '' THEN 'Undisclosed'
+    ELSE 'Unmapped'
+  END), '') = COALESCE(norm_loc.country_name, '') AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, '')
+    
+    ) subquery1)

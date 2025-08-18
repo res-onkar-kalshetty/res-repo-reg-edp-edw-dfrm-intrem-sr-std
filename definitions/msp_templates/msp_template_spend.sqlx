@@ -8,6 +8,7 @@ config {
 } 
 CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_spend_${dataform.projectConfig.vars.client_code}` AS (
 
+
 SELECT buyer
 ,buyer_code
 ,main_document_id
@@ -374,6 +375,42 @@ END AS tenure_discount_savings_in_cad
 ,rsr_staffing_entity
 ,spend_business_unit
 ,spend_business_unit_code
+,suppressed_title,
+pii_found,
+process_status,
+suppression_type,
+llm_cleaned,
+title_cleaned,
+ms_category_1,
+ms_category_2,
+onet_career_pathway,
+onet_job_family,
+onet_career_cluster,
+onet_occupation,
+soc_major_group,
+soc_minor_group,
+soc_broad_group,
+onet_detailed_occupation,
+bg_categorization,
+tk_categorization,
+rand_categorization,
+rmi_categorization,
+R1_label,
+R2_label,
+R3_label,
+R4_label,
+R5_label,
+R6_label,
+location_level_1,
+location_level_2,
+location_level_3,
+location_level_4,
+location_level_5,
+location_level_6,
+location_level_7,
+location_level_8,
+location_level_1a,
+location_level_2a
 
 FROM (
 WITH spend_data AS (
@@ -463,7 +500,8 @@ WITH spend_data AS (
       req_asg_in.assignment_end_date,
       req_asg_in.assignment_original_start_date,
       req_asg_in.assignment_original_end_date,
-	req_asg_in.main_document_id
+	req_asg_in.main_document_id,
+  req_asg_in.main_document_title
     FROM
       ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} AS req_asg_in
       
@@ -798,7 +836,43 @@ end as tenure_discount_savings,
 #winter_release 2025
 spend_data.rsr_staffing_entity,
 spend_data.business_unit as spend_business_unit,
-spend_data.business_unit_code as spend_business_unit_code
+spend_data.business_unit_code as spend_business_unit_code,
+  norm_jt.suppressed_title,
+norm_jt.pii_found,
+norm_jt.process_status,
+norm_jt.suppression_type,
+norm_jt.llm_cleaned,
+norm_jt.title_cleaned,
+norm_jt.ms_category_1,
+norm_jt.ms_category_2,
+norm_jt.onet_career_pathway,
+norm_jt.onet_job_family,
+norm_jt.onet_career_cluster,
+norm_jt.onet_occupation,
+norm_jt.soc_major_group,
+norm_jt.soc_minor_group,
+norm_jt.soc_broad_group,
+norm_jt.onet_detailed_occupation,
+norm_jt.bg_categorization,
+norm_jt.tk_categorization,
+norm_jt.rand_categorization,
+norm_jt.rmi_categorization,
+norm_jt.R1_label,
+norm_jt.R2_label,
+norm_jt.R3_label,
+norm_jt.R4_label,
+norm_jt.R5_label,
+norm_jt.R6_label,
+norm_loc.location_level_1,
+norm_loc.location_level_2,
+norm_loc.location_level_3,
+norm_loc.location_level_4,
+norm_loc.location_level_5,
+norm_loc.location_level_6,
+norm_loc.location_level_7,
+norm_loc.location_level_8,
+norm_loc.location_level_1a,
+norm_loc.location_level_2a
 
 
   FROM spend_data
@@ -838,5 +912,8 @@ spend_data.business_unit_code as spend_business_unit_code
       #cost_savings 2024 Fall Release
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.msp_cost_saving cost_saving on cost_saving.client_code=spend_data.rsr_client_code
     and cast(spend_data.consolidated_invoice_approved_date as date) BETWEEN cost_saving.date_from AND cost_saving.date_to
-)
-)
+     LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on reqs_assignment_data.main_document_title = norm_jt.raw_job_title
+     LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(reqs_assignment_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(reqs_assignment_data.rsr_state, '') = COALESCE(norm_loc.state, '')
+  AND COALESCE(reqs_assignment_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( reqs_assignment_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(reqs_assignment_data.country, '') = COALESCE(norm_loc.country_code, '')
+
+))

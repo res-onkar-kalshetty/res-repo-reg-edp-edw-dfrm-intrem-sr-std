@@ -157,7 +157,43 @@ select
   '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
   req.rsr_processed_date,
   req.currency,
-req.rsr_staffing_entity -- winter_release 2025
+req.rsr_staffing_entity, -- winter_release 2025
+norm_jt.suppressed_title,
+norm_jt.pii_found,
+norm_jt.process_status,
+norm_jt.suppression_type,
+norm_jt.llm_cleaned,
+norm_jt.title_cleaned,
+norm_jt.ms_category_1,
+norm_jt.ms_category_2,
+norm_jt.onet_career_pathway,
+norm_jt.onet_job_family,
+norm_jt.onet_career_cluster,
+norm_jt.onet_occupation,
+norm_jt.soc_major_group,
+norm_jt.soc_minor_group,
+norm_jt.soc_broad_group,
+norm_jt.onet_detailed_occupation,
+norm_jt.bg_categorization,
+norm_jt.tk_categorization,
+norm_jt.rand_categorization,
+norm_jt.rmi_categorization,
+norm_jt.R1_label,
+norm_jt.R2_label,
+norm_jt.R3_label,
+norm_jt.R4_label,
+norm_jt.R5_label,
+norm_jt.R6_label,
+norm_loc.location_level_1,
+norm_loc.location_level_2,
+norm_loc.location_level_3,
+norm_loc.location_level_4,
+norm_loc.location_level_5,
+norm_loc.location_level_6,
+norm_loc.location_level_7,
+norm_loc.location_level_8,
+norm_loc.location_level_1a,
+norm_loc.location_level_2a
 	
   from `${dataform.projectConfig.vars.ds_name}.prs_requisition_${dataform.projectConfig.vars.client_code}` req
   left join req_dist_data as req_dist ON req.req_id = req_dist.req_id
@@ -170,4 +206,15 @@ req.rsr_staffing_entity -- winter_release 2025
   left join `db_common${dataform.projectConfig.vars.region}.global_countries` gcr on lower(req.country)=lower(gcr.country)
   left join `db_common${dataform.projectConfig.vars.region}.global_job_posting_status` grs on grs.job_posting_status = req.req_status
   left outer join db_common${dataform.projectConfig.vars.region}.global_sourcing as gbl_src on TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, '')))
+   LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
+    LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE 
+    WHEN IFNULL(gsm.vms_state, '') <> '' THEN gsm.vms_state
+    WHEN IFNULL(req.state_province, '') = '' THEN 'Undisclosed'
+    ELSE 'Unmapped'
+  END), '') = COALESCE(norm_loc.state, '')
+  AND COALESCE(req.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE((CASE 
+    WHEN IFNULL(gcr.rsr_country, '') <> '' THEN gcr.rsr_country
+    WHEN IFNULL(req.country, '') = '' THEN 'Undisclosed'
+    ELSE 'Unmapped'
+  END), '') = COALESCE(norm_loc.country_name, '') AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, '')
 )

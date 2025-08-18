@@ -588,5 +588,4 @@ intrm_sow_dts.spend_forecast_next_year
 from intrm_sow_details intrm_sow_dts
 LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_countries gcr on lower(intrm_sow_dts.country)=lower(gcr.country)
 LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_supplier_mapping gsm ON gsm.buyer = intrm_sow_dts.buyer AND gsm.supplier = intrm_sow_dts.supplier
-LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_sow_classification gbl_sow ON gbl_sow.sub_categories_to_match_those_used_in_the_vms = intrm_sow_dts.classification
-)
+LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_sow_classification gbl_sow ON gbl_sow.sub_categories_to_match_those_used_in_the_vms = intrm_sow_dts.classification)
