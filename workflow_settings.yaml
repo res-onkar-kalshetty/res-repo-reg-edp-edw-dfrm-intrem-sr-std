@@ -1,15 +1,15 @@
 defaultProject: rsr-bi-group-dev-c874
-defaultLocation: [europe-west1]
+defaultLocation: europe-west1
 defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.0
 vars:
-    client_code: [client_code]
-    region: "[region]"
-    ds_name: [dataset_name]
+    client_code: ""
+    region: ""
+    ds_name: ""
     solution: ""
     solution_tool: ""
-    ph1_r: "stdrv_candidate_rpo_dflt_gbl_wells_fargo"
-    ph2_r: "prs_requisition_rpo_dflt_gbl_wells_fargo"
-    ph1_c: "prs_candidate_rpo_dflt_gbl_wells_fargo"
-    ph2_c: "prs_requisition_rpo_dflt_gbl_wells_fargo"
+    ph1_r: ""
+    ph2_r: ""
+    ph1_c: ""
+    ph2_c: ""
