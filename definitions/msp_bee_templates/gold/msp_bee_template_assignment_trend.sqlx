@@ -1,10 +1,11 @@
 config {
     type: "operations",
-    name: "msp_bee_template_assignment_trend",
-    dependencies: ["msp_bee_template_assignment"],
+    name: "msp_bee_template_assignment_trend_gold",
+    dependencies: ["msp_bee_template_assignment_gold"],
     description: 'This file creates the  stdrv layer ',
-    tags: 'msp_bee_template'
+    tags: 'msp_bee_template_gold'
 }
+
 js {
     const {
         getCompleteTableConfig
@@ -12,13 +13,14 @@ js {
     const config = getCompleteTableConfig(ctx);
     const baseTables = config.baseTables.defaults;
 }
+
 DECLARE
   assignment_trend_table_id STRING;
 DECLARE
   assignment_table_id STRING;
 DECLARE
   gold_dataset STRING;
-  EXECUTE IMMEDIATE
+EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
   DISTINCT table_id,
@@ -34,7 +36,6 @@ EXECUTE IMMEDIATE
   `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
     WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''' )INTO assignment_table_id;
-
 IF
   assignment_trend_table_id IS NULL THEN RAISE
 USING
@@ -47,17 +48,13 @@ USING
   MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
 END IF
   ;
-
-
 SET
   gold_dataset = CONCAT("dev","_gold_","${dataform.projectConfig.vars.dataset_id}");
-
-  
 EXECUTE IMMEDIATE
   FORMAT ("""
 CREATE OR REPLACE TABLE %s.%s
    AS (
-  WITH 
+  WITH
 derv_wo AS(
   select
     req_assign_in.assignment_id,
@@ -77,13 +74,13 @@ derv_wo AS(
     gbl_cal_445.calendar_year,
 	gbl_cal_445.reporting_week_date as reporting_date_445_week,
     gbl_cal_445.week
-    FROM 
+    FROM
     %s.%s req_assign_in
 	CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(DATE_TRUNC(CAST(req_assign_in.worker_start_date AS DATE), WEEK), CAST(req_assign_in.reporting_date_ends AS DATE), INTERVAL 1 WEEK)) r_dates
 	left join db_common${dataform.projectConfig.vars.region}.global_calendar_445 gbl_cal_445 ON r_dates = PARSE_DATE('%%m/%%d/%%Y',gbl_cal_445.day)
 ),
 temp5 AS (
-         SELECT 
+         SELECT
             temp1_1.buyer_code,
             temp1_1.assignment_id,
             --temp1_1.worker_id,
@@ -96,7 +93,7 @@ temp5 AS (
         ),
 		temp6 AS (
   SELECT
-      
+
       v.buyer_code,
       v.assignment_id,
       v.worker_id,
@@ -109,7 +106,7 @@ temp5 AS (
     GROUP BY 1, 2, 3, 4, 5),
 		temp7 AS (
   SELECT
-      
+
       v.buyer_code,
       v.assignment_id,
       v.worker_id,
@@ -127,7 +124,7 @@ temp5 AS (
       mapping_date.calendar_reporting_month_date,
       mapping_date.calendar_reporting_month,
       mapping_date.calendar_year,
-      mapping_date.buyer_code,  
+      mapping_date.buyer_code,
       CASE
             WHEN mapping_date.week = temp5.min_week_no THEN 1
             WHEN mapping_date.week <> temp5.min_week_no AND temp5.reporting_month IS NOT NULL THEN 0
@@ -137,9 +134,8 @@ temp5 AS (
 	  mapping_date.reporting_month,
 	 case when mapping_date.r_dates=temp6.max_reporting_date_week_start then 1 else 0 end as max_reporting_week_by_month_flag,
 case when mapping_date.r_dates=temp7.max_reporting_date_week_start then 1 else 0 end as max_reporting_week_overall_flag
-	  
 
-    from derv_wo as mapping_date 
+    from derv_wo as mapping_date
     LEFT JOIN temp5 ON mapping_date.assignment_id = temp5.assignment_id AND mapping_date.reporting_month = temp5.reporting_month AND mapping_date.calendar_year = temp5.calendar_year --AND mapping_date.worker_id = temp5.worker_id
 	left join
     temp6
@@ -148,7 +144,7 @@ case when mapping_date.r_dates=temp7.max_reporting_date_week_start then 1 else 0
     and mapping_date.worker_id=temp6.worker_id
     and mapping_date.calendar_reporting_month_date=temp6.calendar_reporting_month_date
     and mapping_date.calendar_year=temp6.calendar_year
-	left join 
+	left join
     temp7
     on  mapping_date.buyer_code=temp7.buyer_code
     and mapping_date.assignment_id=temp7.assignment_id
@@ -270,16 +266,13 @@ norm_loc.location_level_8,
 norm_loc.location_level_1a,
 norm_loc.location_level_2a
 
-FROM 
+FROM
 	%s.%s assign
-	LEFT JOIN cal_comp ON assign.assignment_id = cal_comp.assignment_id 
+	LEFT JOIN cal_comp ON assign.assignment_id = cal_comp.assignment_id
 	LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER)
    LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on assign.main_document_title = norm_jt.raw_job_title
     LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(assign.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(assign.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(assign.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(assign.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(assign.country, '') = COALESCE(norm_loc.country_code, ''))""",gold_dataset, assignment_trend_table_id,gold_dataset, assignment_table_id,gold_dataset,assignment_table_id);
-
-
-
 CREATE OR REPLACE TABLE
   `${dataform.projectConfig.vars.ds_name}.stdrv_assignment_trend_${dataform.projectConfig.vars.client_code}` AS (
   WITH

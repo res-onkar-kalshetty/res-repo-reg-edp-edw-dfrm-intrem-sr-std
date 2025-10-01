@@ -1,9 +1,9 @@
 config {
     type: "operations",
-    name: "msp_bee_template_spend",
-    dependencies: ["msp_bee_template_requisition", "msp_bee_template_assignment"],
+    name: "msp_bee_template_spend_gold",
+    dependencies: ["msp_bee_template_requisition_gold", "msp_bee_template_assignment_gold"],
     description: 'This file creates the  stdrv layer ',
-    tags: 'msp_bee_template',
+    tags: 'msp_bee_template_gold',
 }
 
 js {
