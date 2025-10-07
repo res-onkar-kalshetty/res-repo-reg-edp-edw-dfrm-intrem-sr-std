@@ -1,8 +1,8 @@
 config {
     type: "operations",
-    name: "msp_template_savings_trend",
-    tags: 'msp_template',
-    dependencies: ['msp_template_assignment', 'msp_template_spend'],
+    name: "msp_template_savings_trend_gold",
+    tags: 'msp_template_gold',
+    dependencies: ['msp_template_assignment_gold', 'msp_template_spend_gold'],
     description: 'This file creates the  stdrv layer'
 }
 

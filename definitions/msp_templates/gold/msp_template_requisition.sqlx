@@ -1,8 +1,7 @@
 config {
     type: "operations",
-    name: "msp_template_requisition",
-    schema: `${dataform.projectConfig.vars.ds_name}`,
-    tags: "msp_template"
+    name: "msp_template_requisition_gold",
+    tags: "msp_template_gold"
 }
 
 js {

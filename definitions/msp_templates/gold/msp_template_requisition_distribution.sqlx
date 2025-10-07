@@ -1,9 +1,8 @@
 config {
     type: "operations",
-    name: 'msp_template_requisition_distribution',
-    tags: 'msp_template',
-	schema: `${dataform.projectConfig.vars.ds_name}`,
-    dependencies: ['msp_template_requisition', 'msp_template_assignment', 'msp_template_candidate'],
+    name: 'msp_template_requisition_distribution_gold',
+    tags: 'msp_template_gold',
+    dependencies: ['msp_template_requisition_gold', 'msp_template_assignment_gold', 'msp_template_candidate_gold'],
     description: 'This file creates the  stdrv layer'
 } 
 

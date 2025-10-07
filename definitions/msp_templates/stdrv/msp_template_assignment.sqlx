@@ -2,7 +2,6 @@ config {
     type: "operations",
     name: 'msp_template_assignment',
     tags: 'msp_template',
-    schema: `${dataform.projectConfig.vars.ds_name}`,
     dependencies: ['msp_template_requisition'],
     description: 'This file creates the  stdrv layer'
 }
