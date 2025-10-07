@@ -1,8 +1,8 @@
 config {
     type: "operations",
-    name: "msp_ntv_template_savings_trend",
-    tags: 'msp_ntv_template',
-    dependencies: ['msp_ntv_template_assignment', 'msp_ntv_template_spend'],
+    name: "msp_ntv_template_savings_trend_gold",
+    tags: 'msp_ntv_template_gold',
+    dependencies: ['msp_ntv_template_assignment_gold', 'msp_ntv_template_spend_gold'],
     description: 'This file creates the  stdrv layer'
 }
 
