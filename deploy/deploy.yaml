@@ -1,0 +1,48 @@
+steps:
+  - name: 'gcr.io/cloud-builders/git'
+    secretEnv: ['SSH_KEY']
+    entrypoint: 'bash'
+    args:
+      - -c
+      - |
+        echo "$$SSH_KEY" >> /root/.ssh/id_rsa
+        chmod 400 /root/.ssh/id_rsa
+        cp deploy/known_hosts.github /root/.ssh/known_hosts
+    id: set-up-github-access
+    volumes:
+      - name: 'ssh'
+        path: /root/.ssh
+  # To validate the build and take the build step accordingly.
+  - name: gcr.io/cloud-builders/git
+    entrypoint: bash
+    args: ['./deploy/validate_build.sh']
+    id: validate-build
+    volumes:
+      - name: 'ssh'
+        path: /root/.ssh
+  
+  - name: gcr.io/cloud-builders/gcloud
+    id: 'deploy-testing'
+    entrypoint: bash
+    args: ['./deploy/deploy.sh']
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/<proj-id>/secrets/<secret-name>/versions/latest
+      env: 'SSH_KEY'
+options:
+  logging: CLOUD_LOGGING_ONLY
+  env:
+    - '_ENV_=${_ENV_}'
+    - 'DFORM_NAME=${_DFORM_NAME}'
+    - 'DFORM_LOCATION=${_DFORM_LOCATION}'
+    - 'PROJECT_ID=${PROJECT_ID}'
+    - 'REGION=${LOCATION}'
+    - 'BUILD_ID=${BUILD_ID}'
+    - 'REF_NAME=${REF_NAME}'
+    - '_HEAD_BRANCH=${_HEAD_BRANCH}'
+    - 'REPO_NAME=${REPO_NAME}'
+    - 'SHORT_SHA=${SHORT_SHA}'
+    - 'COMMIT_SHA=${COMMIT_SHA}'
+    - 'PROJECT_DEV=rsr-bi-group-dev-c874'
+    - 'PROJECT_PRD=rsr-bi-group-prd-701e'

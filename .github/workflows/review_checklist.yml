@@ -1,0 +1,39 @@
+name: "Pull request checklist"
+on:
+  pull_request_review:
+    types: [submitted]
+jobs:
+  pull_request_info:
+    if: github.event.review.state == 'approved'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          
+      - name: get pr comment content
+        env:
+          base_ref: ${{ github.event.pull_request.base.ref }}
+        shell: bash
+        run: |
+          echo "validating head branch $base_ref triggered by ${GITHUB_TRIGGERING_ACTOR} and finding the right review template."
+          template=$(([[ $base_ref =~ ^master$ ]] && cat .github/review_checklists/review_checklist_releases.md) || ([[ $base_ref =~ ^release-v[1-9][0-9]*?\.([0-9]|[1-9][0-9]+)\.([0-9]|[1-9][0-9]+)$ ]] && cat .github/review_checklists/review_checklist_features.md))
+          echo "review template chosen is: "
+          echo "$template"
+          [[ ! -z $template ]] && (echo "@${GITHUB_TRIGGERING_ACTOR} \
+          $template" > review_template.md)
+          echo $pr_content
+          echo "pr_content=$pr_content" >> $GITHUB_OUTPUT
+        id: get_pr_content
+        
+      - name: Show checklist
+        if: ${{ steps.get_pr_content.outputs.pr_content != 'false'}}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: ${{ format('show_checklist {0}', github.triggering_actor) }}
+          recreate: true
+          path: review_template.md
