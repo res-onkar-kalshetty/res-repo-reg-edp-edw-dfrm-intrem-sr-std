@@ -13,6 +13,7 @@ js {
     const config = getCompleteTableConfig(ctx);
     const baseTables = config.baseTables.defaults;
 }
+
 DECLARE
   candidate_table_id STRING;
 DECLARE
@@ -21,7 +22,7 @@ DECLARE
   assignment_table_id STRING;
 DECLARE
   gold_dataset STRING;
-  EXECUTE IMMEDIATE
+EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
   DISTINCT table_id,
@@ -29,7 +30,7 @@ DECLARE
   `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
     WHERE standard_report_type = 'candidate_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''' )INTO candidate_table_id;
-  EXECUTE IMMEDIATE
+EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
   DISTINCT table_id,
@@ -45,7 +46,6 @@ EXECUTE IMMEDIATE
   `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
     WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''' )INTO assignment_table_id;
-
 IF
   candidate_table_id IS NULL THEN RAISE
 USING
@@ -64,14 +64,10 @@ USING
   MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
 END IF
   ;
-
-
 SET
   gold_dataset = CONCAT("dev","_gold_","${dataform.projectConfig.vars.dataset_id}");
-
-
 EXECUTE IMMEDIATE
-FORMAT ("""
+  FORMAT ("""
 
 CREATE OR REPLACE TABLE
   %s.%s AS (
@@ -93,7 +89,7 @@ FROM (
     MAX(new_status_datetime) AS status_datetime,
     MAX(rsr_processed_date) AS rsr_processed_date
     FROM
-     `${dataform.projectConfig.vars.ds_name}.{baseTables.candidate}_${dataform.projectConfig.vars.client_code}`
+     `${dataform.projectConfig.vars.ds_name}.${baseTables.candidate}_${dataform.projectConfig.vars.client_code}`
     GROUP BY
     buyer,
     req_id,
@@ -107,9 +103,6 @@ FROM (
 
 cand_non_transactional as(
 SELECT DISTINCT
-------------------------------------------------------------------------
--- STANDARD FIELDS FROM SOURCE
-------------------------------------------------------------------------
 cand.buyer
 ,cand.buyer_code
 ,cand.req_id
@@ -141,10 +134,6 @@ cand.buyer
 ,cand.presented_pay_rate
 ---- needed for supporting other calcs---
 ,cand.assignment_id
-
-------------------------------------------------------------------------
--- PIVOTED DATE FIELDS
-------------------------------------------------------------------------
 -- cand_submit_date
 ,(SELECT MIN(status_datetime)
     FROM status_dates
@@ -194,7 +183,6 @@ cand.buyer
         AND cand.cand_id = status_dates.cand_id
         AND status_dates.activity_status IN ('interview_1','interview_2')) AS cand_first_interviewed_date
 
-
 -- cand_last_interview_date
 ,(SELECT MAX(status_datetime)
     FROM status_dates
@@ -202,26 +190,20 @@ cand.buyer
         AND cand.cand_id = status_dates.cand_id
         AND status_dates.activity_status IN ('interview_1','interview_2')) AS cand_last_interviewed_date
 
-
 ,(SELECT MAX(rsr_processed_date)
     FROM status_dates
     WHERE cand.req_id = status_dates.req_id
     AND cand.cand_id = status_dates.cand_id) AS rsr_processed_date
 ,cand.rsr_staffing_entity -- winter_release 2025
-FROM `${dataform.projectConfig.vars.ds_name}.{baseTables.candidate}_${dataform.projectConfig.vars.client_code}` cand
+FROM `${dataform.projectConfig.vars.ds_name}.${baseTables.candidate}_${dataform.projectConfig.vars.client_code}` cand
 QUALIFY ROW_NUMBER() OVER (partition by cand.req_id, cand.cand_id order by cand_last_modified_date desc)= 1 -- this needs to be done beacuse we would want to get the latest details for each candidate id and req_id, incase there are two dates in cand_last_modified date two rows will appear even for 1 can id and req id combination
 ),
-
-
-------------------------------------------------------------------------
--- Standard MSP template after pivitoing to non transactional
-------------------------------------------------------------------------
 
 js_assingment_data as (select
 				cand.*
         except(presented_bill_rate,presented_bill_rate_st_basis,presented_pay_rate) -- removing these fields since they are not standalone fields in the template
 				,assingment_in.assignment_create_date_initial as cand_offer_extended_date
-				-- ,assingment_in.supplier_code,
+				-- ,assingment_in.supplier_code
 				,assingment_supplier_details.supplier_code
 				,case when LOWER(req.rate_unit_type) like '%%hour%%' then cand.presented_bill_rate
 					when LOWER(req.rate_unit_type) like '%%day%%' then (cand.presented_bill_rate /(req.hours_per_week/req.days_per_week))
@@ -298,7 +280,7 @@ js_assingment_data as (select
 			  , lower(regexp_replace(supplier, r"\\s+", "")) as supplier
 		  ,req_id
 		  ,MIN(req_distribution_date) AS min_req_dist_date
-	FROM ${dataform.projectConfig.vars.ds_name}.{baseTables.requisition_distribution}_${dataform.projectConfig.vars.client_code}
+	FROM ${dataform.projectConfig.vars.ds_name}.${baseTables.requisition_distribution}_${dataform.projectConfig.vars.client_code}
 	GROUP BY buyer_code
 	-- ,supplier_code --grouping by supplier instead of supplier code due to absence of supplier code in req dist
 	, lower(regexp_replace(supplier, r"\\s+", "")) --  supplier will be string like 'Investigo Limited'/ 'Randstad Sourceright LTD'
@@ -545,8 +527,4 @@ LEFT JOIN fx_rates fx_cad ON candidate_assingment_req.currency = fx_cad.from_cur
 LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(candidate_assingment_req.buyer_code) AND div_supp.supplier_code=candidate_assingment_req.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER)
 LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on candidate_assingment_req.req_title = norm_jt.raw_job_title
     LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(candidate_assingment_req.req_city, '') = COALESCE(norm_loc.city, '') AND COALESCE(candidate_assingment_req.rsr_state, '') = COALESCE(norm_loc.state, '')
-  AND COALESCE(candidate_assingment_req.req_state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(candidate_assingment_req.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(candidate_assingment_req.req_country, '') = COALESCE(norm_loc.country_code, ''))""",
-  gold_dataset,candidate_table_id,
-  gold_dataset,assignment_table_id,
-  gold_dataset,assignment_table_id,
-  gold_dataset,requisition_table_id);
+  AND COALESCE(candidate_assingment_req.req_state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(candidate_assingment_req.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(candidate_assingment_req.req_country, '') = COALESCE(norm_loc.country_code, ''))""", gold_dataset,candidate_table_id, gold_dataset,assignment_table_id, gold_dataset,assignment_table_id, gold_dataset,requisition_table_id);

@@ -194,7 +194,7 @@ global_supplier_mapping AS (
   SELECT
     DISTINCT TRIM(LOWER(gbl_sup_map_in.buyer)) AS buyer,
     TRIM(LOWER(gbl_sup_map_in.supplier)) AS supplier,
-    gbl_sup_map_in.suppliername_dw,
+    gbl_sup_map_in.suppliername_dw
   FROM
     db_common${dataform.projectConfig.vars.region}.global_supplier_mapping AS gbl_sup_map_in ),
 job_posting_data as (
@@ -360,10 +360,10 @@ LEFT OUTER JOIN  job_posting_data ON job_posting_data.req_id = job_posting_dist_
 LEFT OUTER JOIN  aggregates_jp_dist_supp ON job_posting_dist_data.req_id = aggregates_jp_dist_supp.req_id AND job_posting_dist_data.supplier = aggregates_jp_dist_supp.supplier
 LEFT OUTER JOIN  aggregates_wo_wsupp ON  job_posting_dist_data.req_id = aggregates_wo_wsupp.main_document_id
 -- AND job_posting_dist_data.supplier_code = aggregates_wo_wsupp.supplier_code
-AND lower(regexp_replace(job_posting_dist_data.supplier, r"\s+", "")) = lower(regexp_replace(aggregates_wo_wsupp.supplier, r"\s+", ""))
+AND lower(regexp_replace(job_posting_dist_data.supplier, r"\\s+", "")) = lower(regexp_replace(aggregates_wo_wsupp.supplier, r"\\s+", ""))
 LEFT OUTER JOIN  aggregates_job_seekers_wsupp ON  job_posting_dist_data.req_id = aggregates_job_seekers_wsupp.req_id
 -- AND job_posting_dist_data.supplier_code = aggregates_job_seekers_wsupp.supplier_code
-AND lower(regexp_replace(job_posting_dist_data.supplier, r"\s+", "")) = lower(regexp_replace(aggregates_job_seekers_wsupp.supplier, r"\s+", ""))
+AND lower(regexp_replace(job_posting_dist_data.supplier, r"\\s+", "")) = lower(regexp_replace(aggregates_job_seekers_wsupp.supplier, r"\\s+", ""))
 LEFT OUTER JOIN  ${dataform.projectConfig.vars.ds_name}.${baseTables.supplier}_${dataform.projectConfig.vars.client_code} supplier_data ON  job_posting_dist_data.supplier = supplier_data.supplier AND job_posting_dist_data.supplier_code = supplier_data.supplier_code
 LEFT OUTER JOIN  global_supplier_mapping ON  TRIM(LOWER(job_posting_dist_data.supplier)) = global_supplier_mapping.supplier  AND TRIM(LOWER(job_posting_dist_data.buyer)) = global_supplier_mapping.buyer
 LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(job_posting_dist_data.buyer_code) AND div_supp.supplier_code=job_posting_dist_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER)
