@@ -74,7 +74,7 @@ CREATE OR REPLACE TABLE `%s.%s` AS (
 with calendar as (
     select
     calendar_reporting_month,
-    Parse_date("%m/%d/%Y",calendar_reporting_month_date) as calendar_reporting_month_date,
+    Parse_date("%%m/%%d/%%Y",calendar_reporting_month_date) as calendar_reporting_month_date,
     calendar_reporting_quarter,
     calendar_reporting_year
     from
@@ -180,7 +180,7 @@ fx_rates AS (
   SELECT
       CAST(fx_rate AS FLOAT64) AS fx_rate,
       from_currency,
-      PARSE_DATE("%Y-%m-%d", month) AS month,
+      PARSE_DATE("%%Y-%%m-%%d", month) AS month,
       to_currency
     FROM
       db_common${dataform.projectConfig.vars.region}.global_fx_rates

@@ -507,8 +507,8 @@ WITH spend_data AS (
       spend_in.supplier,
       spend_in.view_billable_hours_st_hr,
       -- CASE
-       -- WHEN spend_in.main_document_id LIKE '%JP%' THEN 'Time Materials'
-       --  WHEN spend_in.main_document_id LIKE '%TQ%' THEN 'SOW'
+       -- WHEN spend_in.main_document_id LIKE '%%JP%%' THEN 'Time Materials'
+       --  WHEN spend_in.main_document_id LIKE '%%TQ%%' THEN 'SOW'
       -- ELSE 'NULL'
      -- END AS tm_sow,
       DATE(CASE
@@ -518,7 +518,7 @@ WITH spend_data AS (
       spend_in.rsr_processed_date,
       #cost_savings 2024 Fall release
       spend_in.rsr_client_code,
-      case when spend_in.invoice_line_item_id LIKE '%TS%' OR spend_in.invoice_line_item_type LIKE '%Time%' OR LOWER(spend_in.invoice_line_item_type) LIKE 'regular%'
+      case when spend_in.invoice_line_item_id LIKE '%%TS%%' OR spend_in.invoice_line_item_type LIKE '%%Time%%' OR LOWER(spend_in.invoice_line_item_type) LIKE 'regular%%'
     then True else False end as timesheet_regular_flag,
 	# Winter release 2025
 	spend_in.business_unit,
@@ -576,7 +576,7 @@ WITH spend_data AS (
   SELECT
       CAST(fx_rate AS FLOAT64) AS fx_rate,
       from_currency,
-      PARSE_DATE("%Y-%m-%d", month) AS month,
+      PARSE_DATE("%%Y-%%m-%%d", month) AS month,
       to_currency
     FROM
       db_common${dataform.projectConfig.vars.region}.global_fx_rates
@@ -630,9 +630,9 @@ SELECT
     spend_data.legal_entity,
     spend_data.supplier_code,
     spend_data.supplier,
-    PARSE_DATE("%m/%d/%Y", global_calendar_445.calendar_reporting_month_date) AS calendar_reporting_month_date,
-    PARSE_DATE("%m/%d/%Y",global_calendar_445.reporting_month_date) as reporting_date_445_month,
-	PARSE_DATE("%m/%d/%Y",global_calendar_445.reporting_week_date) as reporting_date_445_week,
+    PARSE_DATE("%%m/%%d/%%Y", global_calendar_445.calendar_reporting_month_date) AS calendar_reporting_month_date,
+    PARSE_DATE("%%m/%%d/%%Y",global_calendar_445.reporting_month_date) as reporting_date_445_month,
+	PARSE_DATE("%%m/%%d/%%Y",global_calendar_445.reporting_week_date) as reporting_date_445_week,
     CASE
       WHEN reqs_assignment_data.rsr_country='United States of America' THEN div_supp.primary_diversity_type
       ELSE CAST(NULL AS STRING)
@@ -689,7 +689,7 @@ SELECT
     CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS STRING) AS `invoice_year_calendar`,
     CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AS `year_calendar`,
     EXTRACT(MONTH FROM CAST(spend_data.reporting_date AS DATE)) AS `month_calendar`,
-    UPPER(FORMAT_DATETIME("%B", DATETIME(spend_data.reporting_date))) AS `month_name_calendar`,
+    UPPER(FORMAT_DATETIME("%%B", DATETIME(spend_data.reporting_date))) AS `month_name_calendar`,
     CASE WHEN spend_data.bill_rate_st_hr IS NULL THEN (
          CASE WHEN SAFE_DIVIDE(ROUND(spend_data.line_item_amount, 4), ROUND(spend_data.view_billable_hours_st_hr, 4)) < 0.0000 THEN NULL
               ELSE SAFE_DIVIDE(ROUND(spend_data.line_item_amount, 4), ROUND(spend_data.view_billable_hours_st_hr, 4)) END) 
@@ -814,7 +814,7 @@ end as extension_negotiated_savings,
 case 
 when (cost_saving.previous_rsr_payroll_markup_percent/100)  > 0 
 and (cost_saving.rsr_payroll_markup_percent/100) > 0 
-and reqs_assignment_data.rsr_sourced_type like "%Payroll%" 
+and reqs_assignment_data.rsr_sourced_type like "%%Payroll%%" 
 AND spend_data.timesheet_regular_flag 
 then (spend_data.invoice_amount * (1+(cost_saving.previous_rsr_payroll_markup_percent/100))) / (1 + (cost_saving.rsr_payroll_markup_percent/100)) - spend_data.invoice_amount
 ELSE CAST(NULL AS FLOAT64)
@@ -822,8 +822,8 @@ end as payroll_savings,
 
 
 case 
-when gbl_sup_map.suppliername_dw like '%RSR%' 
-and reqs_assignment_data.rsr_sourced_type like '%Direct%' 
+when gbl_sup_map.suppliername_dw like '%%RSR%%' 
+and reqs_assignment_data.rsr_sourced_type like '%%Direct%%' 
 and spend_data.timesheet_regular_flag
 then (spend_data.invoice_amount * ((1+(cost_saving.supplier_markup_percent/100)) / (1+(cost_saving.rsr_direct_sourcing_markup_percent/100)))) - spend_data.invoice_amount 
 ELSE CAST(NULL AS FLOAT64)
@@ -831,8 +831,8 @@ end as direct_sourcing_savings,
 
 
 case 
-when reqs_assignment_data.rsr_sourced_type like "%Recruited%" and
-gbl_sup_map.suppliername_dw not like '%RSR%'  and
+when reqs_assignment_data.rsr_sourced_type like "%%Recruited%%" and
+gbl_sup_map.suppliername_dw not like '%%RSR%%'  and
 spend_data.timesheet_regular_flag and
 cost_saving.supplier_markup_percent < cost_saving.previous_supplier_markup_percent
 then (spend_data.invoice_amount / (1+(cost_saving.supplier_markup_percent/100))) * (1 + (cost_saving.previous_supplier_markup_percent/100) ) - spend_data.invoice_amount 
@@ -933,7 +933,7 @@ norm_loc.location_level_2a
       ON trim(lower(spend_data.supplier)) = trim(lower(gbl_sup_map.supplier))
       AND trim(lower(spend_data.buyer)) = trim(lower(gbl_sup_map.buyer))
     LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_calendar_445 AS global_calendar_445 
-      ON spend_data.reporting_date = PARSE_DATE("%m/%d/%Y", global_calendar_445.day)
+      ON spend_data.reporting_date = PARSE_DATE("%%m/%%d/%%Y", global_calendar_445.day)
     LEFT JOIN %s.%s req
       on spend_data.main_document_id=req.req_id
     LEFT JOIN fx_rates AS fx_usd 

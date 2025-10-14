@@ -157,7 +157,7 @@ FROM %s.%s )
   SELECT
       CAST(fx_rate AS FLOAT64) AS fx_rate,
       from_currency,
-      PARSE_DATE("%Y-%m-%d", month) AS month,
+      PARSE_DATE("%%Y-%%m-%%d", month) AS month,
       to_currency
     FROM
       db_common${dataform.projectConfig.vars.region}.global_fx_rates
@@ -300,7 +300,7 @@ END AS supplier_presented_bill_rate_st_hr_cad
 		THEN ROUND(candidate_assingment.presented_pay_rate_st_hr, 4)
 	ELSE ROUND((fx_cad.fx_rate * candidate_assingment.presented_pay_rate_st_hr), 4)
 END AS presented_pay_rate_st_hr_cad
-,PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date) AS control
+,PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date) AS control
 ,CASE
 	WHEN req.rsr_country='United States of America' THEN div_supp.primary_diversity_type
 	ELSE CAST(NULL AS STRING)
@@ -347,8 +347,8 @@ END AS supplier_erp_id
 	WHEN req.max_template_bill_rate_st_hr >= candidate_assingment.presented_bill_rate_supplier_st_hr THEN 'Compliant'
 	ELSE 
 		CASE
-            WHEN candidate_assingment.presented_bill_rate_supplier_st_hr <  (CAST('1.15' AS NUMERIC) * req.max_template_bill_rate_st_hr) THEN 'Non-Compliant - Under 115% Max Bill Rate'
-            ELSE 'Non-Compliant - Over 115% Max Bill Rate'
+            WHEN candidate_assingment.presented_bill_rate_supplier_st_hr <  (CAST('1.15' AS NUMERIC) * req.max_template_bill_rate_st_hr) THEN 'Non-Compliant - Under 115%% Max Bill Rate'
+            ELSE 'Non-Compliant - Over 115%% Max Bill Rate'
         END
 end) AS compliance_vs_max_template_bill_rate
 ,req.rsr_state
@@ -411,12 +411,12 @@ LEFT JOIN req_data as req ON candidate_assingment.buyer = req.buyer AND candidat
 LEFT JOIN req_dist_data ON candidate_assingment.buyer_code = req_dist_data.buyer_code AND candidate_assingment.supplier_code = req_dist_data.supplier_code AND candidate_assingment.req_id = req_dist_data.req_id
 LEFT JOIN global_supp_map ON TRIM(LOWER(candidate_assingment.buyer)) = global_supp_map.buyer AND TRIM(LOWER(candidate_assingment.supplier)) = global_supp_map.supplier
 LEFT JOIN global_js_status_mapping ON trim(lower(candidate_assingment.cand_status)) = global_js_status_mapping.job_seeker_status
-LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_calendar_445 AS global_calendar_445 ON EXTRACT(DATE FROM Function_library${dataform.projectConfig.vars.region}.max_array([candidate_assingment.cand_submit_date, candidate_assingment.assignment_activation_date_initial])) = PARSE_DATE("%m/%d/%Y", global_calendar_445.day)
-LEFT JOIN fx_rates fx_usd ON candidate_assingment.currency = fx_usd.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_usd.month AND fx_usd.to_currency = 'USD'
-LEFT JOIN fx_rates fx_eur ON candidate_assingment.currency = fx_eur.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_eur.month AND fx_eur.to_currency = 'EUR'
-LEFT JOIN fx_rates fx_gbp ON candidate_assingment.currency = fx_gbp.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_gbp.month AND fx_gbp.to_currency = 'GBP'
-LEFT JOIN fx_rates fx_inr ON candidate_assingment.currency = fx_inr.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_inr.month AND fx_inr.to_currency = 'INR' 
-LEFT JOIN fx_rates fx_cad ON candidate_assingment.currency = fx_cad.from_currency AND PARSE_DATE('%m/%d/%Y', global_calendar_445.calendar_reporting_month_date)=fx_cad.month AND fx_cad.to_currency = 'CAD' 
+LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_calendar_445 AS global_calendar_445 ON EXTRACT(DATE FROM Function_library${dataform.projectConfig.vars.region}.max_array([candidate_assingment.cand_submit_date, candidate_assingment.assignment_activation_date_initial])) = PARSE_DATE("%%m/%%d/%%Y", global_calendar_445.day)
+LEFT JOIN fx_rates fx_usd ON candidate_assingment.currency = fx_usd.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_usd.month AND fx_usd.to_currency = 'USD'
+LEFT JOIN fx_rates fx_eur ON candidate_assingment.currency = fx_eur.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_eur.month AND fx_eur.to_currency = 'EUR'
+LEFT JOIN fx_rates fx_gbp ON candidate_assingment.currency = fx_gbp.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_gbp.month AND fx_gbp.to_currency = 'GBP'
+LEFT JOIN fx_rates fx_inr ON candidate_assingment.currency = fx_inr.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_inr.month AND fx_inr.to_currency = 'INR' 
+LEFT JOIN fx_rates fx_cad ON candidate_assingment.currency = fx_cad.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_cad.month AND fx_cad.to_currency = 'CAD' 
 LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(candidate_assingment.buyer_code) AND div_supp.supplier_code=candidate_assingment.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(candidate_assingment.cand_submit_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(candidate_assingment.cand_submit_date AS DATE)) AS INTEGER)
 LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
     LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(req.req_city, '') = COALESCE(norm_loc.city, '') AND COALESCE(req.rsr_state, '') = COALESCE(norm_loc.state, '')
