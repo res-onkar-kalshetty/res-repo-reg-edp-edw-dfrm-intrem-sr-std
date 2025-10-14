@@ -5,7 +5,14 @@ config {
     dependencies: ['msp_ntv_template_requisition_gold', 'msp_ntv_template_assignment_gold', 'msp_ntv_template_candidate_gold'],
     description: 'This file creates the  stdrv layer'
 }
-ECLARE
+js {
+    const {
+        getCompleteTableConfig
+    } = require("includes/table_config");
+    const config = getCompleteTableConfig(ctx);
+    const baseTables = config.baseTables.defaults;
+}
+DECLARE
   requisition_distribution_table_id STRING;
 DECLARE
   candidate_table_id STRING;

@@ -1,8 +1,8 @@
 config {
     type: "operations",
-    name: "msp_template_spend_sowonly",
-    tags: 'msp_template_sow',
-    dependencies: ['msp_template_assignment_sowonly'],
+    name: "msp_template_spend_sowonly_gold",
+    tags: 'msp_template_sow_gold',
+    dependencies: ['msp_template_assignment_sowonly_gold'],
     description: 'This file creates the  stdrv layer'
 }
 CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_spend_sowonly_${dataform.projectConfig.vars.client_code}` AS (

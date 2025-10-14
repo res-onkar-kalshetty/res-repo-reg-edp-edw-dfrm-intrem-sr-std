@@ -1,7 +1,7 @@
 config {
     type: "operations",
-    name: "msp_template_sow_trend",
-    tags: 'msp_template_sow',
+    name: "msp_template_sow_trend_gold",
+    tags: 'msp_template_sow_gold',
     description: 'This file creates the  stdrv layer'
 }
 CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_sow_trend_${dataform.projectConfig.vars.client_code}` AS (
