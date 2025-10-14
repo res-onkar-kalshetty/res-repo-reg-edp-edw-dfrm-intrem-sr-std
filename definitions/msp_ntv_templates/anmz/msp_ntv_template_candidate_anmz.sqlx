@@ -43,7 +43,7 @@ EXECUTE IMMEDIATE
         anonymization.get_anonymized_select_clause({
             report_type: "candidate",
             solution: "MSP",
-            metadata_table: "common.master_template_report_fields_prd_cpy"
+            metadata_table: "common_emea.master_template_report_fields_prd_cpy"
         })
     }""" INTO select_clause;
 SET
