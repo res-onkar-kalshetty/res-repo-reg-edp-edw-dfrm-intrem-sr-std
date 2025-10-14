@@ -5,9 +5,82 @@ config {
     dependencies: ['msp_ntv_template_requisition_gold', 'msp_ntv_template_assignment_gold', 'msp_ntv_template_candidate_gold'],
     description: 'This file creates the  stdrv layer'
 }
+ECLARE
+  requisition_distribution_table_id STRING;
+DECLARE
+  candidate_table_id STRING;
+DECLARE
+  requisition_table_id STRING;
+DECLARE
+  assignment_table_id STRING;
+DECLARE
+  gold_dataset STRING;
+  EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+    WHERE standard_report_type = 'requisition_distribution_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' )INTO requisition_distribution_table_id;
+  EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+    WHERE standard_report_type = 'candidate_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' )INTO candidate_table_id;
+  EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+    WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' )INTO requisition_table_id;
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+    WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' )INTO assignment_table_id;
 
+IF
+  requisition_distribution_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'requisition distribution TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+IF
+  candidate_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'candidate TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+IF
+  requisition_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+IF
+  assignment_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+
+
+SET
+  gold_dataset = CONCAT("dev","_gold_","${dataform.projectConfig.vars.dataset_id}");
+
+EXECUTE IMMEDIATE
+FORMAT ("""
 CREATE OR REPLACE TABLE
-  `${dataform.projectConfig.vars.ds_name}.stdrv_requisition_distribution_${dataform.projectConfig.vars.client_code}` AS (
+  %s.%s AS (
   WITH
   wo_data AS (
   SELECT
@@ -19,7 +92,7 @@ CREATE OR REPLACE TABLE
     wo_in.assignment_id,
     wo_in.assignment_create_date_initial
   FROM
-    ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} AS wo_in),
+    %s.%s AS wo_in),
   aggregates_wo_wsupp AS (
   SELECT
     wo_data.buyer,
@@ -43,7 +116,7 @@ CREATE OR REPLACE TABLE
       MIN(req_initial_distribution_date) AS min_req_initial_distribution_date,
       MAX(req_initial_distribution_date) AS max_req_initial_distribution_date
   FROM
-	${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code}
+	${dataform.projectConfig.vars.ds_name}.${baseTables.requisition_distribution}_${dataform.projectConfig.vars.client_code}
   GROUP BY
 	supplier_code),
   aggregates_jp_dist_supp AS (
@@ -53,7 +126,7 @@ CREATE OR REPLACE TABLE
     jp_dist.supplier,
     COUNT(DISTINCT CASE WHEN COALESCE(jp_dist.req_distribution_status, 'na') <> 'Declined' THEN jp_dist.supplier ELSE 'NULL' END ) AS no_of_suppliers_posted
   FROM
-    ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code} jp_dist
+    ${dataform.projectConfig.vars.ds_name}.${baseTables.requisition_distribution}_${dataform.projectConfig.vars.client_code} jp_dist
   GROUP BY
     jp_dist.buyer_code,
     jp_dist.req_id,
@@ -81,7 +154,7 @@ CREATE OR REPLACE TABLE
     CAST(global_js_status_mapping.hired AS NUMERIC) AS hired,
     CAST(global_js_status_mapping.withdrawn AS NUMERIC) AS withdrawn
   FROM
-    ${dataform.projectConfig.vars.ds_name}.stdrv_candidate_${dataform.projectConfig.vars.client_code} AS js_in
+    %s.%s AS js_in
   LEFT OUTER JOIN
     db_common${dataform.projectConfig.vars.region}.global_js_status AS global_js_status_mapping
   ON
@@ -152,7 +225,7 @@ job_posting_data as (
   rsr_country,
   currency,
   rsr_close_reason
-  FROM ${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code}
+  FROM %s.%s
 )
 SELECT
   job_posting_dist_data.buyer,
@@ -274,7 +347,7 @@ norm_loc.location_level_7,
 norm_loc.location_level_8,
 norm_loc.location_level_1a,
 norm_loc.location_level_2a
-FROM ${dataform.projectConfig.vars.ds_name}.prs_requisition_distribution_${dataform.projectConfig.vars.client_code} job_posting_dist_data
+FROM ${dataform.projectConfig.vars.ds_name}.${baseTables.requisition_distribution}_${dataform.projectConfig.vars.client_code} job_posting_dist_data
 LEFT OUTER JOIN aggregates_min_req_dist_date ON job_posting_dist_data.supplier_code = aggregates_min_req_dist_date.supplier_code
 LEFT OUTER JOIN  job_posting_data ON job_posting_data.req_id = job_posting_dist_data.req_id
 LEFT OUTER JOIN  aggregates_jp_dist_supp ON job_posting_dist_data.req_id = aggregates_jp_dist_supp.req_id AND job_posting_dist_data.supplier = aggregates_jp_dist_supp.supplier
@@ -284,9 +357,10 @@ AND lower(regexp_replace(job_posting_dist_data.supplier, r"\s+", "")) = lower(re
 LEFT OUTER JOIN  aggregates_job_seekers_wsupp ON  job_posting_dist_data.req_id = aggregates_job_seekers_wsupp.req_id
 -- AND job_posting_dist_data.supplier_code = aggregates_job_seekers_wsupp.supplier_code
 AND lower(regexp_replace(job_posting_dist_data.supplier, r"\s+", "")) = lower(regexp_replace(aggregates_job_seekers_wsupp.supplier, r"\s+", ""))
-LEFT OUTER JOIN  ${dataform.projectConfig.vars.ds_name}.prs_supplier_${dataform.projectConfig.vars.client_code} supplier_data ON  job_posting_dist_data.supplier = supplier_data.supplier AND job_posting_dist_data.supplier_code = supplier_data.supplier_code
+LEFT OUTER JOIN  ${dataform.projectConfig.vars.ds_name}.${baseTables.supplier}_${dataform.projectConfig.vars.client_code} supplier_data ON  job_posting_dist_data.supplier = supplier_data.supplier AND job_posting_dist_data.supplier_code = supplier_data.supplier_code
 LEFT OUTER JOIN  global_supplier_mapping ON  TRIM(LOWER(job_posting_dist_data.supplier)) = global_supplier_mapping.supplier  AND TRIM(LOWER(job_posting_dist_data.buyer)) = global_supplier_mapping.buyer
 LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(job_posting_dist_data.buyer_code) AND div_supp.supplier_code=job_posting_dist_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER)
 LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on job_posting_data.req_title = norm_jt.raw_job_title
     LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(job_posting_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(job_posting_data.rsr_state, '') = COALESCE(norm_loc.state, '')
-  AND COALESCE(job_posting_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(job_posting_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(job_posting_data.country, '') = COALESCE(norm_loc.country_code, ''))
+  AND COALESCE(job_posting_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(job_posting_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(job_posting_data.country, '') = COALESCE(norm_loc.country_code, ''))""",
+  gold_dataset,requisition_distribution_table_id,gold_dataset,assignment_table_id,gold_dataset,candidate_table_id,gold_dataset,requisition_table_id);

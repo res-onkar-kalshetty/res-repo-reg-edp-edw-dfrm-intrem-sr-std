@@ -1,0 +1,591 @@
+config {
+    type: "operations",
+    name: "msp_template_sow",
+    tags: 'msp_template_sow',
+    description: 'This file creates the  stdrv layer'
+}
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_sow_${dataform.projectConfig.vars.client_code}` AS (
+WITH fx_rates AS (
+  SELECT
+      CAST(fx_rate AS FLOAT64) AS fx_rate,
+      from_currency,
+      PARSE_DATE("%Y-%m-%d", month) AS month,
+      to_currency
+    FROM
+      db_common${dataform.projectConfig.vars.region}.global_fx_rates
+),
+spend_data AS (
+  SELECT 
+  spend.invoice_amount,
+  spend.invoice_id,
+  spend.buyer_code,
+  spend.main_document_id,
+  spend.currency,
+  DATE(CASE
+        WHEN spend.consolidated_invoice_approved_date IS NULL THEN spend.invoice_approved_date
+        ELSE spend.consolidated_invoice_approved_date
+      END) AS reporting_date,
+  CASE 
+      WHEN lower(spend.main_document_type) = lower('Contract') THEN 'Contingent'
+      WHEN lower(spend.main_document_type) = lower('Service Request') THEN 'Contingent'
+      WHEN lower(spend.main_document_type) = lower('Contingent Labor Request') THEN 'Contingent'
+      WHEN lower(spend.main_document_type) = lower('Job Posting') THEN 'Contingent'
+      WHEN lower(spend.main_document_type) = lower('Non-Employee Posting') THEN 'Contingent'
+      WHEN lower(spend.main_document_type) = lower('Requisition') THEN 'Contingent'
+      WHEN lower(spend.main_document_type) = lower('Temp Order') THEN 'Contingent'
+      WHEN lower(spend.main_document_type) = lower('Statement of Work') THEN 'SOW'
+      WHEN lower(spend.main_document_type) = lower('Independent Contractor') THEN 'SOW'
+      WHEN lower(spend.main_document_type) = lower('SOW Contract') THEN 'SOW'
+      WHEN spend.main_document_id LIKE '%JP%' THEN 'Contingent'
+      WHEN spend.main_document_id LIKE '%TQ%' THEN 'SOW'
+      ELSE 'NULL'
+    END as contingent_vs_sow,
+    FROM ${dataform.projectConfig.vars.ds_name}.prs_spend_${dataform.projectConfig.vars.client_code} spend
+  ),
+spend_currency_conversion as
+(select spend_cur.main_document_id,
+sum(invoice_amount) as invoice_amount,
+  sum(CASE
+    WHEN UPPER(spend_cur.currency) = 'USD' THEN CAST(spend_cur.invoice_amount as FLOAT64)
+    ELSE invoice_amount * fx_usd.fx_rate
+END) AS invoice_amount_in_usd,
+ sum(CASE
+    WHEN UPPER(spend_cur.currency) = 'EUR' THEN CAST(spend_cur.invoice_amount as FLOAT64)
+    ELSE invoice_amount * fx_eur.fx_rate
+END) AS invoice_amount_in_eur,
+ sum(CASE
+    WHEN UPPER(spend_cur.currency) = 'GBP' THEN CAST(spend_cur.invoice_amount as FLOAT64)
+    ELSE invoice_amount * fx_gbp.fx_rate
+END) AS invoice_amount_in_gbp,
+  sum(CASE
+    WHEN UPPER(spend_cur.currency) = 'INR' THEN CAST(spend_cur.invoice_amount as FLOAT64)
+    ELSE invoice_amount * fx_inr.fx_rate
+END) AS invoice_amount_in_inr,
+  sum(CASE
+    WHEN UPPER(spend_cur.currency) = 'CAD' THEN CAST(spend_cur.invoice_amount as FLOAT64)
+    ELSE invoice_amount * fx_cad.fx_rate
+END) AS invoice_amount_in_cad
+from spend_data spend_cur
+LEFT JOIN fx_rates AS fx_usd 
+      ON trim(lower(spend_cur.currency)) = trim(lower(fx_usd.from_currency))
+      AND DATE_TRUNC(spend_cur.reporting_date, MONTH) = fx_usd.month
+      AND trim(upper(fx_usd.to_currency)) = 'USD'
+LEFT JOIN fx_rates AS fx_eur 
+      ON trim(lower(spend_cur.currency)) = trim(lower(fx_eur.from_currency))
+      AND DATE_TRUNC(spend_cur.reporting_date, MONTH) = fx_eur.Month
+      AND trim(upper(fx_eur.to_currency)) = 'EUR'
+LEFT JOIN fx_rates AS fx_gbp 
+      ON trim(lower(spend_cur.currency)) = trim(lower(fx_gbp.from_currency))
+      AND DATE_TRUNC(spend_cur.reporting_date, MONTH) = fx_gbp.month
+      AND trim(upper(fx_gbp.to_currency)) = 'GBP'
+LEFT JOIN fx_rates AS fx_inr 
+      ON trim(lower(spend_cur.currency)) = trim(lower(fx_inr.from_currency))
+      AND DATE_TRUNC(spend_cur.reporting_date, MONTH) = fx_inr.month
+      AND trim(upper(fx_inr.to_currency)) = 'INR'
+LEFT JOIN fx_rates AS fx_cad 
+      ON trim(lower(spend_cur.currency)) = trim(lower(fx_cad.from_currency))
+      AND DATE_TRUNC(spend_cur.reporting_date, MONTH) = fx_cad.month
+      AND trim(upper(fx_cad.to_currency)) = 'CAD'
+where contingent_vs_sow ='SOW'
+group by spend_cur.main_document_id
+),
+worker_summary AS (
+    SELECT
+    worker.main_document_id,
+    count(distinct worker_id) as sow_distinct_workers,
+    SUM(CASE WHEN workforce_type='Temporary Resource' THEN 1 ELSE 0 END) as sow_distinct_cw_workers
+    from ${dataform.projectConfig.vars.ds_name}.prs_worker_${dataform.projectConfig.vars.client_code} AS worker
+    group by worker.main_document_id
+),
+nonworker_without_where_summary AS (
+SELECT
+    nonworker.sow_id,
+    count(distinct nonworker.line_item_id) as sow_distinct_line_items
+    FROM ${dataform.projectConfig.vars.ds_name}.prs_sow_line_item_non_worker_${dataform.projectConfig.vars.client_code} AS nonworker
+    GROUP BY nonworker.sow_id
+),
+line_item_budgets AS (
+  SELECT
+    sow_nonworker.buyer,
+    sow_nonworker.buyer_code,
+    sow_nonworker.sow_id,
+    SUM(CASE
+      WHEN trim(lower(sow_nonworker.line_item_status)) != 'invoiced' AND trim(lower(sow_nonworker.line_item_type)) !=  'unit definition' AND EXTRACT(YEAR FROM sow_nonworker.due_on_date_of_sow_line_item) <= EXTRACT(YEAR FROM CURRENT_DATE()) THEN COALESCE(sow_nonworker.committed_amount, 0)
+      ELSE 0
+    END) AS line_item_amount_current_year,
+    SUM(CASE
+      WHEN trim(lower(sow_nonworker.line_item_status)) != 'invoiced' AND trim(lower(sow_nonworker.line_item_type)) !=  'unit definition' AND EXTRACT(YEAR FROM sow_nonworker.due_on_date_of_sow_line_item) = EXTRACT(YEAR FROM CURRENT_DATE())+1 THEN COALESCE(sow_nonworker.committed_amount, 0)
+      ELSE 0
+    END) AS line_item_amount_next_year,
+    SUM(CASE
+      WHEN trim(lower(sow_nonworker.line_item_status)) != 'invoiced' AND trim(lower(sow_nonworker.line_item_type)) !=  'unit definition' THEN COALESCE(sow_nonworker.committed_amount, 0)
+      ELSE 0
+    END) AS line_item_amount_total,
+  FROM ${dataform.projectConfig.vars.ds_name}.prs_sow_line_item_non_worker_${dataform.projectConfig.vars.client_code} as sow_nonworker
+  GROUP BY sow_nonworker.buyer, sow_nonworker.buyer_code, sow_nonworker.sow_id
+),
+bid_count AS (
+  SELECT
+    sow_id,
+    COUNT(sow_bid_response_id) AS bid_cnt,
+    case when COUNT(sow_bid_response_id) > 1 Then 1 Else 0 end as competitive_sow
+  FROM ${dataform.projectConfig.vars.ds_name}.prs_sow_bid_${dataform.projectConfig.vars.client_code}
+  GROUP BY sow_id),
+intrm_sow_details as(
+SELECT
+  sow_bid.sow_bid_create_date,
+  sow_details.business_unit,
+  sow_details.business_unit_code,
+  sow_details.buyer,
+  sow_details.buyer_code,
+  sow_details.city,
+  sow_details.classification,
+  sow_details.country,
+  sow_details.created_from_sow_bid_id,
+  sow_details.location,
+  sow_details_v0.maximum_budget_amount_initial,
+  sow_acc.original_maximum_budget_amount,
+  sow_details.primary_cost_center,
+  sow_details.revision_no,
+  sow_details.site,
+  sow_details.site_code,
+  sow_details.sow_closed_date,
+  sow_details.sow_create_date,
+  sow_details.sow_end_date,
+  sow_details.sow_id,
+  sow_details.sow_request_approved_date,
+  sow_details.sow_request_submit_date,
+  sow_details.sow_request_uploaded,
+  sow_details.sow_start_date,
+  sow_details.sow_status,
+  sow_details.sow,
+  sow_details.state,
+  sow_details.supplier,
+  sow_details.supplier_code,
+  sow_acc.currency,
+  sow_acc.maximum_budget_amount,
+  sow_details_v0.original_submit_date_initial,
+  sow_details_v0.sow_closed_date_initial,
+  sow_details_v0.sow_create_date_initial,
+  sow_details_v0.sow_end_date_initial,
+  sow_details_v0.sow_initial,
+  sow_details_v0.sow_request_approved_date_initial,
+  sow_details_v0.sow_start_date_initial,
+  CASE 
+    WHEN sow_details.sow_end_date >= CURRENT_DATE() THEN 'Active' 
+    ELSE 'Non-Active'
+  END as active_flag,
+    Function_library${dataform.projectConfig.vars.region}.f_workday(sow_details_v0.original_submit_date_initial, sow_details_v0.sow_create_date_initial) AS create_to_submit_bd,
+  Function_library${dataform.projectConfig.vars.region}.f_workday(sow_details_v0.sow_request_approved_date_initial, sow_details_v0.original_submit_date_initial) AS submit_to_approve_bd,
+  Function_library${dataform.projectConfig.vars.region}.f_workday(sow_details_v0.sow_request_approved_date_initial, sow_details.first_sow_response_submit_date) AS approved_to_supplier_response_bd,
+  Function_library${dataform.projectConfig.vars.region}.f_workday(sow_details_v0.original_submit_date_initial, sow_details.first_sow_response_submit_date) AS supplier_request_received_to_supplier_response_bd,
+  Function_library${dataform.projectConfig.vars.region}.f_workday(sow_details_v0.sow_create_date_initial, sow_details.first_sow_response_submit_date) AS total_cycle_time_bd,
+  CASE 
+      WHEN  LOWER(sow_details.sow_status) LIKE  '%pending%approval%'  THEN  Function_library${dataform.projectConfig.vars.region}.f_calendarday(sow_details.current_approval_received_date, CURRENT_DATE)
+    END AS pending_approval,
+  CASE 
+    WHEN LOWER(sow_details.sow_status) LIKE  '%pending%buyer%review%'  THEN  Function_library${dataform.projectConfig.vars.region}.f_calendarday(sow_details.submit_for_buyer_review_date, CURRENT_DATE)
+  END AS pending_buyer_review,
+  CASE 
+    WHEN  LOWER(sow_details.sow_status) LIKE  '%pending%response%'  THEN  Function_library${dataform.projectConfig.vars.region}.f_calendarday(sow_details.sow_request_approved_date, CURRENT_DATE)
+  END AS pending_response,
+  CASE 
+    WHEN  LOWER(sow_details.sow_status) LIKE  '%pending%supplier%review%'  THEN Function_library${dataform.projectConfig.vars.region}.f_calendarday(sow_details.sow_request_submit_date, CURRENT_DATE)
+  END AS pending_supplier_review,
+  CASE 
+    WHEN  LOWER(sow_details.sow_status) LIKE  '%rejected%'  THEN  Function_library${dataform.projectConfig.vars.region}.f_calendarday(sow_details.edited_on, CURRENT_DATE)
+  END AS sow_rejected,
+  CASE
+    WHEN sow_details_v0.sow_create_date_initial > sow_details_v0.sow_start_date_initial THEN 1
+    ELSE 0
+  END AS backdated_sow,
+  CASE
+    WHEN sow_details_v0.sow_create_date_initial <= sow_details_v0.sow_start_date_initial THEN 1
+    ELSE 0
+  END AS sow_on_time_start,
+  CASE
+    WHEN sow_details_v0.sow_closed_date_initial > sow_details_v0.sow_end_date_initial THEN 1
+    ELSE 0
+  END AS sow_late_completion,
+  CASE
+    WHEN sow_details.revision_no > 0 THEN 1
+    ELSE 0
+  END AS change_orders,
+  COALESCE(bid_count.bid_cnt, 0) AS bid_cnt,
+  bid_count.competitive_sow,
+  CASE
+    WHEN bid_count.competitive_sow = 0 THEN null
+    ELSE sow_acc.maximum_budget_amount
+  END AS sow_only_budget,
+  CASE
+    WHEN bid_count.competitive_sow = 1 THEN sow_acc.maximum_budget_amount
+    ELSE null
+  END AS competitive_sow_budget,
+  CASE
+    WHEN COALESCE(TRIM(sow_details.created_from_sow_bid_id), CAST(NULL AS STRING)) IS NULL THEN 0
+    ELSE 1
+  END AS sow_created_from_bids_with_response_cnt,
+  CASE
+    WHEN UPPER(sow_acc.currency) = 'USD' THEN CAST(sow_acc.maximum_budget_amount  as FLOAT64)
+    ELSE sow_acc.maximum_budget_amount * fx_usd_curdate.fx_rate
+END AS maximum_budget_amount_in_usd,
+CASE
+    WHEN UPPER(sow_acc.currency) = 'EUR' THEN CAST(sow_acc.maximum_budget_amount  as FLOAT64)
+    ELSE sow_acc.maximum_budget_amount * fx_eur_curdate.fx_rate
+END AS maximum_budget_amount_in_eur,
+  CASE
+    WHEN UPPER(sow_acc.currency) = 'GBP' THEN CAST(sow_acc.maximum_budget_amount  as FLOAT64)
+    ELSE sow_acc.maximum_budget_amount * fx_gbp_curdate.fx_rate
+END AS maximum_budget_amount_in_gbp,
+CASE
+    WHEN UPPER(sow_acc.currency) = 'INR' THEN CAST(sow_acc.maximum_budget_amount  as FLOAT64)
+    ELSE sow_acc.maximum_budget_amount * fx_inr_curdate.fx_rate
+END AS maximum_budget_amount_in_inr,
+CASE
+    WHEN UPPER(sow_acc.currency) = 'CAD' THEN CAST(sow_acc.maximum_budget_amount  as FLOAT64)
+    ELSE sow_acc.maximum_budget_amount * fx_cad.fx_rate
+END AS maximum_budget_amount_in_cad,
+CASE
+    WHEN UPPER(sow_acc.currency) = 'USD' THEN CAST(sow_acc.original_maximum_budget_amount  as FLOAT64)
+    ELSE sow_acc.original_maximum_budget_amount * fx_usd.fx_rate
+END AS original_maximum_budget_amount_in_usd,
+CASE
+    WHEN UPPER(sow_acc.currency) = 'EUR' THEN CAST(sow_acc.original_maximum_budget_amount  as FLOAT64)
+    ELSE sow_acc.original_maximum_budget_amount * fx_eur.fx_rate
+END AS original_maximum_budget_amount_in_eur,
+  CASE
+    WHEN UPPER(sow_acc.currency) = 'GBP' THEN CAST(sow_acc.original_maximum_budget_amount  as FLOAT64)
+    ELSE sow_acc.original_maximum_budget_amount * fx_gbp.fx_rate
+END AS original_maximum_budget_amount_in_gbp,
+CASE
+    WHEN UPPER(sow_acc.currency) = 'INR' THEN CAST(sow_acc.original_maximum_budget_amount  as FLOAT64)
+    ELSE sow_acc.original_maximum_budget_amount * fx_inr.fx_rate
+END AS original_maximum_budget_amount_in_inr,
+CASE
+    WHEN UPPER(sow_acc.currency) = 'CAD' THEN CAST(sow_acc.original_maximum_budget_amount  as FLOAT64)
+    ELSE sow_acc.original_maximum_budget_amount * fx_cad.fx_rate
+END AS original_maximum_budget_amount_in_cad,
+CASE
+    WHEN UPPER(sow_acc.currency) = 'USD' THEN CAST(sow_details_v0.maximum_budget_amount_initial   as FLOAT64)
+    ELSE sow_details_v0.maximum_budget_amount_initial  * fx_usd.fx_rate
+END AS maximum_budget_amount_initial_in_usd,
+CASE
+    WHEN UPPER(sow_acc.currency) = 'EUR' THEN CAST(sow_details_v0.maximum_budget_amount_initial   as FLOAT64)
+    ELSE sow_details_v0.maximum_budget_amount_initial  * fx_eur.fx_rate
+END AS maximum_budget_amount_initial_in_eur,
+  CASE
+    WHEN UPPER(sow_acc.currency) = 'GBP' THEN CAST(sow_details_v0.maximum_budget_amount_initial   as FLOAT64)
+    ELSE sow_details_v0.maximum_budget_amount_initial  * fx_gbp.fx_rate
+END AS maximum_budget_amount_initial_in_gbp,
+CASE
+    WHEN UPPER(sow_acc.currency) = 'INR' THEN CAST(sow_details_v0.maximum_budget_amount_initial   as FLOAT64)
+    ELSE sow_details_v0.maximum_budget_amount_initial  * fx_inr.fx_rate
+END AS maximum_budget_amount_initial_in_inr,
+CASE
+    WHEN UPPER(sow_acc.currency) = 'CAD' THEN CAST(sow_details_v0.maximum_budget_amount_initial   as FLOAT64)
+    ELSE sow_details_v0.maximum_budget_amount_initial  * fx_cad.fx_rate
+END AS maximum_budget_amount_initial_in_cad,
+ROUND(sow_details_v0.maximum_budget_amount_initial  - sow_acc.original_maximum_budget_amount, 4) as award_vs_max_budget,
+ROUND(sow_details_v0.maximum_budget_amount_initial  - sow_acc.maximum_budget_amount, 4) as sow_negotiated_savings,
+CASE
+    WHEN (sow_bid.estimated_maximum_budget_sow_bid-sow_bid.presented_budget)>0 THEN sow_bid.estimated_maximum_budget_sow_bid-sow_bid.presented_budget
+    ELSE 0
+    END as bid_cost_savings,
+CASE
+    WHEN (sow_bid.presented_budget-sow_details_v0.maximum_budget_amount_initial)>0 THEN sow_bid.presented_budget-sow_details_v0.maximum_budget_amount_initial
+    ELSE 0 END as competitive_negotiated_savings,
+case
+    WHEN (sow_details.estimated_maximum_budget-sow_details_v0.maximum_budget_amount_initial)>0 THEN sow_details.estimated_maximum_budget-sow_details_v0.maximum_budget_amount_initial
+    ELSE 0 END as direct_negotiated_savings,
+sow_details.close_reason,
+Function_library${dataform.projectConfig.vars.region}.f_workday(sow_details_v0.sow_create_date_initial, sow_details.first_sow_request_approved_date) AS sow_submit_to_approve_bd,
+nonworker_without_where_summary.sow_distinct_line_items,
+sow_details.classification_0,
+sow_details.classification_1,
+sow_details.classification_2,
+sow_details.classification_3,
+sow_details.estimated_maximum_budget,
+sow_details.allow_further_invoicing,
+supplier.rsr_vendor_id,
+sow_bid.presented_budget,
+sow_bid.estimated_maximum_budget_sow_bid,
+CASE WHEN (sow_details.sow_closed_date <= sow_details.sow_end_date) THEN 1 ELSE 0 END as sow_on_time_completion,
+worker_summary.sow_distinct_workers,
+worker_summary.sow_distinct_cw_workers,
+CASE WHEN sow_details.sow_status NOT IN ('Approved', 'Closed', 'Draft', 'Rejected') THEN sow_details.maximum_budget_amount
+  ELSE 0 END as pending_budget,
+IFNULL(
+    CASE WHEN (sow_details.revision_no > 0) and (sow_details.maximum_budget_amount > sow_details.original_maximum_budget) and (sow_details.sow_end_date = sow_details_v0.sow_end_date_initial) then 1
+    else 0 end
+  ,0) as sow_with_budget_increase,
+CASE
+  WHEN sow_details.sow_status in ('Approved','Closed') then sow_details.maximum_budget_amount
+  else 0 end as awarded_budget,
+Function_library${dataform.projectConfig.vars.region}.f_workday(sow_details.first_sow_request_approved_date, sow_details.first_sow_response_submit_date) as sow_approve_to_supplier_response_submit_bd,
+Function_library${dataform.projectConfig.vars.region}.f_workday(sow_details.first_sow_response_submit_date, sow_details.first_sow_response_approved_date) as sow_supplier_response_submit_to_approve_bd,
+Function_library${dataform.projectConfig.vars.region}.f_workday(sow_details_v0.sow_create_date_initial, sow_details.first_sow_response_approved_date) as sow_create_to_response_approved_bd,
+sow_details.decline_reason,
+sow_details.withdraw_reason,
+ROUND(CASE
+    WHEN sow_details.sow_status != 'Approved' THEN CAST(NULL AS NUMERIC)
+    WHEN DATE_DIFF(sow_details.sow_end_date, CURRENT_DATE(), month)+1 <= 0 THEN  COALESCE(line_item_budgets.line_item_amount_current_year, 0) + (sow_details.maximum_budget_amount - COALESCE(spend_sow.invoice_amount, 0) - COALESCE(line_item_budgets.line_item_amount_total, 0))
+    ELSE COALESCE(line_item_budgets.line_item_amount_current_year, 0) + (sow_details.maximum_budget_amount - COALESCE(spend_sow.invoice_amount, 0) - COALESCE(line_item_budgets.line_item_amount_total, 0))/ (DATE_DIFF(sow_details.sow_end_date, CURRENT_DATE(), month)+1) * (DATE_DIFF(Function_library${dataform.projectConfig.vars.region}.least_array([LAST_DAY(CURRENT_DATE(), year), sow_details.sow_end_date]), CURRENT_DATE(), month)+1)
+  END, 4) AS spend_forecast_current_year,
+ROUND(CASE
+    WHEN sow_details.sow_status != 'Approved' OR DATE_DIFF(sow_details.sow_end_date, CURRENT_DATE(), month)+1 <= 0
+     THEN CAST(NULL AS NUMERIC)
+    ELSE COALESCE(line_item_budgets.line_item_amount_next_year, 0) + (sow_details.maximum_budget_amount - COALESCE(spend_sow.invoice_amount, 0) - COALESCE(line_item_budgets.line_item_amount_total, 0))/ (DATE_DIFF(sow_details.sow_end_date, CURRENT_DATE(), month)+1) * LEAST(GREATEST(COALESCE(DATE_DIFF(sow_details.sow_end_date, DATE(CONCAT(EXTRACT(YEAR FROM CURRENT_DATE())+1, '-01-01')), month)+1, 0), 0), 12)
+  END, 4) AS spend_forecast_next_year,
+CASE
+    WHEN sow_details.sow_status='Approved' OR (sow_details.sow_status='Closed' and (sow_details.close_reason='SOW Completed' or sow_details.close_reason='SOW Cancelled')) then
+         CASE WHEN spend_sow.invoice_amount is null THEN sow_details.maximum_budget_amount
+         ELSE (sow_details.maximum_budget_amount - spend_sow.invoice_amount) END
+    ELSE 0 END as remaining_budget,
+CASE
+  WHEN spend_sow.invoice_amount is NULL THEN sow_details.maximum_budget_amount
+  ELSE sow_details.maximum_budget_amount-spend_sow.invoice_amount END as budget_vs_invoice_amount,
+CASE
+    WHEN (sow_details.sow_status='Closed' and sow_details.close_reason='SOW Completed') and (sow_details.maximum_budget_amount-spend_sow.invoice_amount)>0 THEN sow_details.maximum_budget_amount-spend_sow.invoice_amount
+    ELSE NULL
+    END as final_revision_savings,
+CASE
+    WHEN spend_sow.invoice_amount IS NULL THEN 'Not Invoiced'
+    ELSE 'Invoiced'
+  END as invoiced_sow,
+spend_sow.invoice_amount_in_usd,
+spend_sow.invoice_amount_in_eur,
+spend_sow.invoice_amount_in_gbp,
+spend_sow.invoice_amount_in_inr,
+spend_sow.invoice_amount_in_cad,
+spend_sow.invoice_amount
+FROM ${dataform.projectConfig.vars.ds_name}.prs_sow_${dataform.projectConfig.vars.client_code} sow_details
+LEFT JOIN ${dataform.projectConfig.vars.ds_name}.prs_sow_bid_${dataform.projectConfig.vars.client_code} sow_bid ON sow_details.sow_id = sow_bid.sow_id
+LEFT JOIN ${dataform.projectConfig.vars.ds_name}.prs_sow_accounting_${dataform.projectConfig.vars.client_code} sow_acc ON sow_details.sow_id = sow_acc.sow_id
+LEFT JOIN ${dataform.projectConfig.vars.ds_name}.prs_sow_v0_${dataform.projectConfig.vars.client_code} sow_details_v0 ON sow_details.sow_id = sow_details_v0.sow_id
+LEFT JOIN ${dataform.projectConfig.vars.ds_name}.prs_supplier_${dataform.projectConfig.vars.client_code} supplier ON sow_details.supplier_code = supplier.supplier_code
+LEFT JOIN worker_summary ON sow_details.sow_id=worker_summary.main_document_id
+LEFT JOIN nonworker_without_where_summary ON sow_details.sow_id = nonworker_without_where_summary.sow_id
+LEFT JOIN line_item_budgets ON sow_details.sow_id = line_item_budgets.sow_id
+LEFT JOIN spend_currency_conversion spend_sow ON sow_details.sow_id = spend_sow.main_document_id
+LEFT JOIN bid_count ON sow_details.sow_id = bid_count.sow_id
+LEFT JOIN fx_rates AS fx_usd_curdate 
+      ON trim(lower(sow_acc.currency)) = trim(lower(fx_usd_curdate.from_currency))
+      AND DATE_TRUNC(current_date(), MONTH) = fx_usd_curdate.month
+      AND trim(upper(fx_usd_curdate.to_currency)) = 'USD'
+LEFT JOIN fx_rates AS fx_eur_curdate 
+      ON trim(lower(sow_acc.currency)) = trim(lower(fx_eur_curdate.from_currency))
+      AND DATE_TRUNC(current_date(), MONTH) = fx_eur_curdate.Month
+      AND trim(upper(fx_eur_curdate.to_currency)) = 'EUR'
+LEFT JOIN fx_rates AS fx_gbp_curdate 
+      ON trim(lower(sow_acc.currency)) = trim(lower(fx_gbp_curdate.from_currency))
+      AND DATE_TRUNC(current_date(), MONTH) = fx_gbp_curdate.month
+      AND trim(upper(fx_gbp_curdate.to_currency)) = 'GBP'
+LEFT JOIN fx_rates AS fx_inr_curdate 
+      ON trim(lower(sow_acc.currency)) = trim(lower(fx_inr_curdate.from_currency))
+      AND DATE_TRUNC(current_date(), MONTH) = fx_inr_curdate.month
+      AND trim(upper(fx_inr_curdate.to_currency)) = 'INR'
+LEFT JOIN fx_rates AS fx_cad_curdate 
+      ON trim(lower(sow_acc.currency)) = trim(lower(fx_cad_curdate.from_currency))
+      AND DATE_TRUNC(current_date(), MONTH) = fx_cad_curdate.month
+      AND trim(upper(fx_cad_curdate.to_currency)) = 'CAD'
+LEFT JOIN fx_rates AS fx_usd 
+      ON trim(lower(sow_acc.currency)) = trim(lower(fx_usd.from_currency))
+      AND DATE_TRUNC(sow_details_v0.sow_create_date_initial, MONTH) = fx_usd.month
+      AND trim(upper(fx_usd.to_currency)) = 'USD'
+LEFT JOIN fx_rates AS fx_eur 
+      ON trim(lower(sow_acc.currency)) = trim(lower(fx_eur.from_currency))
+      AND DATE_TRUNC(sow_details_v0.sow_create_date_initial, MONTH) = fx_eur.Month
+      AND trim(upper(fx_eur.to_currency)) = 'EUR'
+LEFT JOIN fx_rates AS fx_gbp 
+      ON trim(lower(sow_acc.currency)) = trim(lower(fx_gbp.from_currency))
+      AND DATE_TRUNC(sow_details_v0.sow_create_date_initial, MONTH) = fx_gbp.month
+      AND trim(upper(fx_gbp.to_currency)) = 'GBP'
+LEFT JOIN fx_rates AS fx_inr 
+      ON trim(lower(sow_acc.currency)) = trim(lower(fx_inr.from_currency))
+      AND DATE_TRUNC(sow_details_v0.sow_create_date_initial, MONTH) = fx_inr.month
+      AND trim(upper(fx_inr.to_currency)) = 'INR'
+LEFT JOIN fx_rates AS fx_cad 
+      ON trim(lower(sow_acc.currency)) = trim(lower(fx_cad.from_currency))
+      AND DATE_TRUNC(sow_details_v0.sow_create_date_initial, MONTH) = fx_cad.month
+      AND trim(upper(fx_cad.to_currency)) = 'CAD'
+)
+select intrm_sow_dts.sow_bid_create_date,
+  intrm_sow_dts.business_unit,
+  intrm_sow_dts.business_unit_code,
+  intrm_sow_dts.buyer,
+  intrm_sow_dts.buyer_code,
+  intrm_sow_dts.city,
+  intrm_sow_dts.classification,
+  intrm_sow_dts.country,
+  intrm_sow_dts.created_from_sow_bid_id,
+  intrm_sow_dts.location,
+  intrm_sow_dts.primary_cost_center,
+  intrm_sow_dts.revision_no,
+  intrm_sow_dts.site,
+  intrm_sow_dts.site_code,
+  intrm_sow_dts.sow_closed_date,
+  intrm_sow_dts.sow_create_date,
+  intrm_sow_dts.sow_end_date,
+  intrm_sow_dts.sow_id,
+  intrm_sow_dts.sow_request_approved_date,
+  intrm_sow_dts.sow_request_submit_date,
+  intrm_sow_dts.sow_request_uploaded,
+  intrm_sow_dts.sow_start_date,
+  intrm_sow_dts.sow_status,
+  intrm_sow_dts.sow,
+  intrm_sow_dts.state,
+  intrm_sow_dts.supplier,
+  intrm_sow_dts.supplier_code,
+  intrm_sow_dts.currency,
+  intrm_sow_dts.original_submit_date_initial,
+  intrm_sow_dts.sow_closed_date_initial,
+  intrm_sow_dts.sow_create_date_initial,
+  intrm_sow_dts.sow_end_date_initial,
+  intrm_sow_dts.sow_initial,
+  intrm_sow_dts.sow_request_approved_date_initial,
+  intrm_sow_dts.sow_start_date_initial,
+  gcr.country AS rsr_country,
+  COALESCE(gsm.suppliername_dw, CAST(NULL AS STRING)) AS rsr_supplier,
+  gbl_sow.service_category_classification AS rsr_classification,
+  intrm_sow_dts.active_flag,
+  intrm_sow_dts.invoiced_sow,
+  intrm_sow_dts.invoice_amount_in_usd,
+  intrm_sow_dts.invoice_amount_in_eur,
+  intrm_sow_dts.invoice_amount_in_gbp,
+  intrm_sow_dts.invoice_amount_in_inr,
+  intrm_sow_dts.invoice_amount_in_cad,
+  intrm_sow_dts.invoice_amount,
+  intrm_sow_dts.create_to_submit_bd,
+  intrm_sow_dts.submit_to_approve_bd,
+  intrm_sow_dts.approved_to_supplier_response_bd,
+  intrm_sow_dts.supplier_request_received_to_supplier_response_bd,
+  intrm_sow_dts.total_cycle_time_bd,
+  intrm_sow_dts.pending_approval,
+  intrm_sow_dts.pending_buyer_review,
+  intrm_sow_dts.pending_response,
+  intrm_sow_dts.pending_supplier_review,
+  intrm_sow_dts.sow_rejected,
+  intrm_sow_dts.backdated_sow,
+  intrm_sow_dts.sow_on_time_start,
+  intrm_sow_dts.sow_late_completion,
+  intrm_sow_dts.change_orders,
+  intrm_sow_dts.bid_cnt,
+  intrm_sow_dts.sow_created_from_bids_with_response_cnt,
+  intrm_sow_dts.maximum_budget_amount_in_usd,
+  intrm_sow_dts.maximum_budget_amount_in_eur,
+  intrm_sow_dts.maximum_budget_amount_in_gbp,
+  intrm_sow_dts.maximum_budget_amount_in_inr,
+  intrm_sow_dts.maximum_budget_amount_in_cad,
+  intrm_sow_dts.original_maximum_budget_amount_in_usd,
+  intrm_sow_dts.original_maximum_budget_amount_in_eur,
+  intrm_sow_dts.original_maximum_budget_amount_in_gbp,
+  intrm_sow_dts.original_maximum_budget_amount_in_inr,
+  intrm_sow_dts.original_maximum_budget_amount_in_cad,
+  intrm_sow_dts.maximum_budget_amount_initial_in_usd,
+  intrm_sow_dts.maximum_budget_amount_initial_in_eur,
+  intrm_sow_dts.maximum_budget_amount_initial_in_gbp,
+  intrm_sow_dts.maximum_budget_amount_initial_in_inr,
+  intrm_sow_dts.maximum_budget_amount_initial_in_cad,
+  (intrm_sow_dts.maximum_budget_amount_initial_in_usd - intrm_sow_dts.original_maximum_budget_amount_in_usd) as award_vs_max_budget_in_usd,
+  (intrm_sow_dts.maximum_budget_amount_initial_in_eur - intrm_sow_dts.original_maximum_budget_amount_in_eur) as award_vs_max_budget_in_eur,
+  (intrm_sow_dts.maximum_budget_amount_initial_in_gbp - intrm_sow_dts.original_maximum_budget_amount_in_gbp) as award_vs_max_budget_in_gbp,
+  (intrm_sow_dts.maximum_budget_amount_initial_in_inr - intrm_sow_dts.original_maximum_budget_amount_in_inr) as award_vs_max_budget_in_inr,
+  (intrm_sow_dts.maximum_budget_amount_initial_in_cad - intrm_sow_dts.original_maximum_budget_amount_in_cad) as award_vs_max_budget_in_cad,
+  (intrm_sow_dts.maximum_budget_amount_initial_in_usd - intrm_sow_dts.maximum_budget_amount_in_usd ) as sow_negotiated_savings_in_usd,
+  (intrm_sow_dts.maximum_budget_amount_initial_in_eur - intrm_sow_dts.maximum_budget_amount_in_eur ) as sow_negotiated_savings_in_eur,
+  (intrm_sow_dts.maximum_budget_amount_initial_in_gbp - intrm_sow_dts.maximum_budget_amount_in_gbp ) as sow_negotiated_savings_in_gbp,
+  (intrm_sow_dts.maximum_budget_amount_initial_in_inr - intrm_sow_dts.maximum_budget_amount_in_inr ) as sow_negotiated_savings_in_inr,
+  (intrm_sow_dts.maximum_budget_amount_initial_in_cad - intrm_sow_dts.maximum_budget_amount_in_cad ) as sow_negotiated_savings_in_cad,
+  CASE
+    WHEN intrm_sow_dts.competitive_sow = 0 THEN null
+    ELSE intrm_sow_dts.maximum_budget_amount_in_usd
+  END AS sow_only_budget_in_usd, 
+  CASE
+    WHEN intrm_sow_dts.competitive_sow = 0 THEN null
+    ELSE intrm_sow_dts.maximum_budget_amount_in_gbp
+  END AS sow_only_budget_in_gbp, 
+  CASE
+    WHEN intrm_sow_dts.competitive_sow = 0 THEN null
+    ELSE intrm_sow_dts.maximum_budget_amount_in_eur
+  END AS sow_only_budget_in_eur, 
+  CASE
+    WHEN intrm_sow_dts.competitive_sow = 0 THEN null
+    ELSE intrm_sow_dts.maximum_budget_amount_in_inr
+  END AS sow_only_budget_in_inr, 
+  CASE
+    WHEN intrm_sow_dts.competitive_sow = 0 THEN null
+    ELSE intrm_sow_dts.maximum_budget_amount_in_cad
+  END AS sow_only_budget_in_cad, 
+  CASE
+    WHEN intrm_sow_dts.competitive_sow = 1 THEN intrm_sow_dts.maximum_budget_amount_in_usd
+    ELSE null
+  END AS competitive_sow_budget_in_usd,
+  CASE
+    WHEN intrm_sow_dts.competitive_sow = 1 THEN intrm_sow_dts.maximum_budget_amount_in_gbp
+    ELSE null
+  END AS competitive_sow_budget_in_gbp,
+  CASE
+    WHEN intrm_sow_dts.competitive_sow = 1 THEN intrm_sow_dts.maximum_budget_amount_in_eur
+    ELSE null
+  END AS competitive_sow_budget_in_eur,
+  CASE
+    WHEN intrm_sow_dts.competitive_sow = 1 THEN intrm_sow_dts.maximum_budget_amount_in_inr
+    ELSE null
+  END AS competitive_sow_budget_in_inr,
+  CASE
+    WHEN intrm_sow_dts.competitive_sow = 1 THEN intrm_sow_dts.maximum_budget_amount_in_cad
+    ELSE null
+  END AS competitive_sow_budget_in_cad,
+intrm_sow_dts.competitive_sow,
+intrm_sow_dts.award_vs_max_budget,
+intrm_sow_dts.sow_negotiated_savings,
+intrm_sow_dts.maximum_budget_amount,
+intrm_sow_dts.original_maximum_budget_amount,
+intrm_sow_dts.maximum_budget_amount_initial,
+intrm_sow_dts.sow_only_budget,
+intrm_sow_dts.competitive_sow_budget,
+intrm_sow_dts.bid_cost_savings,
+intrm_sow_dts.competitive_negotiated_savings,
+intrm_sow_dts.direct_negotiated_savings,
+intrm_sow_dts.final_revision_savings,
+intrm_sow_dts.sow_submit_to_approve_bd,
+intrm_sow_dts.sow_distinct_line_items,
+intrm_sow_dts.classification_0,
+intrm_sow_dts.classification_1,
+intrm_sow_dts.classification_2,
+intrm_sow_dts.classification_3,
+intrm_sow_dts.estimated_maximum_budget,
+intrm_sow_dts.allow_further_invoicing,
+intrm_sow_dts.rsr_vendor_id,
+intrm_sow_dts.presented_budget,
+intrm_sow_dts.estimated_maximum_budget_sow_bid,
+intrm_sow_dts.sow_on_time_completion,
+intrm_sow_dts.budget_vs_invoice_amount,
+CASE
+    WHEN intrm_sow_dts.sow_status LIKE '%Pending%' then 'Pending'
+    ELSE intrm_sow_dts.sow_status END as high_level_sow_status,
+CASE
+    WHEN (lower(intrm_sow_dts.sow_status) LIKE '%pending%approval%') AND intrm_sow_dts.sow_start_date <CURRENT_DATE() then 1
+    ELSE 0 end as overdue_approval,
+CASE
+    WHEN intrm_sow_dts.sow_end_date <CURRENT_DATE()-10 and intrm_sow_dts.sow_closed_date is NULL then 1
+    ELSE 0 end as overdue_sow_closure,
+intrm_sow_dts.remaining_budget,
+case when intrm_sow_dts.sow_status like '%Pending%' then Function_library${dataform.projectConfig.vars.region}.f_calendarday(intrm_sow_dts.sow_create_date, CURRENT_DATE()) else 0 end as time_since_create,
+intrm_sow_dts.sow_distinct_workers,
+intrm_sow_dts.sow_distinct_cw_workers,
+intrm_sow_dts.pending_budget,
+intrm_sow_dts.sow_with_budget_increase,
+intrm_sow_dts.awarded_budget,
+intrm_sow_dts.sow_approve_to_supplier_response_submit_bd,
+intrm_sow_dts.sow_supplier_response_submit_to_approve_bd,
+intrm_sow_dts.sow_create_to_response_approved_bd,
+intrm_sow_dts.close_reason,
+intrm_sow_dts.decline_reason,
+intrm_sow_dts.withdraw_reason,
+intrm_sow_dts.spend_forecast_current_year,
+intrm_sow_dts.spend_forecast_next_year
+from intrm_sow_details intrm_sow_dts
+LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_countries gcr on lower(intrm_sow_dts.country)=lower(gcr.country)
+LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_supplier_mapping gsm ON gsm.buyer = intrm_sow_dts.buyer AND gsm.supplier = intrm_sow_dts.supplier
+LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_sow_classification gbl_sow ON gbl_sow.sub_categories_to_match_those_used_in_the_vms = intrm_sow_dts.classification)

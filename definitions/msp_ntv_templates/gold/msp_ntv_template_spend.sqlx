@@ -5,9 +5,86 @@ config {
     dependencies: ['msp_ntv_template_requisition_gold', 'msp_ntv_template_assignment_gold', 'msp_ntv_template_candidate_gold'],
     description: 'This file creates the  stdrv layer'
 }
+js {
+    const {
+        getCompleteTableConfig
+    } = require("includes/table_config");
+    const config = getCompleteTableConfig(ctx);
+    const baseTables = config.baseTables.defaults;
+}
+
+DECLARE
+  spend_table_id STRING;
+DECLARE
+  requisition_table_id STRING;
+DECLARE
+  assignment_table_id STRING;
+DECLARE
+  candidate_table_id STRING;
+DECLARE
+  gold_dataset STRING;
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+    WHERE standard_report_type = 'spend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' )INTO spend_table_id;
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+    WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' )INTO requisition_table_id;
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+    WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' )INTO assignment_table_id;
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+    WHERE standard_report_type = 'candidate_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' )INTO candidate_table_id;
+IF
+  spend_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'SPEND TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+IF
+  requisition_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+IF
+  assignment_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+IF
+  candidate_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'CANDIDATE TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+SET
+  gold_dataset = CONCAT("dev","_gold_","${dataform.projectConfig.vars.dataset_id}");
+
 
 CREATE OR REPLACE TABLE
-  `${dataform.projectConfig.vars.ds_name}.stdrv_spend_${dataform.projectConfig.vars.client_code}` AS (
+  `%s.%s` AS (
   
 SELECT buyer
 ,buyer_code
@@ -480,10 +557,10 @@ WITH spend_data AS (
 	spend_in.business_unit_code,
 	spend_in.rsr_staffing_entity
     FROM
-      ${dataform.projectConfig.vars.ds_name}.prs_spend_${dataform.projectConfig.vars.client_code} AS spend_in
-      left join ${dataform.projectConfig.vars.ds_name}.prs_assignment_${dataform.projectConfig.vars.client_code} assgn_unfiltered 
+      ${dataform.projectConfig.vars.ds_name}.${baseTables.spend}_${dataform.projectConfig.vars.client_code} AS spend_in
+      left join ${dataform.projectConfig.vars.ds_name}.${baseTables.assignment}_${dataform.projectConfig.vars.client_code} assgn_unfiltered 
       on spend_in.assignment_revision_id = assgn_unfiltered.assignment_revision_id
-      left join ${dataform.projectConfig.vars.ds_name}.prs_assignment_rates_${dataform.projectConfig.vars.client_code} assgn_rates
+      left join ${dataform.projectConfig.vars.ds_name}.${baseTables.assignment}_rates_${dataform.projectConfig.vars.client_code} assgn_rates
       on  spend_in.assignment_revision_id = assgn_rates.assignment_revision_id
 ), reqs_assignment_data AS (
   SELECT
@@ -520,7 +597,7 @@ WITH spend_data AS (
       req_asg_in.assignment_original_end_date,
 	req_asg_in.main_document_id,
   req_asg_in.main_document_title
-    FROM ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} AS req_asg_in
+    FROM %s.%s AS req_asg_in
       
 )
 , gbl_sup_map AS (
@@ -545,7 +622,7 @@ WITH spend_data AS (
   main_document_id from reqs_assignment_data group by main_document_id
 ),
 candidate as (select max(presented_bill_rate_st_hr) as maximum_presented_bill_rate_st_hr,
-req_id from ${dataform.projectConfig.vars.ds_name}.stdrv_candidate_${dataform.projectConfig.vars.client_code} where cand_shortlisted_date is not null group by req_id)
+req_id from %s.%s where cand_shortlisted_date is not null group by req_id)
 ,avg_bill_rate as (
   select
   assignment_id,

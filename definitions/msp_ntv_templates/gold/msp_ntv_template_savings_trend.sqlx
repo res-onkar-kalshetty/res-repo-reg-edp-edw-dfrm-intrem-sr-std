@@ -6,8 +6,73 @@ config {
     description: 'This file creates the  stdrv layer'
 }
 
+
+js {
+    const {
+        getCompleteTableConfig
+    } = require("includes/table_config");
+    const config = getCompleteTableConfig(ctx);
+    const baseTables = config.baseTables.defaults;
+}
+DECLARE
+  savings_trend_table_id STRING;
+DECLARE
+  spend_table_id STRING;
+DECLARE
+  assignment_table_id STRING;
+DECLARE
+  gold_dataset STRING;
+  EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+    WHERE standard_report_type = 'savings_trend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' )INTO savings_trend_table_id;
+  EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+    WHERE standard_report_type = 'spend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' )INTO spend_table_id;
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+    WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' )INTO assignment_table_id;
+
+IF
+  savings_trend_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'savings trend distribution TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+IF
+  spend_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'spend TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+IF
+  assignment_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+
+
+SET
+  gold_dataset = CONCAT("dev","_gold_","${dataform.projectConfig.vars.dataset_id}");
+
+EXECUTE IMMEDIATE FORMAT("""
 CREATE OR REPLACE TABLE
-  `${dataform.projectConfig.vars.ds_name}.stdrv_savings_trend_${dataform.projectConfig.vars.client_code}` AS (
+  `%s.%s` AS (
   with calendar as (
     select
     calendar_reporting_month,
@@ -81,7 +146,7 @@ sum(previous_years_bill_rate_savings_in_cad) as previous_years_bill_rate_savings
 sum(previous_years_bill_rate_savings_in_gbp) as previous_years_bill_rate_savings_in_gbp,
 
 DATE_TRUNC(consolidated_invoice_approved_date,MONTH) as month_start_spend
- from ${dataform.projectConfig.vars.ds_name}.stdrv_spend_${dataform.projectConfig.vars.client_code} group by month_start_spend,rsr_client_code),
+ from %s.%s group by month_start_spend,rsr_client_code),
 
  assign as (select 
   SUM(perm_recruitment_fee_savings) as perm_recruitment_fee_savings,
@@ -98,7 +163,7 @@ SUM(rehire_onboarding_savings_in_cad) as rehire_onboarding_savings_in_cad,
  SUM(rehire_onboarding_savings_in_eur) as rehire_onboarding_savings_in_eur,
 
 DATE_TRUNC(assignment_create_date_initial,MONTH) as month_start_assign
-  from ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_${dataform.projectConfig.vars.client_code} group by month_start_assign, rsr_client_code),
+  from %s.%s group by month_start_assign, rsr_client_code),
 savings as (select savings.client_code,
 savings.currency,
 reporting_date,	
@@ -297,4 +362,4 @@ LEFT JOIN fx_rates AS fx_usd
       AND savings.reporting_date = fx_cad.month
       AND trim(upper(fx_cad.to_currency)) = 'CAD'
       order by calendar_reporting_month_date
-  )
+  )""",gold_dataset,savings_trend_table_id,gold_dataset,spend_table_id,gold_dataset,assignment_table_id);
