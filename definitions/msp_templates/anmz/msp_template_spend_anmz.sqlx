@@ -1,7 +1,7 @@
 config {
     type: "operations",
-    description: "Dynamically creates the anonymized view for requisitions.",
-    dependencies: "msp_template_requisition_gold",
+    description: "Dynamically creates the anonymized view for spends.",
+    dependencies: "msp_template_spend_gold",
     tags: ["anonymized", "msp_template_gold"]
 }
 
@@ -10,7 +10,7 @@ js {
 }
 
 DECLARE
-  requisition_table_id STRING;
+  spend_table_id STRING;
 DECLARE
   gold_dataset STRING;
 DECLARE
@@ -25,13 +25,13 @@ EXECUTE IMMEDIATE
   SELECT
   DISTINCT table_id,
   FROM
-  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld`
-    WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' )INTO requisition_table_id;
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg`
+    WHERE standard_report_type = 'spend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' )INTO spend_table_id;
 IF
-  requisition_table_id IS NULL THEN RAISE
+  spend_table_id IS NULL THEN RAISE
 USING
-  MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
+  MESSAGE = 'spend TABLE ID IS MISSING FROM CONFIGS';
 END IF
   ;
 SET
@@ -41,7 +41,7 @@ SET
 EXECUTE IMMEDIATE
   """${
         anonymization.get_anonymized_select_clause({
-            report_type: "requisition",
+            report_type: "spend",
             solution: "MSP",
             metadata_table: "common.master_template_report_fields_prd_cpy"
         })
@@ -51,7 +51,7 @@ SET
   CREATE OR REPLACE TABLE `%s.%s` AS (
     SELECT %s FROM `%s.%s`
   )
-  """, anmz_dataset, requisition_table_id, select_clause, gold_dataset, requisition_table_id );
+  """, anmz_dataset, spend_table_id, select_clause, gold_dataset, spend_table_id );
 EXECUTE IMMEDIATE
   final_ddl_statement;
 END
