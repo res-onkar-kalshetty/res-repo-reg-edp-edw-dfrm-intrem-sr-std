@@ -1,14 +1,14 @@
 defaultProject: rsr-bi-group-dev-c874
-defaultLocation: europe-west1
+defaultLocation: us-east1
 defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.0
 vars:
-    client_code: "msp_bee_gbl_nike"
-    region: "_emea"
-    ds_name: "db_gbl_nike"
-    dataset_id: "tr_eu_nike"
-    config_dataset: "dev_reg_edp_edw_schema_eu"
+    client_code: "imsp_fg_us_bose"
+    region: ""
+    ds_name: "db_us_bose"
+    dataset_id: "tr_bose_us"
+    config_dataset: "dev_reg_edp_edw_schema_us"
     # table_id: "t_noam_bee_api_msp_req_dy"
     ph1_r: ""
     ph2_r: ""
