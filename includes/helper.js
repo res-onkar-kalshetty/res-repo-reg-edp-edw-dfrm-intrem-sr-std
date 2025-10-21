@@ -57,10 +57,25 @@ function get_config_table() {
     return constants['config_table_name']
 }
 
+function getSlvrTableName(dataset,table,standard_report_type,dataset_id) {
+    const keyName = standard_report_type.replace('_src', '');
+    const placeholderKey = `ph_${keyName}`;
+    const placeholderValue = dataform.projectConfig.vars && dataform.projectConfig.vars[placeholderKey];
+    if (placeholderValue && placeholderValue.trim() !== '') {
+    return placeholderValue;
+  } else {
+    return `
+        select
+        distinct table_id
+        from ${dataset}.${table}
+        where standard_report_type='${standard_report_type}' and dataset_id='${dataset_id}'`;
+  }
+}
 module.exports = {
     get_region_code,
     get_region,
     get_env,
     get_config_ds,
-    get_config_table
+    get_config_table,
+    getSlvrTableName
 }

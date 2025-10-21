@@ -11,36 +11,50 @@ js {
     } = require("includes/table_config");
     const config = getCompleteTableConfig(ctx);
     const baseTables = config.baseTables.defaults;
+    const helper = require("/includes/helper");
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const slvr_req = (helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_src', `${dataform.projectConfig.vars.dataset_id}`));
+    const cand_req = (helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', `${dataform.projectConfig.vars.dataset_id}`));
 }
 
 DECLARE
   requisition_table_id STRING;
 DECLARE
   gold_dataset STRING;
-DECLARE
-  config_ds_name STRING;
-DECLARE
-  config_table_name STRING;
+-- DECLARE
+--   config_ds_name STRING;
+-- DECLARE
+--   config_table_name STRING;
 DECLARE
   env STRING;
 DECLARE
   region STRING;
-SET
-  config_ds_name = '${helper.get_config_ds()}';
-SET
-  config_table_name = '${helper.get_config_table()}';
+DECLARE
+  slvr_req STRING;
+DECLARE
+  cand_req STRING;
+-- SET
+--   config_ds_name = '${helper.get_config_ds()}';
+-- SET
+--   config_table_name = '${helper.get_config_table()}';
 SET
   env = '${helper.get_env()}';
 SET
   region= '${helper.get_region()}';
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT table_id,
-  FROM
-  `%s.%s`
-    WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name)INTO requisition_table_id;
+
+SET
+    slvr_req = (${slvr_req});
+SET
+    cand_req = (${cand_req});
+-- EXECUTE IMMEDIATE
+--   FORMAT ('''
+--   SELECT
+--   DISTINCT table_id,
+--   FROM
+--   `%s.%s`
+--     WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+-- ''', config_ds_name,config_table_name) INTO requisition_table_id;
 IF
   requisition_table_id IS NULL THEN RAISE
 USING
