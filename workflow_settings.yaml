@@ -4,9 +4,9 @@ defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.0
 vars:
-    env: "dev" # TODO : we are getting env from default project try to remove
+    # env: "dev" # TODO : we are getting env from default project try to remove
     client_code: "msp_bee_gbl_nike"
-    region: "_emea" # TODO : write function to get region 
+    # region: "_emea" # TODO : write function to get region 
     ds_name: "db_gbl_nike" # TODO : optional (not needed for gold - should be removed later)
     dataset_id: "tr_eu_nike" # dataset name should be changed to dataset_id everywhere
     # config_dataset: "dev_reg_edp_edw_schema_eu"

@@ -17,38 +17,45 @@ DECLARE
   requisition_table_id STRING;
 DECLARE
   gold_dataset STRING;
-
-DECLARE config_ds_name STRING;
-
-DECLARE config_table_name STRING;
-
-SET config_ds_name = '${helper.get_config_ds()}';
-
-SET config_table_name = '${helper.get_config_table()}';
-
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  env STRING;
+DECLARE
+  region STRING;
+SET
+  config_ds_name = '${helper.get_config_ds()}';
+SET
+  config_table_name = '${helper.get_config_table()}';
+SET
+  env = '${helper.get_env()}';
+SET
+  region= '${helper.get_region()}';
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
   DISTINCT table_id,
   FROM
-  `%s.%s` 
-    WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_name}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO requisition_table_id;
-
+  `%s.%s`
+    WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''', config_ds_name,config_table_name)INTO requisition_table_id;
 IF
   requisition_table_id IS NULL THEN RAISE
 USING
   MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
 END IF
   ;
-
-
-IF "${dataform.projectConfig.vars.env}"="prd" THEN
-    SET gold_dataset =  'gold_${dataform.projectConfig.vars.dataset_name}';
-ELSE
-    SET gold_dataset =  '${dataform.projectConfig.vars.env}_gold_${dataform.projectConfig.vars.dataset_name}';
-END IF;
-
+IF
+  env="prd" THEN
+SET
+  gold_dataset = 'gold_${dataform.projectConfig.vars.dataset_id}';
+    ELSE
+SET
+  gold_dataset = 'dev_gold_${dataform.projectConfig.vars.dataset_id}';
+END IF
+  ;
 EXECUTE IMMEDIATE
   FORMAT ("""
 CREATE OR REPLACE TABLE
@@ -247,17 +254,17 @@ CREATE OR REPLACE TABLE
     AS rsr_region,
     gcr.country AS rsr_country_code,
     CURRENT_DATE() AS current_date,
-    CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_approved_date,
+    CAST(Function_library%s.f_calendarday(req.req_approved_date,
         CAST(CURRENT_TIMESTAMP() AS DATETIME)) AS INT64) AS req_aging_cd,
-    ROUND(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_approved_date,
+    ROUND(Function_library%s.f_workday(req.req_approved_date,
         CAST(CURRENT_TIMESTAMP() AS DATETIME)),2) AS req_aging_bd,
-    CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_create_date,
+    CAST(Function_library%s.f_calendarday(req.req_create_date,
         req.req_approved_date) AS INT64) AS create_to_approve_cd,
-    ROUND(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_create_date,
+    ROUND(Function_library%s.f_workday(req.req_create_date,
         req.req_approved_date),2) AS create_to_approve_bd,
-    CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_approved_date,
+    CAST(Function_library%s.f_calendarday(req.req_approved_date,
         cand.first_cand_submitted_date) AS INT64) AS time_to_submit_first_cand_cd,
-    ROUND(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_approved_date,
+    ROUND(Function_library%s.f_workday(req.req_approved_date,
         cand.first_cand_submitted_date),2) AS time_to_submit_first_cand_bd,
     grs.rsr_job_posting_status AS rsr_req_status,
     -- job posting status
@@ -334,38 +341,38 @@ CREATE OR REPLACE TABLE
   ON
     req.req_id = assing.main_document_id
   LEFT JOIN
-    `db_common${dataform.projectConfig.vars.region}.global_jp_closed_reason` gjcr
+    `db_common%s.global_jp_closed_reason` gjcr
   ON
     (CASE
         WHEN req.req_status NOT IN ('Open', 'On Hold', 'Pending') THEN req.close_reason
     END
       ) = gjcr.close_reason
   LEFT JOIN
-    `db_common${dataform.projectConfig.vars.region}.global_labor_type` glt
+    `db_common%s.global_labor_type` glt
   ON
     req.labor_type = glt.vms_labor_type
   LEFT JOIN
-    `db_common${dataform.projectConfig.vars.region}.global_state_mapping` gsm
+    `db_common%s.global_state_mapping` gsm
   ON
     req.state_province = gsm.vms_state
   LEFT JOIN
-    `db_common${dataform.projectConfig.vars.region}.global_countries` gcr
+    `db_common%s.global_countries` gcr
   ON
     LOWER(req.country)=LOWER(gcr.country)
   LEFT JOIN
-    `db_common${dataform.projectConfig.vars.region}.global_job_posting_status` grs
+    `db_common%s.global_job_posting_status` grs
   ON
     grs.job_posting_status = req.req_status
   LEFT OUTER JOIN
-    db_common${dataform.projectConfig.vars.region}.global_sourcing AS gbl_src
+    db_common%s.global_sourcing AS gbl_src
   ON
     TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, '')))
   LEFT JOIN
-    db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt
+    db%s_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt
   ON
     req.req_title = norm_jt.raw_job_title
   LEFT JOIN
-    db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc
+    db%s_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc
   ON
     COALESCE(req.city, '') = COALESCE(norm_loc.city, '')
     AND COALESCE((CASE
@@ -381,4 +388,4 @@ CREATE OR REPLACE TABLE
           ELSE 'Unmapped'
       END
         ), '') = COALESCE(norm_loc.country_name, '')
-    AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, ''))""",gold_dataset,requisition_table_id);
+    AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, ''))""",gold_dataset,requisition_table_id, region, region, region, region, region, region, region, region, region, region, region, region, region, region);
