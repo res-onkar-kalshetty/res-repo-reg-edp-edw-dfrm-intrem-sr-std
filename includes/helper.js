@@ -62,13 +62,13 @@ function getSlvrTableName(dataset,table,standard_report_type,dataset_id) {
     const placeholderKey = `ph_${keyName}`;
     const placeholderValue = dataform.projectConfig.vars && dataform.projectConfig.vars[placeholderKey];
     if (placeholderValue && placeholderValue.trim() !== '') {
-    return placeholderValue;
+    return `"${placeholderValue}"`;
   } else {
-    return `
+    return `(
         select
         distinct table_id
         from ${dataset}.${table}
-        where standard_report_type='${standard_report_type}' and dataset_id='${dataset_id}'`;
+        where standard_report_type='${standard_report_type}' and dataset_id='${dataset_id}')`
   }
 }
 module.exports = {

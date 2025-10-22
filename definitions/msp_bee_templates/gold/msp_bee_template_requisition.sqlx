@@ -6,26 +6,27 @@ config {
 }
 
 js {
-    const {
-        getCompleteTableConfig
-    } = require("includes/table_config");
-    const config = getCompleteTableConfig(ctx);
-    const baseTables = config.baseTables.defaults;
     const helper = require("/includes/helper");
     const config_ds_name = helper.get_config_ds();
     const config_table_name = helper.get_config_table();
     const slvr_req = (helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_src', `${dataform.projectConfig.vars.dataset_id}`));
-    const cand_req = (helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', `${dataform.projectConfig.vars.dataset_id}`));
+    const slvr_cand = (helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', `${dataform.projectConfig.vars.dataset_id}`));
+    const slvr_req_tmp = (helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_template_src', `${dataform.projectConfig.vars.dataset_id}`));
+    const slvr_assgn = (helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_src', `${dataform.projectConfig.vars.dataset_id}`));
+    const slvr_req_dist = (helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_distribution_src', `${dataform.projectConfig.vars.dataset_id}`));
+
 }
 
 DECLARE
   requisition_table_id STRING;
 DECLARE
   gold_dataset STRING;
--- DECLARE
---   config_ds_name STRING;
--- DECLARE
---   config_table_name STRING;
+DECLARE
+  slvr_dataset STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
 DECLARE
   env STRING;
 DECLARE
@@ -33,28 +34,39 @@ DECLARE
 DECLARE
   slvr_req STRING;
 DECLARE
-  cand_req STRING;
--- SET
---   config_ds_name = '${helper.get_config_ds()}';
--- SET
---   config_table_name = '${helper.get_config_table()}';
+  slvr_cand STRING;
+DECLARE
+  slvr_req_tmp STRING;
+DECLARE
+  slvr_assgn STRING;
+DECLARE
+  slvr_req_dist STRING;
+SET
+  config_ds_name = '${helper.get_config_ds()}';
+SET
+  config_table_name = '${helper.get_config_table()}';
 SET
   env = '${helper.get_env()}';
 SET
   region= '${helper.get_region()}';
-
 SET
-    slvr_req = (${slvr_req});
+  slvr_req = ${slvr_req};
 SET
-    cand_req = (${cand_req});
--- EXECUTE IMMEDIATE
---   FORMAT ('''
---   SELECT
---   DISTINCT table_id,
---   FROM
---   `%s.%s`
---     WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
--- ''', config_ds_name,config_table_name) INTO requisition_table_id;
+  slvr_cand = ${slvr_cand};
+SET
+  slvr_req_tmp = ${slvr_req_tmp};
+SET
+  slvr_assgn = ${slvr_assgn};
+SET
+  slvr_req_dist = ${slvr_req_dist};
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `%s.%s`
+    WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''', config_ds_name,config_table_name) INTO requisition_table_id;
 IF
   requisition_table_id IS NULL THEN RAISE
 USING
@@ -70,6 +82,15 @@ SET
   gold_dataset = 'dev_gold_${dataform.projectConfig.vars.dataset_id}';
 END IF
   ;
+IF
+  env="prd" THEN
+SET
+  slvr_dataset = 'slvr_${dataform.projectConfig.vars.dataset_id}';
+    ELSE
+SET
+  slvr_dataset = 'dev_slvr_${dataform.projectConfig.vars.dataset_id}_praneeth';
+END IF
+  ;
 EXECUTE IMMEDIATE
   FORMAT ("""
 CREATE OR REPLACE TABLE
@@ -83,7 +104,7 @@ CREATE OR REPLACE TABLE
       COUNT(DISTINCT cand_id) AS cand_submitted_cnt,
       COUNT(DISTINCT supplier) AS suppliers_responded_cnt
     FROM
-      `${dataform.projectConfig.vars.ds_name}.${baseTables.candidate}_${dataform.projectConfig.vars.client_code}`
+      `%s.%s`
     GROUP BY
       req_id,
       buyer_code ),
@@ -99,9 +120,9 @@ CREATE OR REPLACE TABLE
     END
       AS max_template_bill_rate_st_hr,
     FROM
-      ${dataform.projectConfig.vars.ds_name}.${baseTables.requisition_template}_${dataform.projectConfig.vars.client_code} req_temp_in
+      `%s.%s` req_temp_in
     LEFT JOIN
-      `${dataform.projectConfig.vars.ds_name}.${baseTables.requisition}_${dataform.projectConfig.vars.client_code}` req_in
+      `%s.%s` req_in
     ON
       req_in.req_id= req_temp_in.req_id ),
     wo_data AS (
@@ -110,7 +131,7 @@ CREATE OR REPLACE TABLE
       buyer_code,
       main_document_id
     FROM
-      ${dataform.projectConfig.vars.ds_name}.${baseTables.assignment}_${dataform.projectConfig.vars.client_code}
+      `%s.%s`
     GROUP BY
       buyer_code,
       main_document_id ),
@@ -129,7 +150,7 @@ CREATE OR REPLACE TABLE
       *EXCEPT(req_distribution_status,
         decline_reason)
     FROM
-      ${dataform.projectConfig.vars.ds_name}.${baseTables.requisition_distribution}_${dataform.projectConfig.vars.client_code} ),
+      `%s.%s` ),
     req_dist_data AS (
     SELECT
       COUNT(DISTINCT
@@ -337,7 +358,7 @@ CREATE OR REPLACE TABLE
     norm_loc.location_level_1a,
     norm_loc.location_level_2a
   FROM
-    `${dataform.projectConfig.vars.ds_name}.${baseTables.requisition}_${dataform.projectConfig.vars.client_code}` req
+    `%s.%s` req
   LEFT JOIN
     req_dist_data AS req_dist
   ON
@@ -402,4 +423,4 @@ CREATE OR REPLACE TABLE
           ELSE 'Unmapped'
       END
         ), '') = COALESCE(norm_loc.country_name, '')
-    AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, ''))""",gold_dataset,requisition_table_id, region, region, region, region, region, region, region, region, region, region, region, region, region, region);
+    AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, ''))""",gold_dataset,requisition_table_id, slvr_dataset, slvr_cand, slvr_dataset, slvr_req_tmp, slvr_dataset, slvr_req, slvr_dataset, slvr_assgn, slvr_dataset, slvr_req_dist, region, region, region, region, region, region, slvr_dataset, slvr_req, region, region, region, region, region, region, region, region);
