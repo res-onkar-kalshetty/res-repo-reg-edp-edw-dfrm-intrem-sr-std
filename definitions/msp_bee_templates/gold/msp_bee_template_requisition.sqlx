@@ -7,16 +7,28 @@ config {
 
 js {
     const helper = require("/includes/helper");
+
     const config_ds_name = helper.get_config_ds();
     const config_table_name = helper.get_config_table();
-    const slvr_req = (helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_src', `${dataform.projectConfig.vars.dataset_id}`));
-    const slvr_cand = (helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', `${dataform.projectConfig.vars.dataset_id}`));
-    const slvr_req_tmp = (helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_template_src', `${dataform.projectConfig.vars.dataset_id}`));
-    const slvr_assgn = (helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_src', `${dataform.projectConfig.vars.dataset_id}`));
-    const slvr_req_dist = (helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_distribution_src', `${dataform.projectConfig.vars.dataset_id}`));
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const slvr_dataset = (env == "prd") ?
+        `slvr_${dataset_id}` :
+        `dev_slvr_${dataset_id}_praneeth`;
+
+    const slvr_req = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_src', dataset_id);
+    const slvr_cand = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
+    const slvr_req_tmp = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_template_src', dataset_id);
+    const slvr_assgn = helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_src', dataset_id);
+    const slvr_req_dist = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_distribution_src', dataset_id);
 
 }
-
 DECLARE
   requisition_table_id STRING;
 DECLARE
@@ -27,8 +39,6 @@ DECLARE
   config_ds_name STRING;
 DECLARE
   config_table_name STRING;
-DECLARE
-  env STRING;
 DECLARE
   region STRING;
 DECLARE
@@ -42,13 +52,15 @@ DECLARE
 DECLARE
   slvr_req_dist STRING;
 SET
-  config_ds_name = '${helper.get_config_ds()}';
+  config_ds_name = '${config_ds_name}';
 SET
-  config_table_name = '${helper.get_config_table()}';
+  config_table_name = '${config_table_name}';
 SET
-  env = '${helper.get_env()}';
+  region = '${region}';
 SET
-  region= '${helper.get_region()}';
+  gold_dataset = '${gold_dataset}';
+SET
+  slvr_dataset = '${slvr_dataset}';
 SET
   slvr_req = ${slvr_req};
 SET
@@ -71,24 +83,6 @@ IF
   requisition_table_id IS NULL THEN RAISE
 USING
   MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  env="prd" THEN
-SET
-  gold_dataset = 'gold_${dataform.projectConfig.vars.dataset_id}';
-    ELSE
-SET
-  gold_dataset = 'dev_gold_${dataform.projectConfig.vars.dataset_id}';
-END IF
-  ;
-IF
-  env="prd" THEN
-SET
-  slvr_dataset = 'slvr_${dataform.projectConfig.vars.dataset_id}';
-    ELSE
-SET
-  slvr_dataset = 'dev_slvr_${dataform.projectConfig.vars.dataset_id}_praneeth';
 END IF
   ;
 EXECUTE IMMEDIATE
