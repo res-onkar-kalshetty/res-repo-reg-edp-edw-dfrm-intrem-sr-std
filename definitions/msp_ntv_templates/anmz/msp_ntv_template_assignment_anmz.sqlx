@@ -1,0 +1,58 @@
+config {
+    type: "operations",
+    description: "Dynamically creates the anonymized view for assignments.",
+    dependencies: "msp_ntv_template_assignment_gold",
+    tags: ["anonymized", "msp_ntv_template_gold"]
+}
+
+js {
+    const anonymization = require("includes/anonymization");
+}
+
+DECLARE
+  assignment_table_id STRING;
+DECLARE
+  gold_dataset STRING;
+DECLARE
+  anmz_dataset STRING;
+DECLARE
+  select_clause STRING;
+DECLARE
+  final_ddl_statement STRING;
+BEGIN
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+    WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' )INTO assignment_table_id;
+IF
+  assignment_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'assignment TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+SET
+  gold_dataset = CONCAT("dev", "_gold_", "${dataform.projectConfig.vars.dataset_id}");
+SET
+  anmz_dataset = CONCAT("dev", "_anmz_", "${dataform.projectConfig.vars.dataset_id}");
+EXECUTE IMMEDIATE
+  """${
+        anonymization.get_anonymized_select_clause({
+            report_type: "assignment",
+            solution: "MSP",
+            metadata_table: "common_emea.master_template_report_fields_prd_cpy"
+        })
+    }""" INTO select_clause;
+SET
+  final_ddl_statement = FORMAT("""
+  CREATE OR REPLACE TABLE `%s.%s` AS (
+    SELECT %s FROM `%s.%s`
+  )
+  """, anmz_dataset, assignment_table_id, select_clause, gold_dataset, assignment_table_id );
+EXECUTE IMMEDIATE
+  final_ddl_statement;
+END
+  ;

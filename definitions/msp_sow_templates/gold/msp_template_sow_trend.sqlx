@@ -1,0 +1,86 @@
+config {
+    type: "operations",
+    name: "msp_template_sow_trend_gold",
+    tags: 'msp_template_sow_gold',
+    description: 'This file creates the  stdrv layer'
+}
+CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_sow_trend_${dataform.projectConfig.vars.client_code}` AS (
+WITH date_calc AS (
+  SELECT
+    sow_details.buyer,
+    sow_details.buyer_code,
+    sow_details.sow_id,
+    Function_library${dataform.projectConfig.vars.region}.least_array([sow_details.sow_end_date, sow_details.sow_closed_date]) as reporting_date_ends,
+    r_dates AS reporting_date_week_start,
+    PARSE_DATE('%m/%d/%Y',gbl_cal.calendar_reporting_month_date) as calendar_reporting_month_date,
+    gbl_cal.calendar_reporting_month AS sow_calendar_reporting_month,
+    gbl_cal.calendar_year,
+    gbl_cal.reporting_month,
+    gbl_cal.week
+  FROM ${dataform.projectConfig.vars.ds_name}.prs_sow_${dataform.projectConfig.vars.client_code} sow_details
+  CROSS JOIN UNNEST(
+    GENERATE_DATE_ARRAY(
+      DATE_TRUNC(CAST(sow_details.sow_start_date AS DATE), WEEK), 
+      CAST(Function_library${dataform.projectConfig.vars.region}.least_array([sow_details.sow_end_date, sow_details.sow_closed_date]) AS DATE),
+      INTERVAL 1 WEEK
+    )
+  ) r_dates
+  LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_calendar_445 gbl_cal ON r_dates = PARSE_DATE('%m/%d/%Y', gbl_cal.day)
+),
+min_week_calc AS (
+  SELECT
+    sow_id,
+    reporting_month,
+    calendar_year,
+    min(week) AS min_week_no
+  FROM date_calc
+  WHERE reporting_month IS NOT NULL
+  GROUP BY sow_id, reporting_month, calendar_year
+)
+SELECT
+  sow_details.business_unit,
+  sow_details.buyer,
+  sow_details.buyer_code,
+  sow_details.city,
+  sow_details.classification,
+  sow_details.country,
+  sow_details.location,
+  sow_details.primary_cost_center,
+  sow_details.site,
+  sow_details.site_code,
+  sow_details.sow,
+  sow_details.sow_closed_date,
+  sow_details.sow_create_date,
+  sow_details.sow_end_date,
+  sow_details.sow_id,
+  sow_details.sow_start_date,
+  sow_details.sow_status,
+  sow_details.state,
+  sow_details.supplier,
+  sow_details.supplier_code,
+  gcr.rsr_country as rsr_country,
+  COALESCE(gsm.suppliername_dw, CAST(NULL AS STRING)) AS rsr_supplier,
+  gbl_sow.service_category_classification AS rsr_classification,
+  CURRENT_DATE() AS current_date,
+  date_calc.reporting_date_ends,
+  date_calc.reporting_date_week_start,
+  DATE_TRUNC(date_calc.reporting_date_week_start, MONTH) AS reporting_date,
+  date_calc.calendar_reporting_month_date,
+  date_calc.sow_calendar_reporting_month,
+  CASE
+    WHEN date_calc.week = min_week_calc.min_week_no THEN 1
+    WHEN min_week_calc.reporting_month IS NOT NULL AND date_calc.week != min_week_calc.min_week_no THEN 0
+    ELSE CAST(NULL AS NUMERIC)
+  END AS month_filter,
+  sow_details.classification_0,
+  sow_details.classification_1,
+  sow_details.classification_2,
+  sow_details.classification_3,
+  sow_supplier.rsr_vendor_id
+FROM ${dataform.projectConfig.vars.ds_name}.prs_sow_${dataform.projectConfig.vars.client_code} sow_details
+LEFT JOIN date_calc ON date_calc.sow_id = sow_details.sow_id
+LEFT JOIN ${dataform.projectConfig.vars.ds_name}.prs_supplier_${dataform.projectConfig.vars.client_code} sow_supplier ON sow_supplier.supplier_code = sow_details.supplier_code
+LEFT JOIN min_week_calc ON min_week_calc.sow_id = date_calc.sow_id AND min_week_calc.reporting_month = date_calc.reporting_month AND min_week_calc.calendar_year = date_calc.calendar_year
+LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_countries gcr on lower(sow_details.country)=lower(gcr.country)
+LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_supplier_mapping gsm ON gsm.buyer = sow_details.buyer AND gsm.supplier = sow_details.supplier
+LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_sow_classification gbl_sow ON gbl_sow.sub_categories_to_match_those_used_in_the_vms = sow_details.classification)
