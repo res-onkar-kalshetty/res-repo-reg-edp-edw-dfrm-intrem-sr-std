@@ -1,16 +1,15 @@
 defaultProject: rsr-bi-group-dev-c874
-defaultLocation: europe-west1
+defaultLocation: us-east1
 defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.0
 vars:
-    client_code: "msp_ntv_emea_mundipharma`"
-    dataset_id: "tr_eu_mundipharma"
+    client_code: "imsp_fg_us_bose"
+    dataset_id: "tr_bose_us"
     # env: "dev" # TODO : we are getting env from default project try to remove
     # region: "_emea" # TODO : write function to get region 
-    ds_name: "db_emea_mundipharma" # TODO : optional (not needed for gold - should be removed later)
+    ds_name: "db_us_bose" # TODO : optional (not needed for gold - should be removed later)
     # config_dataset: "dev_reg_edp_edw_schema_eu"
-    # table_id: "t_noam_bee_api_msp_req_dy"
     ph1_r: ""
     ph2_r: ""
     ph1_c: ""
@@ -26,3 +25,4 @@ vars:
     ph_worker: ""
     ph_spend: ""
     ph_supplier: ""
+    

@@ -11,12 +11,14 @@ js {
     } = require("includes/table_config");
     const config = getCompleteTableConfig(ctx);
     const baseTables = config.baseTables.defaults;
+    
 }
 
 DECLARE
   requisition_table_id STRING;
 DECLARE
   gold_dataset STRING;
+
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
