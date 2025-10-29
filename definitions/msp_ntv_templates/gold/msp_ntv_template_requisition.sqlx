@@ -6,34 +6,86 @@ config {
 }
 
 js {
-    const {
-        getCompleteTableConfig
-    } = require("includes/table_config");
-    const config = getCompleteTableConfig(ctx);
-    const baseTables = config.baseTables.defaults;
-}
+   const helper = require("/includes/helper");
 
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const slvr_dataset = (env == "prd") ?
+        `slvr_${dataset_id}` :
+        `dev_slvr_${dataset_id}`;
+
+    const slvr_cand = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
+    const slvr_req_tmp = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_template_src', dataset_id);
+    const slvr_req = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_src', dataset_id);
+    const slvr_assgn = helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_src', dataset_id);
+    const slvr_req_dist = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_distribution_src', dataset_id);
+}
 
 DECLARE
   requisition_table_id STRING;
 DECLARE
   gold_dataset STRING;
+DECLARE
+  slvr_dataset STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  region STRING;
+DECLARE
+  slvr_req STRING;
+DECLARE
+  slvr_cand STRING;
+DECLARE
+  slvr_req_tmp STRING;
+DECLARE
+  slvr_assgn STRING;
+DECLARE
+  slvr_req_dist STRING;
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region = '${region}';
+SET
+  gold_dataset = '${gold_dataset}';
+SET
+  slvr_dataset = '${slvr_dataset}';
+SET
+  slvr_req = ${slvr_req};
+SET
+  slvr_cand = ${slvr_cand};
+SET
+  slvr_req_tmp = ${slvr_req_tmp};
+SET
+  slvr_assgn = ${slvr_assgn};
+SET
+  slvr_req_dist = ${slvr_req_dist};
+
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
   DISTINCT table_id,
   FROM
-  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+  `%s.%s`
     WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' )INTO requisition_table_id;
+''', config_ds_name,config_table_name) INTO requisition_table_id;
 IF
   requisition_table_id IS NULL THEN RAISE
 USING
   MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
 END IF
   ;
-SET
-  gold_dataset = CONCAT("dev","_gold_","${dataform.projectConfig.vars.dataset_id}");
 
 EXECUTE IMMEDIATE
 FORMAT ("""
@@ -48,7 +100,7 @@ SELECT
   COUNT(DISTINCT cand_id) AS cand_submitted_cnt,
   COUNT(DISTINCT supplier) AS suppliers_responded_cnt
 FROM
-  `${dataform.projectConfig.vars.ds_name}.${baseTables.candidate}_${dataform.projectConfig.vars.client_code}`
+  `${slvr_dataset}.%s`
 GROUP BY
   req_id,
   buyer_code ),
@@ -64,9 +116,9 @@ SELECT
 END
   AS max_template_bill_rate_st_hr,
 FROM
-  ${dataform.projectConfig.vars.ds_name}.${baseTables.requisition_template}_${dataform.projectConfig.vars.client_code} req_temp_in
+  ${slvr_dataset}.%s req_temp_in
 LEFT JOIN
-  `${dataform.projectConfig.vars.ds_name}.${baseTables.requisition}_${dataform.projectConfig.vars.client_code}` req_in
+  `${slvr_dataset}.%s` req_in
 ON
   req_in.req_id= req_temp_in.req_id ),
 wo_data AS (
@@ -75,7 +127,7 @@ SELECT
   buyer_code,
   main_document_id
 FROM
-  ${dataform.projectConfig.vars.ds_name}.${baseTables.assignment}_${dataform.projectConfig.vars.client_code}
+  ${slvr_dataset}.%s
 WHERE
   last_assignment_in_chain = 1 -- netive specific FILTER which picks the latest revision OF the ASSIGNMENT
 GROUP BY
@@ -93,7 +145,7 @@ SELECT
   buyer_code,
   req_id
 FROM
-  ${dataform.projectConfig.vars.ds_name}.${baseTables.requisition_distribution}_${dataform.projectConfig.vars.client_code}
+  ${slvr_dataset}.%s
 GROUP BY
   buyer_code,
   req_id )
@@ -204,17 +256,17 @@ END AS rsr_labor_type,
   END AS rsr_region,
 gcr.country AS rsr_country_code,
 CURRENT_DATE() AS current_date,
-CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_approved_date,
+CAST(Function_library${region}.f_calendarday(req.req_approved_date,
     CAST(CURRENT_TIMESTAMP() AS DATETIME)) AS INT64) AS req_aging_cd,
-ROUND(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_approved_date,
+ROUND(Function_library${region}.f_workday(req.req_approved_date,
     CAST(CURRENT_TIMESTAMP() AS DATETIME)),2) AS req_aging_bd,
-CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_create_date,
+CAST(Function_library${region}.f_calendarday(req.req_create_date,
     req.req_approved_date) AS INT64) AS create_to_approve_cd,
-ROUND(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_create_date,
+ROUND(Function_library${region}.f_workday(req.req_create_date,
     req.req_approved_date),2) AS create_to_approve_bd,
-CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_approved_date,
+CAST(Function_library${region}.f_calendarday(req.req_approved_date,
     cand.first_cand_submitted_date) AS INT64) AS time_to_submit_first_cand_cd,
-ROUND(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_approved_date,
+ROUND(Function_library${region}.f_workday(req.req_approved_date,
     cand.first_cand_submitted_date),2) AS time_to_submit_first_cand_bd,
 grs.rsr_job_posting_status AS rsr_req_status,-- job posting status
 assing.hired_cnt,
@@ -271,7 +323,7 @@ norm_loc.location_level_8,
 norm_loc.location_level_1a,
 norm_loc.location_level_2a
 FROM
-`${dataform.projectConfig.vars.ds_name}.${baseTables.requisition}_${dataform.projectConfig.vars.client_code}` req
+`${slvr_dataset}.%s` req
 LEFT JOIN
 req_dist_data AS req_dist
 ON
@@ -289,34 +341,34 @@ wo_data AS assing
 ON
 req.req_id = assing.main_document_id
 LEFT JOIN
-`db_common${dataform.projectConfig.vars.region}.global_jp_closed_reason` gjcr
+`db_common${region}.global_jp_closed_reason` gjcr
 ON
 (CASE
     WHEN req.req_status NOT IN ('Open', 'On Hold', 'Pending') THEN req.close_reason
 END
   ) = gjcr.close_reason
 LEFT JOIN
-`db_common${dataform.projectConfig.vars.region}.global_labor_type` glt
+`db_common${region}.global_labor_type` glt
 ON
 req.labor_type = glt.vms_labor_type
 LEFT JOIN
-`db_common${dataform.projectConfig.vars.region}.global_state_mapping` gsm
+`db_common${region}.global_state_mapping` gsm
 ON
 req.state_province = gsm.vms_state
 LEFT JOIN
-`db_common${dataform.projectConfig.vars.region}.global_countries` gcr
+`db_common${region}.global_countries` gcr
 ON
 LOWER(req.country)=LOWER(gcr.country)
 LEFT JOIN
-`db_common${dataform.projectConfig.vars.region}.global_job_posting_status` grs
+`db_common${region}.global_job_posting_status` grs
 ON
 grs.job_posting_status = req.req_status
 LEFT OUTER JOIN
-db_common${dataform.projectConfig.vars.region}.global_sourcing AS gbl_src
+db_common${region}.global_sourcing AS gbl_src
 ON
 TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, '')))
-LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
-    LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE 
+LEFT JOIN db${region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
+    LEFT JOIN db${region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE 
     WHEN IFNULL(gsm.vms_state, '') <> '' THEN gsm.vms_state
     WHEN IFNULL(req.state_province, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
@@ -325,4 +377,11 @@ LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_t
     WHEN IFNULL(gcr.rsr_country, '') <> '' THEN gcr.rsr_country
     WHEN IFNULL(req.country, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
-  END), '') = COALESCE(norm_loc.country_name, '') AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, ''))""",gold_dataset,requisition_table_id );
+  END), '') = COALESCE(norm_loc.country_name, '') AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, ''))""",gold_dataset,requisition_table_id,
+  slvr_cand,
+  slvr_req_tmp,
+  slvr_req,
+  slvr_assgn,
+  slvr_req_dist,
+  slvr_req  
+  );
