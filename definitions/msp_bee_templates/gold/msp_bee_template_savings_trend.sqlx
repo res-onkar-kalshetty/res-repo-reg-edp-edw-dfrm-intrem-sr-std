@@ -7,12 +7,23 @@ config {
 }
 
 js {
-    const {
-        getCompleteTableConfig
-    } = require("includes/table_config");
-    const config = getCompleteTableConfig(ctx);
-    const baseTables = config.baseTables.defaults;
+    const helper = require("/includes/helper");
+
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const slvr_dataset = (env == "prd") ?
+        `slvr_${dataset_id}` :
+        `dev_slvr_${dataset_id}_praneeth`;
 }
+
 DECLARE
   savings_trend_table_id STRING;
 DECLARE
@@ -21,14 +32,24 @@ DECLARE
   assignment_table_id STRING;
 DECLARE
   gold_dataset STRING;
-
-DECLARE config_ds_name STRING;
-
-DECLARE config_table_name STRING;
-
-SET config_ds_name = '${helper.get_config_ds()}';
-
-SET config_table_name = '${helper.get_config_table()}';
+DECLARE
+  slvr_dataset STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  region STRING;
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region = '${region}';
+SET
+  gold_dataset = '${gold_dataset}';
+SET
+  slvr_dataset = '${slvr_dataset}';
 
 EXECUTE IMMEDIATE
   FORMAT ('''
@@ -36,7 +57,7 @@ EXECUTE IMMEDIATE
   DISTINCT table_id,
   FROM
   `%s.%s` 
-    WHERE standard_report_type = 'savings_trend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_name}' LIMIT 1
+    WHERE standard_report_type = 'savings_trend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''' , config_ds_name,config_table_name)INTO savings_trend_table_id;
 
 
@@ -46,7 +67,7 @@ EXECUTE IMMEDIATE
   DISTINCT table_id,
   FROM
   `%s.%s` 
-    WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_name}' LIMIT 1
+    WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''' , config_ds_name,config_table_name)INTO assignment_table_id;
 
 
@@ -56,7 +77,7 @@ EXECUTE IMMEDIATE
   DISTINCT table_id,
   FROM
   `%s.%s` 
-    WHERE standard_report_type = 'spend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_name}' LIMIT 1
+    WHERE standard_report_type = 'spend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''' , config_ds_name,config_table_name)INTO spend_table_id;
 
 
@@ -79,11 +100,6 @@ USING
 END IF
   ;
 
-IF "${dataform.projectConfig.vars.env}"="prd" THEN
-    SET gold_dataset =  'gold_${dataform.projectConfig.vars.dataset_name}';
-ELSE
-    SET gold_dataset =  '${dataform.projectConfig.vars.env}_gold_${dataform.projectConfig.vars.dataset_name}';
-END IF;
 
 EXECUTE IMMEDIATE
   FORMAT ("""
@@ -96,7 +112,7 @@ CREATE OR REPLACE VIEW
     calendar_reporting_quarter,
     calendar_reporting_year
     from
-    db_common${dataform.projectConfig.vars.region}.global_calendar_445 calendar group by 1,2,3,4 
+    db_common${region}.global_calendar_445 calendar group by 1,2,3,4 
 )
 ,spend as (select 
 sum(extension_negotiated_savings) as extension_negotiated_savings,
@@ -188,7 +204,7 @@ date_to,
 supplier_invoice_consolidation_fixed as supplier_invoice_consolidation_savings,
 supplier_legal_fixed as supplier_legal_savings,
 background_check_fixed as background_check_savings,
-from (select * from db_common${dataform.projectConfig.vars.region}.msp_cost_saving savings where savings.client_code = '${dataform.projectConfig.vars.client_code}') savings,
+from (select * from db_common${region}.msp_cost_saving savings where savings.client_code = '${dataform.projectConfig.vars.client_code}') savings,
 UNNEST(GENERATE_DATE_ARRAY(
     DATE_TRUNC(date_from, MONTH),
     DATE_TRUNC(date_to, MONTH),
@@ -201,7 +217,7 @@ fx_rates AS (
       PARSE_DATE("%%Y-%%m-%%d", month) AS month,
       to_currency
     FROM
-      db_common${dataform.projectConfig.vars.region}.global_fx_rates
+      db_common${region}.global_fx_rates
 )
 
 select

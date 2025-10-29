@@ -7,11 +7,21 @@ config {
 }
 
 js {
-    const {
-        getCompleteTableConfig
-    } = require("includes/table_config");
-    const config = getCompleteTableConfig(ctx);
-    const baseTables = config.baseTables.defaults;
+    const helper = require("/includes/helper");
+
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const slvr_dataset = (env == "prd") ?
+        `slvr_${dataset_id}` :
+        `dev_slvr_${dataset_id}_praneeth`;
 }
 
 DECLARE
@@ -20,14 +30,24 @@ DECLARE
   assignment_table_id STRING;
 DECLARE
   gold_dataset STRING;
-
-DECLARE config_ds_name STRING;
-
-DECLARE config_table_name STRING;
-
-SET config_ds_name = '${helper.get_config_ds()}';
-
-SET config_table_name = '${helper.get_config_table()}';
+DECLARE
+  slvr_dataset STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  region STRING;
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region = '${region}';
+SET
+  gold_dataset = '${gold_dataset}';
+SET
+  slvr_dataset = '${slvr_dataset}';
 
 EXECUTE IMMEDIATE
   FORMAT ('''
@@ -35,7 +55,7 @@ EXECUTE IMMEDIATE
   DISTINCT table_id,
   FROM
   `%s.%s` 
-    WHERE standard_report_type = 'assignment_trend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_name}' LIMIT 1
+    WHERE standard_report_type = 'assignment_trend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''' , config_ds_name,config_table_name)INTO assignment_trend_table_id;
 
 EXECUTE IMMEDIATE
@@ -44,7 +64,7 @@ EXECUTE IMMEDIATE
   DISTINCT table_id,
   FROM
   `%s.%s` 
-    WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_name}' LIMIT 1
+    WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''' , config_ds_name,config_table_name)INTO assignment_table_id;
 
 IF
@@ -59,11 +79,7 @@ USING
   MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
 END IF
   ;
-IF "${dataform.projectConfig.vars.env}"="prd" THEN
-    SET gold_dataset =  'gold_${dataform.projectConfig.vars.dataset_name}';
-ELSE
-    SET gold_dataset =  '${dataform.projectConfig.vars.env}_gold_${dataform.projectConfig.vars.dataset_name}';
-END IF;
+
 EXECUTE IMMEDIATE
   FORMAT ("""
 CREATE OR REPLACE TABLE %s.%s
@@ -91,7 +107,7 @@ derv_wo AS(
     FROM
     %s.%s req_assign_in
 	CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(DATE_TRUNC(CAST(req_assign_in.worker_start_date AS DATE), WEEK), CAST(req_assign_in.reporting_date_ends AS DATE), INTERVAL 1 WEEK)) r_dates
-	left join db_common${dataform.projectConfig.vars.region}.global_calendar_445 gbl_cal_445 ON r_dates = PARSE_DATE('%%m/%%d/%%Y',gbl_cal_445.day)
+	left join db_common${region}.global_calendar_445 gbl_cal_445 ON r_dates = PARSE_DATE('%%m/%%d/%%Y',gbl_cal_445.day)
 ),
 temp5 AS (
          SELECT
@@ -283,7 +299,7 @@ norm_loc.location_level_2a
 FROM
 	%s.%s assign
 	LEFT JOIN cal_comp ON assign.assignment_id = cal_comp.assignment_id
-	LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER)
-   LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on assign.main_document_title = norm_jt.raw_job_title
-    LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(assign.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(assign.rsr_state, '') = COALESCE(norm_loc.state, '')
+	LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER)
+   LEFT JOIN db${region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on assign.main_document_title = norm_jt.raw_job_title
+    LEFT JOIN db${region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(assign.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(assign.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(assign.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(assign.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(assign.country, '') = COALESCE(norm_loc.country_code, ''))""",gold_dataset, assignment_trend_table_id,gold_dataset, assignment_table_id,gold_dataset,assignment_table_id);
