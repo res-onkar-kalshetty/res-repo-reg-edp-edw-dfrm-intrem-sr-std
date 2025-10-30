@@ -7,11 +7,28 @@ config {
 }
 
 js {
-    const {
-        getCompleteTableConfig
-    } = require("includes/table_config");
-    const config = getCompleteTableConfig(ctx);
-    const baseTables = config.baseTables.defaults;
+    const helper = require("/includes/helper");
+
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const slvr_dataset = (env == "prd") ?
+        `slvr_${dataset_id}` :
+        `dev_slvr_${dataset_id}_`;
+
+    const slvr_assgn = helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_src', dataset_id);
+    const slvr_assgn_v0 = helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_v0_src', dataset_id);
+    const slvr_worker = helper.getSlvrTableName(config_ds_name, config_table_name, 'worker_src', dataset_id);
+    const slvr_assgn_rt = helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_rates_src', dataset_id);
+    const slvr_assgn_rt_v0 = helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_rates_v0_src', dataset_id);
+    const slvr_cand = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
 }
 
 DECLARE
@@ -20,53 +37,76 @@ DECLARE
   requisition_table_id STRING;
 DECLARE
   gold_dataset STRING;
-
-DECLARE config_ds_name STRING;
-
-DECLARE config_table_name STRING;
-
-SET config_ds_name = '${helper.get_config_ds()}';
-
-SET config_table_name = '${helper.get_config_table()}';
-
+DECLARE
+  slvr_dataset STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  region STRING;
+DECLARE
+  slvr_assgn STRING;
+DECLARE
+  slvr_assgn_v0 STRING;
+DECLARE
+  slvr_worker STRING;
+DECLARE
+  slvr_assgn_rt STRING;
+DECLARE
+  slvr_assgn_rt_v0 STRING;
+DECLARE
+  slvr_cand STRING;
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region = '${region}';
+SET
+  gold_dataset = '${gold_dataset}';
+SET
+  slvr_dataset = '${slvr_dataset}';
+SET
+  slvr_assgn=${slvr_assgn};
+SET
+  slvr_assgn_v0=${slvr_assgn_v0};
+SET
+  slvr_worker=${slvr_worker};
+SET
+  slvr_assgn_rt=${slvr_assgn_rt};
+SET
+  slvr_assgn_rt_v0=${slvr_assgn_rt_v0};
+SET
+  slvr_cand=${slvr_cand};
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
   DISTINCT table_id,
   FROM
-  `%s.%s` 
-    WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_name}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO requisition_table_id;
-
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT table_id,
-  FROM
-  `%s.%s` 
-    WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_name}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO assignment_table_id;
-
-IF
-  assignment_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
+  `%s.%s`
+    WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''', config_ds_name,config_table_name) INTO requisition_table_id;
 IF
   requisition_table_id IS NULL THEN RAISE
 USING
   MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
 END IF
   ;
-
-IF "${dataform.projectConfig.vars.env}"="prd" THEN
-    SET gold_dataset =  'gold_${dataform.projectConfig.vars.dataset_name}';
-ELSE
-    SET gold_dataset =  '${dataform.projectConfig.vars.env}_gold_${dataform.projectConfig.vars.dataset_name}';
-END IF;
-
-
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `%s.%s`
+    WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''', config_ds_name,config_table_name) INTO assignment_table_id;
+IF
+  assignment_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
 EXECUTE IMMEDIATE
   FORMAT ("""
 CREATE OR REPLACE TABLE
@@ -78,14 +118,14 @@ WITH fx_rates AS (
       PARSE_DATE("%%Y-%%m-%%d", month) AS month,
       to_currency
     FROM
-      db_common${dataform.projectConfig.vars.region}.global_fx_rates
+      db_common${region}.global_fx_rates
 ), asg_asg_v0 AS (
   select asg.*,
   asg_v0.assignment_create_date AS assignment_create_date_initial,
   asg_v0.assignment_activation_date AS assignment_activation_date_initial,
   asg_v0.cand_offer_accepted_date AS cand_offer_accepted_date_initial,
-  EXTRACT(DATE FROM Function_library${dataform.projectConfig.vars.region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])) AS rsr_assignment_control_date,
-  DATE_TRUNC(EXTRACT(DATE FROM Function_library${dataform.projectConfig.vars.region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])),MONTH) AS rsr_assignment_control_date_monthstart,
+  EXTRACT(DATE FROM Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])) AS rsr_assignment_control_date,
+  DATE_TRUNC(EXTRACT(DATE FROM Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])),MONTH) AS rsr_assignment_control_date_monthstart,
 
   savings.currency AS rsr_savings_currency,
   savings.perm_recruitment_fee_fixed,
@@ -100,12 +140,12 @@ WITH fx_rates AS (
       WHEN IFNULL(asg.country, '') = '' THEN 'Undisclosed'
       ELSE 'Unmapped'
     END AS rsr_country
-  FROM ${dataform.projectConfig.vars.ds_name}.${baseTables.assignment}_${dataform.projectConfig.vars.client_code} AS asg
-    LEFT OUTER JOIN ${dataform.projectConfig.vars.ds_name}.${baseTables.assignment_v0}_${dataform.projectConfig.vars.client_code} AS asg_v0 ON asg.assignment_id = asg_v0.assignment_id
+  FROM ${slvr_dataset}.%s AS asg
+    LEFT OUTER JOIN ${slvr_dataset}.%s AS asg_v0 ON asg.assignment_id = asg_v0.assignment_id
 
-    LEFT JOIN db_common${dataform.projectConfig.vars.region}.msp_cost_saving savings on savings.client_code=asg.rsr_client_code and cast(asg_v0.assignment_create_date as date) BETWEEN savings.date_from AND savings.date_to
-    LEFT OUTER JOIN db_common${dataform.projectConfig.vars.region}.global_state_mapping AS global_state_mapping ON asg.state_province = global_state_mapping.vms_state
-    LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_countries gcr on lower(asg.country) = lower(gcr.country)
+    LEFT JOIN db_common${region}.msp_cost_saving savings on savings.client_code=asg.rsr_client_code and cast(asg_v0.assignment_create_date as date) BETWEEN savings.date_from AND savings.date_to
+    LEFT OUTER JOIN db_common${region}.global_state_mapping AS global_state_mapping ON asg.state_province = global_state_mapping.vms_state
+    LEFT JOIN db_common${region}.global_countries gcr on lower(asg.country) = lower(gcr.country)
 ), worker AS (
     SELECT wk.assignment_id,wk.country,
     wk.consolidated_worker_id,
@@ -126,12 +166,12 @@ WITH fx_rates AS (
     */
     gcr_wk.rsr_country as rsr_worker_country,
     /*
-    EXTRACT(DATE FROM Function_library${dataform.projectConfig.vars.region}.least_array([CURRENT_DATETIME(),wk.worker_end_date , wk.worker_closed_date])) AS rsr_assignment_control_date,
-    DATE_TRUNC(EXTRACT(DATE FROM Function_library${dataform.projectConfig.vars.region}.least_array([CURRENT_DATETIME(),wk.worker_end_date , wk.worker_closed_date])),MONTH) AS rsr_assignment_control_date_monthstart,
+    EXTRACT(DATE FROM Function_library${region}.least_array([CURRENT_DATETIME(),wk.worker_end_date , wk.worker_closed_date])) AS rsr_assignment_control_date,
+    DATE_TRUNC(EXTRACT(DATE FROM Function_library${region}.least_array([CURRENT_DATETIME(),wk.worker_end_date , wk.worker_closed_date])),MONTH) AS rsr_assignment_control_date_monthstart,
     */
-    Function_library${dataform.projectConfig.vars.region}.least_array([wk.worker_end_date , wk.worker_closed_date]) as reporting_date_ends
-    FROM ${dataform.projectConfig.vars.ds_name}.${baseTables.worker}_${dataform.projectConfig.vars.client_code} wk
-    LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_countries gcr_wk on lower(wk.country) = lower(gcr_wk.country)
+    Function_library${region}.least_array([wk.worker_end_date , wk.worker_closed_date]) as reporting_date_ends
+    FROM ${slvr_dataset}.%s wk
+    LEFT JOIN db_common${region}.global_countries gcr_wk on lower(wk.country) = lower(gcr_wk.country)
 ),
 assign_rates AS (
     SELECT asgm_rt.assignment_id,asgm_rt.currency,
@@ -151,7 +191,7 @@ assign_rates AS (
         END AS pay_rate_st_hr,
         asgm_rt.assignment_markup_st_hr,
         CAST(NULL AS NUMERIC) AS supplier_bill_rate_st_hr
-    FROM ${dataform.projectConfig.vars.ds_name}.${baseTables.assignment_rates}_${dataform.projectConfig.vars.client_code} asgm_rt
+    FROM ${slvr_dataset}.%s asgm_rt
 ), assign_v0_rates AS (
     SELECT asgm_rt_v0.assignment_id,
         CASE
@@ -170,7 +210,7 @@ assign_rates AS (
         END AS pay_rate_st_hr_initial,
         assignment_markup_st_hr AS assignment_markup_st_hr_initial,
         CAST(NULL AS NUMERIC) AS supplier_bill_rate_st_hr_initial
-    FROM ${dataform.projectConfig.vars.ds_name}.${baseTables.assignment_rates_v0}_${dataform.projectConfig.vars.client_code} asgm_rt_v0
+    FROM ${slvr_dataset}.%s asgm_rt_v0
 )
 SELECT
     assign.buyer,
@@ -300,10 +340,10 @@ SELECT
 WHEN LOWER(worker.worker_status)='yes' AND  worker.worker_end_date >= CURRENT_DATE() THEN 'Open'
 ELSE 'Closed'
 END AS worker_status,
-    CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_approved_date, assign.assignment_create_date_initial) AS INT64) AS time_to_fill_cd,
-    ROUND(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_approved_date, assign.assignment_create_date_initial), 2) AS time_to_fill_bd,
-    CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(req.req_approved_date, cand.cand_submit_date) AS INT64) AS approve_to_submit_cd,
-    ROUND(Function_library${dataform.projectConfig.vars.region}.f_workday(req.req_approved_date, cand.cand_submit_date), 4) AS approve_to_submit_bd,
+    CAST(Function_library${region}.f_calendarday(req.req_approved_date, assign.assignment_create_date_initial) AS INT64) AS time_to_fill_cd,
+    ROUND(Function_library${region}.f_workday(req.req_approved_date, assign.assignment_create_date_initial), 2) AS time_to_fill_bd,
+    CAST(Function_library${region}.f_calendarday(req.req_approved_date, cand.cand_submit_date) AS INT64) AS approve_to_submit_cd,
+    ROUND(Function_library${region}.f_workday(req.req_approved_date, cand.cand_submit_date), 4) AS approve_to_submit_bd,
 
     CASE
       WHEN req.max_requested_bill_rate_st_hr >= assign_v0_rates.bill_rate_st_hr_initial THEN 'Compliant'
@@ -370,25 +410,25 @@ END AS worker_status,
     END AS bill_rate_st_hr_cad,
     assign.rsr_assignment_control_date,
     CASE
-      WHEN coalesce(Function_library${dataform.projectConfig.vars.region}.f_calendarday(worker.worker_start_date, worker.worker_end_date), CAST(0 as NUMERIC)) <= 60 THEN '< 2 months'
-      WHEN coalesce(Function_library${dataform.projectConfig.vars.region}.f_calendarday(worker.worker_start_date, worker.worker_end_date), CAST(0 as NUMERIC)) <= 181 THEN '2 - 6 months'
-      WHEN coalesce(Function_library${dataform.projectConfig.vars.region}.f_calendarday(worker.worker_start_date, worker.worker_end_date), CAST(0 as NUMERIC)) <= 365 THEN '6 - 12 months'
-      WHEN  coalesce(Function_library${dataform.projectConfig.vars.region}.f_calendarday(worker.worker_start_date, worker.worker_end_date), CAST(0 as NUMERIC)) <= 730 THEN '1 - 2 years'
+      WHEN coalesce(Function_library${region}.f_calendarday(worker.worker_start_date, worker.worker_end_date), CAST(0 as NUMERIC)) <= 60 THEN '< 2 months'
+      WHEN coalesce(Function_library${region}.f_calendarday(worker.worker_start_date, worker.worker_end_date), CAST(0 as NUMERIC)) <= 181 THEN '2 - 6 months'
+      WHEN coalesce(Function_library${region}.f_calendarday(worker.worker_start_date, worker.worker_end_date), CAST(0 as NUMERIC)) <= 365 THEN '6 - 12 months'
+      WHEN  coalesce(Function_library${region}.f_calendarday(worker.worker_start_date, worker.worker_end_date), CAST(0 as NUMERIC)) <= 730 THEN '1 - 2 years'
       ELSE '2 + years'
     END AS planned_tenure_buckets,
 	CASE
-      WHEN coalesce(Function_library${dataform.projectConfig.vars.region}.f_calendarday(worker.worker_start_date, CAST(current_timestamp() AS DATETIME)), CAST(0 as NUMERIC)) <= 60 THEN '< 2 months'
-      WHEN coalesce(Function_library${dataform.projectConfig.vars.region}.f_calendarday(worker.worker_start_date, CAST(current_timestamp() AS DATETIME)), CAST(0 as NUMERIC)) <= 181 THEN '2 - 6 months'
-      WHEN coalesce(Function_library${dataform.projectConfig.vars.region}.f_calendarday(worker.worker_start_date, CAST(current_timestamp() AS DATETIME)), CAST(0 as NUMERIC)) <= 365 THEN '6 - 12 months'
-      WHEN coalesce(Function_library${dataform.projectConfig.vars.region}.f_calendarday(worker.worker_start_date, CAST(current_timestamp() AS DATETIME)), CAST(0 as NUMERIC)) <= 730 THEN '1 - 2 years'
+      WHEN coalesce(Function_library${region}.f_calendarday(worker.worker_start_date, CAST(current_timestamp() AS DATETIME)), CAST(0 as NUMERIC)) <= 60 THEN '< 2 months'
+      WHEN coalesce(Function_library${region}.f_calendarday(worker.worker_start_date, CAST(current_timestamp() AS DATETIME)), CAST(0 as NUMERIC)) <= 181 THEN '2 - 6 months'
+      WHEN coalesce(Function_library${region}.f_calendarday(worker.worker_start_date, CAST(current_timestamp() AS DATETIME)), CAST(0 as NUMERIC)) <= 365 THEN '6 - 12 months'
+      WHEN coalesce(Function_library${region}.f_calendarday(worker.worker_start_date, CAST(current_timestamp() AS DATETIME)), CAST(0 as NUMERIC)) <= 730 THEN '1 - 2 years'
       ELSE '2 + years'
     END AS current_tenure_buckets,
     COALESCE(global_sourcing_type_wo.sourced_type_assignment, req.rsr_sourced_type, 'Recruited') AS rsr_sourced_type,
     CURRENT_DATE() as current_date,
-    Function_library${dataform.projectConfig.vars.region}.f_calendarday(worker.worker_start_date, worker.worker_end_date) AS planned_tenure_cd,
-	Function_library${dataform.projectConfig.vars.region}.f_calendarday(worker.worker_start_date, CAST(current_timestamp() AS DATETIME)) AS current_tenure_cd,
-	CAST(Function_library${dataform.projectConfig.vars.region}.f_calendarday(assign.assignment_create_date_initial, worker.worker_start_date) AS INT64) AS create_to_start_cd,
-    ROUND(Function_library${dataform.projectConfig.vars.region}.f_workday(assign.assignment_create_date_initial, worker.worker_start_date), 4) AS create_to_start_bd,
+    Function_library${region}.f_calendarday(worker.worker_start_date, worker.worker_end_date) AS planned_tenure_cd,
+	Function_library${region}.f_calendarday(worker.worker_start_date, CAST(current_timestamp() AS DATETIME)) AS current_tenure_cd,
+	CAST(Function_library${region}.f_calendarday(assign.assignment_create_date_initial, worker.worker_start_date) AS INT64) AS create_to_start_cd,
+    ROUND(Function_library${region}.f_workday(assign.assignment_create_date_initial, worker.worker_start_date), 4) AS create_to_start_bd,
     CAST(NULL AS STRING) AS vendor_id,
 	-- Fields needed for other MSTs
     CASE
@@ -555,29 +595,29 @@ norm_loc.location_level_2a
     LEFT OUTER JOIN worker ON assign.assignment_id = worker.assignment_id
     LEFT OUTER JOIN assign_rates ON assign.assignment_id = assign_rates.assignment_id
     LEFT OUTER JOIN assign_v0_rates ON assign.assignment_id = assign_v0_rates.assignment_id
-    LEFT OUTER JOIN ${dataform.projectConfig.vars.ds_name}.${baseTables.candidate}_${dataform.projectConfig.vars.client_code} cand ON assign.main_document_id = cand.req_id
+    LEFT OUTER JOIN ${slvr_dataset}.%s cand ON assign.main_document_id = cand.req_id
      AND assign.cand_id = cand.cand_id
-    LEFT OUTER JOIN db_common${dataform.projectConfig.vars.region}.global_wo_term_reason AS global_wo_term_reason ON (CASE
+    LEFT OUTER JOIN db_common${region}.global_wo_term_reason AS global_wo_term_reason ON (CASE
         WHEN LOWER(worker.worker_status) = 'closed' THEN COALESCE(worker.worker_close_reason,assign.close_reason)
         ELSE CAST(NULL AS STRING)
     END) = global_wo_term_reason.work_order_close_reason
-    LEFT OUTER JOIN db_common${dataform.projectConfig.vars.region}.global_state_mapping AS global_state_mapping ON assign.state_province = global_state_mapping.vms_state
-    LEFT OUTER JOIN db_common${dataform.projectConfig.vars.region}.global_sourcing_type_assignment AS global_sourcing_type_wo
+    LEFT OUTER JOIN db_common${region}.global_state_mapping AS global_state_mapping ON assign.state_province = global_state_mapping.vms_state
+    LEFT OUTER JOIN db_common${region}.global_sourcing_type_assignment AS global_sourcing_type_wo
         ON assign.sourcing_type_wo = global_sourcing_type_wo.vms_source_type
-    LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_countries gcr on lower(assign.country) = lower(gcr.country)
-    LEFT OUTER JOIN db_common${dataform.projectConfig.vars.region}.global_supplier_mapping AS global_supp_map ON assign.buyer = global_supp_map.buyer AND assign.supplier = global_supp_map.supplier
-    LEFT OUTER JOIN db_common${dataform.projectConfig.vars.region}.global_calendar_445 AS global_calendar_445 ON assign.rsr_assignment_control_date = PARSE_DATE("%%m/%%d/%%Y", global_calendar_445.day)
+    LEFT JOIN db_common${region}.global_countries gcr on lower(assign.country) = lower(gcr.country)
+    LEFT OUTER JOIN db_common${region}.global_supplier_mapping AS global_supp_map ON assign.buyer = global_supp_map.buyer AND assign.supplier = global_supp_map.supplier
+    LEFT OUTER JOIN db_common${region}.global_calendar_445 AS global_calendar_445 ON assign.rsr_assignment_control_date = PARSE_DATE("%%m/%%d/%%Y", global_calendar_445.day)
     LEFT JOIN fx_rates fx_usd ON assign_rates.currency = fx_usd.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_usd.month AND fx_usd.to_currency = 'USD'
     LEFT JOIN fx_rates fx_eur ON assign_rates.currency = fx_eur.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_eur.month AND fx_eur.to_currency = 'EUR'
     LEFT JOIN fx_rates fx_gbp ON assign_rates.currency = fx_gbp.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_gbp.month AND fx_gbp.to_currency = 'GBP'
     LEFT JOIN fx_rates fx_inr ON assign_rates.currency = fx_inr.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_inr.month AND fx_inr.to_currency = 'INR'
     LEFT JOIN fx_rates fx_cad ON assign_rates.currency = fx_cad.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_cad.month AND fx_cad.to_currency = 'CAD'
-    LEFT JOIN db${dataform.projectConfig.vars.region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(assign.assignment_create_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(assign.assignment_create_date AS DATE)) AS INTEGER)
+    LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(assign.assignment_create_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(assign.assignment_create_date AS DATE)) AS INTEGER)
     LEFT JOIN fx_rates fx_usd_savings ON assign.rsr_savings_currency = fx_usd_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_usd_savings.month AND fx_usd_savings.to_currency = 'USD'
     LEFT JOIN fx_rates fx_eur_savings ON assign.rsr_savings_currency = fx_eur_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_eur_savings.month AND fx_eur_savings.to_currency = 'EUR'
     LEFT JOIN fx_rates fx_gbp_savings ON assign.rsr_savings_currency = fx_gbp_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_gbp_savings.month AND fx_gbp_savings.to_currency = 'GBP'
     LEFT JOIN fx_rates fx_inr_savings ON assign.rsr_savings_currency = fx_inr_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_inr_savings.month AND fx_inr_savings.to_currency = 'INR'
     LEFT JOIN fx_rates fx_cad_savings ON assign.rsr_savings_currency = fx_cad_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_cad_savings.month AND fx_cad_savings.to_currency = 'CAD'
-    LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on assign.main_document_title = norm_jt.raw_job_title
-     LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(assign.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(assign.rsr_state, '') = COALESCE(norm_loc.state, '')
-  AND COALESCE(assign.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( assign.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(assign.country, '') = COALESCE(norm_loc.country_code, ''));""",gold_dataset,assignment_table_id,gold_dataset,requisition_table_id);
+    LEFT JOIN db${region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on assign.main_document_title = norm_jt.raw_job_title
+     LEFT JOIN db${region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(assign.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(assign.rsr_state, '') = COALESCE(norm_loc.state, '')
+  AND COALESCE(assign.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( assign.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(assign.country, '') = COALESCE(norm_loc.country_code, ''));""",gold_dataset,assignment_table_id,slvr_assgn,slvr_assgn_v0,slvr_worker,slvr_assgn_rt,slvr_assgn_rt_v0, gold_dataset,requisition_table_id,slvr_cand);

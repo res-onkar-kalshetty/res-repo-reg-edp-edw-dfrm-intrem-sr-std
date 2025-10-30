@@ -5,7 +5,88 @@ config {
     dependencies: ['msp_template_assignment_sowonly_gold'],
     description: 'This file creates the  stdrv layer'
 }
-CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_spend_sowonly_${dataform.projectConfig.vars.client_code}` AS (
+
+js {
+    const helper = require("/includes/helper");
+
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const slvr_dataset = (env == "prd") ?
+        `slvr_${dataset_id}` :
+        `dev_slvr_${dataset_id}`;
+    
+    const slvr_spend = helper.getSlvrTableName(config_ds_name, config_table_name, 'spend_src', dataset_id);
+
+}
+DECLARE
+  sow_assignment_sowonly_table_id STRING;
+DECLARE
+  spend_sowonly_table_id STRING;
+DECLARE
+  requisition_table_id STRING;
+DECLARE
+  gold_dataset STRING;
+DECLARE
+  slvr_dataset STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  region STRING;
+DECLARE
+  slvr_spend STRING;
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region = '${region}';
+SET
+  gold_dataset = '${gold_dataset}';
+SET
+  slvr_dataset = '${slvr_dataset}';
+SET
+  slvr_spend = ${slvr_spend};
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `%s.%s`
+    WHERE standard_report_type = 'assignment_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''', config_ds_name,config_table_name) INTO sow_assignment_sowonly_table_id;
+IF
+  sow_assignment_sowonly_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'sow_assignment_sowonly_table_id TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `%s.%s`
+    WHERE standard_report_type = 'spend_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''', config_ds_name,config_table_name) INTO spend_sowonly_table_id;
+IF
+  spend_sowonly_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'spend_sowonly_table_id IS MISSING FROM CONFIGS';
+END IF
+  ;
+EXECUTE IMMEDIATE FORMAT ("""
+CREATE OR REPLACE TABLE `%s.%s` AS (
 SELECT buyer
 ,buyer_code
 ,main_document_id
@@ -181,8 +262,8 @@ WITH spend_data AS (
       spend_in.supplier,
       spend_in.view_billable_hours_st_hr,
        CASE
-        WHEN spend_in.main_document_id LIKE '%JP%' THEN 'Time Materials'
-         WHEN spend_in.main_document_id LIKE '%TQ%' THEN 'SOW'
+        WHEN spend_in.main_document_id LIKE '%%JP%%' THEN 'Time Materials'
+         WHEN spend_in.main_document_id LIKE '%%TQ%%' THEN 'SOW'
        ELSE NULL
       END AS tm_sow,
       DATE(CASE
@@ -191,7 +272,7 @@ WITH spend_data AS (
       END) AS reporting_date,
       spend_in.rsr_processed_date
     FROM
-      ${dataform.projectConfig.vars.ds_name}.prs_spend_${dataform.projectConfig.vars.client_code} AS spend_in
+      ${slvr_dataset}.%s AS spend_in
 ), reqs_assignment_data AS (
   SELECT
       req_asg_in.buyer,
@@ -219,7 +300,7 @@ WITH spend_data AS (
 	  req_asg_in.max_template_bill_rate_st_hr,
 	  req_asg_in.reporting_date_ends
     FROM
-      ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_sowonly_${dataform.projectConfig.vars.client_code} AS req_asg_in
+      %s.%s AS req_asg_in
       
 ), gbl_sup_map AS (
   SELECT DISTINCT
@@ -227,15 +308,15 @@ WITH spend_data AS (
       trim(lower(gbl_sup_map_in.supplier)) AS supplier,
       gbl_sup_map_in.suppliername_dw,
     FROM
-      db_common${dataform.projectConfig.vars.region}.global_supplier_mapping AS gbl_sup_map_in
+      db_common${region}.global_supplier_mapping AS gbl_sup_map_in
 ), fx_rates AS (
   SELECT
       CAST(fx_rate AS FLOAT64) AS fx_rate,
       from_currency,
-      PARSE_DATE("%Y-%m-%d", month) AS month,
+      PARSE_DATE("%%Y-%%m-%%d", month) AS month,
       to_currency
     FROM
-      db_common${dataform.projectConfig.vars.region}.global_fx_rates
+      db_common${region}.global_fx_rates
 )
 SELECT
     spend_data.buyer,
@@ -271,9 +352,9 @@ SELECT
     spend_data.legal_entity,
     spend_data.supplier_code,
     spend_data.supplier,
-    PARSE_DATE("%m/%d/%Y", global_calendar_445.calendar_reporting_month_date) AS calendar_reporting_month_date,
-    PARSE_DATE("%m/%d/%Y",global_calendar_445.reporting_month_date) as reporting_date_445_month,
-	  PARSE_DATE("%m/%d/%Y",global_calendar_445.reporting_week_date) as reporting_date_445_week,
+    PARSE_DATE("%%m/%%d/%%Y", global_calendar_445.calendar_reporting_month_date) AS calendar_reporting_month_date,
+    PARSE_DATE("%%m/%%d/%%Y",global_calendar_445.reporting_month_date) as reporting_date_445_month,
+	  PARSE_DATE("%%m/%%d/%%Y",global_calendar_445.reporting_week_date) as reporting_date_445_week,
     CASE
       WHEN reqs_assignment_data.rsr_country='United States of America' THEN div_supp.primary_diversity_type
       ELSE CAST(NULL AS STRING)
@@ -330,13 +411,13 @@ SELECT
     CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS STRING) AS `invoice_year_calendar`,
     CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AS `year_calendar`,
     EXTRACT(MONTH FROM CAST(spend_data.reporting_date AS DATE)) AS `month_calendar`,
-    UPPER(FORMAT_DATETIME("%B", DATETIME(spend_data.reporting_date))) AS `month_name_calendar`,
+    UPPER(FORMAT_DATETIME("%%B", DATETIME(spend_data.reporting_date))) AS `month_name_calendar`,
     CASE WHEN spend_data.bill_rate_st_hr IS NULL THEN (
          CASE WHEN SAFE_DIVIDE(ROUND(spend_data.line_item_amount, 4), ROUND(spend_data.view_billable_hours_st_hr, 4)) < 0.0000 THEN NULL
               ELSE SAFE_DIVIDE(ROUND(spend_data.line_item_amount, 4), ROUND(spend_data.view_billable_hours_st_hr, 4)) END) 
          ELSE spend_data.bill_rate_st_hr END AS invoice_bill_rate_st_hr,
      ROUND(CASE
-      WHEN (spend_data.invoice_line_item_id LIKE '%TS%' OR spend_data.invoice_line_item_type = 'Time Sheet')
+      WHEN (spend_data.invoice_line_item_id LIKE '%%TS%%' OR spend_data.invoice_line_item_type = 'Time Sheet')
         AND COALESCE(reqs_assignment_data.bill_rate_st_hr_initial,0) != 0 
         THEN ((reqs_assignment_data.presented_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount
       ELSE CAST(0.0 AS FLOAT64)
@@ -386,8 +467,8 @@ SELECT
       WHEN lower(spend_data.main_document_type) = lower('Statement of Work') THEN 'SOW'
       WHEN lower(spend_data.main_document_type) = lower('Independent Contractor') THEN 'SOW'
       WHEN lower(spend_data.main_document_type) = lower('SOW Contract') THEN 'SOW'
-      WHEN spend_data.main_document_id LIKE '%JP%' THEN 'Contingent'
-      WHEN spend_data.main_document_id LIKE '%TQ%' THEN 'SOW'
+      WHEN spend_data.main_document_id LIKE '%%JP%%' THEN 'Contingent'
+      WHEN spend_data.main_document_id LIKE '%%TQ%%' THEN 'SOW'
       ELSE 'NULL'
     END as contingent_vs_sow,
     reqs_assignment_data.reporting_date_ends,
@@ -439,9 +520,8 @@ SELECT
     LEFT JOIN gbl_sup_map 
       ON trim(lower(spend_data.supplier)) = trim(lower(gbl_sup_map.supplier))
       AND trim(lower(spend_data.buyer)) = trim(lower(gbl_sup_map.buyer))
-    LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_calendar_445 AS global_calendar_445 
-      ON spend_data.reporting_date = PARSE_DATE("%m/%d/%Y", global_calendar_445.day)
-    --LEFT JOIN ${dataform.projectConfig.vars.ds_name}.stdrv_requisition_${dataform.projectConfig.vars.client_code} req on spend_data.main_document_id=req.req_id
+    LEFT JOIN db_common${region}.global_calendar_445 AS global_calendar_445 
+      ON spend_data.reporting_date = PARSE_DATE("%%m/%%d/%%Y", global_calendar_445.day)
     LEFT JOIN fx_rates AS fx_usd 
       ON trim(lower(spend_data.currency)) = trim(lower(fx_usd.from_currency))
       AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_usd.month
@@ -462,5 +542,7 @@ SELECT
       ON trim(lower(spend_data.currency)) = trim(lower(fx_cad.from_currency))
       AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_cad.month
       AND trim(upper(fx_cad.to_currency)) = 'CAD'
-    LEFT JOIN db_aptus${dataform.projectConfig.vars.region}.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(spend_data.buyer_code) AND div_supp.supplier_code=spend_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER)
-))
+    LEFT JOIN db_aptus${region}.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(spend_data.buyer_code) AND div_supp.supplier_code=spend_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER)
+))""",gold_dataset,spend_sowonly_table_id,
+slvr_spend,
+gold_dataset,sow_assignment_sowonly_table_id);

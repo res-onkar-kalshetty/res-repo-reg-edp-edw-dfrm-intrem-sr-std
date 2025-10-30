@@ -6,33 +6,70 @@ config {
 }
 
 js {
-    const {
-        getCompleteTableConfig
-    } = require("includes/table_config");
-    const config = getCompleteTableConfig(ctx);
-    const baseTables = config.baseTables.defaults;
+    const helper = require("/includes/helper");
+
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const slvr_dataset = (env == "prd") ?
+        `slvr_${dataset_id}` :
+        `dev_slvr_${dataset_id}`;
+    
+    const slvr_ph1_c = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
+    const slvr_ph2_c = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_src', dataset_id);
 }
 
 DECLARE
   candidate_table_id STRING;
 DECLARE
   gold_dataset STRING;
-
+DECLARE
+  slvr_dataset STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  region STRING;
+DECLARE
+  slvr_ph1_c STRING;
+DECLARE
+  slvr_ph2_c STRING;
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region = '${region}';
+SET
+  gold_dataset = '${gold_dataset}';
+SET
+  slvr_dataset = '${slvr_dataset}';
+SET 
+  slvr_ph1_c =${slvr_ph1_c};
+SET
+  slvr_ph2_c =${slvr_ph2_c};
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
   DISTINCT table_id,
   FROM
-  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg`
+  `%s.%s`
     WHERE standard_report_type = 'candidate_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' )INTO candidate_table_id;
-
-IF candidate_table_id IS NULL THEN
-  RAISE USING MESSAGE = 'REQUSITION TABLE ID IS MISSING FROM CONFIGS';
-END IF;
-
-SET
-  gold_dataset = CONCAT("dev","_gold_","${dataform.projectConfig.vars.dataset_id}");
+''', config_ds_name,config_table_name) INTO candidate_table_id;
+IF
+  candidate_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'candidate_table_id TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
 
 EXECUTE IMMEDIATE FORMAT ("""
 CREATE OR REPLACE TABLE `%s.%s` AS (
@@ -62,7 +99,7 @@ WITH deduped_cand AS (
     FROM (
         SELECT *
             ,ROW_NUMBER() OVER () AS row_num
-        FROM ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph1_c}
+        FROM ${slvr_dataset}.%s
     )
 ),
 req_mst as (
@@ -75,9 +112,9 @@ req_mst as (
         ELSE 'Unmapped'
      END AS rsr_state
      from
-     ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph2_c} req
-     LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_countries gcr on IFNULL(lower(req.country), '') = lower(gcr.country)
-     LEFT JOIN db_common${dataform.projectConfig.vars.region}.global_state_mapping gsm on IFNULL(req.state_province, '') = gsm.vms_state
+     ${slvr_dataset}.%s req
+     LEFT JOIN db_common${region}.global_countries gcr on IFNULL(lower(req.country), '') = lower(gcr.country)
+     LEFT JOIN db_common${region}.global_state_mapping gsm on IFNULL(req.state_province, '') = gsm.vms_state
 
 )
 
@@ -156,51 +193,51 @@ FROM (
     -- CALCULATED FIELDS
     ------------------------------------------------------------------------
     -- time_to_submit_to_hm
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_shortlisted_date) AS time_to_submit_to_hm
+    ,Function_library${region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_shortlisted_date) AS time_to_submit_to_hm
     -- time_to_hire_bd_eh
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_hired_date) - IFNULL(subquery1.days_on_hold_bd, 0) AS time_to_hire_bd_eh
+    ,Function_library${region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_hired_date) - IFNULL(subquery1.days_on_hold_bd, 0) AS time_to_hire_bd_eh
     -- time_to_offer_bd_eh
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_extended_date) - IFNULL(subquery1.days_on_hold_bd, 0) AS time_to_offer_bd_eh
+    ,Function_library${region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_extended_date) - IFNULL(subquery1.days_on_hold_bd, 0) AS time_to_offer_bd_eh
     -- time_to_offer_accept_bd_eh
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_accepted_date) - IFNULL(subquery1.days_on_hold_bd, 0) AS time_to_offer_accept_bd_eh
+    ,Function_library${region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_accepted_date) - IFNULL(subquery1.days_on_hold_bd, 0) AS time_to_offer_accept_bd_eh
     -- time_to_hire_cd_eh
-    ,Function_library${dataform.projectConfig.vars.region}.f_calendarday(subquery1.rsr_recruiting_start_date, subquery1.cand_hired_date) - IFNULL(subquery1.days_on_hold_cd, 0) AS time_to_hire_cd_eh
+    ,Function_library${region}.f_calendarday(subquery1.rsr_recruiting_start_date, subquery1.cand_hired_date) - IFNULL(subquery1.days_on_hold_cd, 0) AS time_to_hire_cd_eh
     -- time_to_offer_cd_eh
-    ,Function_library${dataform.projectConfig.vars.region}.f_calendarday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_extended_date) - IFNULL(subquery1.days_on_hold_cd, 0) AS time_to_offer_cd_eh
+    ,Function_library${region}.f_calendarday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_extended_date) - IFNULL(subquery1.days_on_hold_cd, 0) AS time_to_offer_cd_eh
     -- time_to_offer_accept_cd_eh
-    ,Function_library${dataform.projectConfig.vars.region}.f_calendarday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_accepted_date) - IFNULL(subquery1.days_on_hold_cd, 0) AS time_to_offer_accept_cd_eh
+    ,Function_library${region}.f_calendarday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_accepted_date) - IFNULL(subquery1.days_on_hold_cd, 0) AS time_to_offer_accept_cd_eh
     -- time_to_hire_bd_ih
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_hired_date) AS time_to_hire_bd_ih
+    ,Function_library${region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_hired_date) AS time_to_hire_bd_ih
     -- time_to_offer_bd_ih
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_extended_date) AS time_to_offer_bd_ih
+    ,Function_library${region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_extended_date) AS time_to_offer_bd_ih
     -- time_to_offer_accept_bd_ih
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_accepted_date) AS time_to_offer_accept_bd_ih
+    ,Function_library${region}.f_workday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_accepted_date) AS time_to_offer_accept_bd_ih
     -- time_to_hire_cd_ih
-    ,Function_library${dataform.projectConfig.vars.region}.f_calendarday(subquery1.rsr_recruiting_start_date, subquery1.cand_hired_date) AS time_to_hire_cd_ih
+    ,Function_library${region}.f_calendarday(subquery1.rsr_recruiting_start_date, subquery1.cand_hired_date) AS time_to_hire_cd_ih
     -- time_to_offer_cd_ih
-    ,Function_library${dataform.projectConfig.vars.region}.f_calendarday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_extended_date) AS time_to_offer_cd_ih
+    ,Function_library${region}.f_calendarday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_extended_date) AS time_to_offer_cd_ih
     -- time_to_offer_accept_cd_ih
-    ,Function_library${dataform.projectConfig.vars.region}.f_calendarday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_accepted_date) AS time_to_offer_accept_cd_ih
+    ,Function_library${region}.f_calendarday(subquery1.rsr_recruiting_start_date, subquery1.cand_offer_accepted_date) AS time_to_offer_accept_cd_ih
     -- time_new_cand_to_hm_review
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.cand_submit_date, subquery1.cand_shortlisted_date) AS time_new_cand_to_hm_review
+    ,Function_library${region}.f_workday(subquery1.cand_submit_date, subquery1.cand_shortlisted_date) AS time_new_cand_to_hm_review
     -- time_new_cand_to_offer_accept
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.cand_submit_date, subquery1.cand_offer_accepted_date) AS time_new_cand_to_offer_accept
+    ,Function_library${region}.f_workday(subquery1.cand_submit_date, subquery1.cand_offer_accepted_date) AS time_new_cand_to_offer_accept
     -- time_new_cand_to_hire
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.cand_submit_date, subquery1.cand_hired_date) AS time_new_cand_to_hire
+    ,Function_library${region}.f_workday(subquery1.cand_submit_date, subquery1.cand_hired_date) AS time_new_cand_to_hire
     -- time_new_cand_to_offer
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.cand_submit_date, subquery1.cand_offer_extended_date) AS time_new_cand_to_offer
+    ,Function_library${region}.f_workday(subquery1.cand_submit_date, subquery1.cand_offer_extended_date) AS time_new_cand_to_offer
     -- dwell_time_new_cand_to_talent_advisor_review
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.cand_submit_date, subquery1.cand_advisor_review_date) AS dwell_time_new_cand_to_talent_advisor_review
+    ,Function_library${region}.f_workday(subquery1.cand_submit_date, subquery1.cand_advisor_review_date) AS dwell_time_new_cand_to_talent_advisor_review
     -- dwell_time_talent_advisor_review_to_screen_cand
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.cand_advisor_review_date, subquery1.cand_screen_date) AS dwell_time_talent_advisor_review_to_screen_cand
+    ,Function_library${region}.f_workday(subquery1.cand_advisor_review_date, subquery1.cand_screen_date) AS dwell_time_talent_advisor_review_to_screen_cand
     -- dwell_time_screen_cand_to_hm_review
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.cand_screen_date, subquery1.cand_shortlisted_date) AS dwell_time_screen_cand_to_hm_review
+    ,Function_library${region}.f_workday(subquery1.cand_screen_date, subquery1.cand_shortlisted_date) AS dwell_time_screen_cand_to_hm_review
     -- dwell_time_hm_review_to_interview
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.cand_shortlisted_date, subquery1.cand_interview_date) AS dwell_time_hm_review_to_interview
+    ,Function_library${region}.f_workday(subquery1.cand_shortlisted_date, subquery1.cand_interview_date) AS dwell_time_hm_review_to_interview
     -- dwell_time_interview_to_offer_extended
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.cand_interview_date, subquery1.cand_offer_extended_date) AS dwell_time_interview_to_offer_extended
+    ,Function_library${region}.f_workday(subquery1.cand_interview_date, subquery1.cand_offer_extended_date) AS dwell_time_interview_to_offer_extended
     -- dwell_time_offer_extended_offer_accepted
-    ,Function_library${dataform.projectConfig.vars.region}.f_workday(subquery1.cand_offer_extended_date, subquery1.cand_offer_accepted_date) AS dwell_time_offer_extended_offer_accepted
+    ,Function_library${region}.f_workday(subquery1.cand_offer_extended_date, subquery1.cand_offer_accepted_date) AS dwell_time_offer_extended_offer_accepted
     -- agency_usage_candidate
     ,CASE WHEN subquery1.rsr_source = 'Agency' THEN 1 ELSE 0 END AS agency_usage_candidate
     -- veteran_count
@@ -395,24 +432,24 @@ FROM (
         norm_loc.location_level_1a,
         norm_loc.location_level_2a
         FROM deduped_cand cand
-        LEFT JOIN ${dataform.projectConfig.vars.ds_name}.${dataform.projectConfig.vars.ph2_c} req ON cand.req_id = req.req_id
+        LEFT JOIN ${slvr_dataset}.%s req ON cand.req_id = req.req_id
         LEFT JOIN req_mst ON cand.req_id = req_mst.req_id
-        LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_source_detail sd ON IFNULL(cand.source_detail, '') = sd.source_detail
-        LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_internal_external ie ON IFNULL(cand.internal_external, '') = ie.internal_external
-        LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_race r ON IFNULL(cand.race, '') = r.race
-        LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_ethnicity e ON IFNULL(cand.ethnicity, '') = e.ethnicity
-        LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_gender g ON IFNULL(cand.gender, '') = g.gender
-        LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_disabled d ON IFNULL(cand.disabled, '') = d.disabled
-        LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_veteran v ON IFNULL(cand.veteran, '') = v.veteran
-       LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
-       LEFT JOIN db${dataform.projectConfig.vars.region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(req_mst.rsr_state, '') = COALESCE(norm_loc.state, '')
+        LEFT JOIN db_common${region}.rpo_std_source_detail sd ON IFNULL(cand.source_detail, '') = sd.source_detail
+        LEFT JOIN db_common${region}.rpo_std_internal_external ie ON IFNULL(cand.internal_external, '') = ie.internal_external
+        LEFT JOIN db_common${region}.rpo_std_race r ON IFNULL(cand.race, '') = r.race
+        LEFT JOIN db_common${region}.rpo_std_ethnicity e ON IFNULL(cand.ethnicity, '') = e.ethnicity
+        LEFT JOIN db_common${region}.rpo_std_gender g ON IFNULL(cand.gender, '') = g.gender
+        LEFT JOIN db_common${region}.rpo_std_disabled d ON IFNULL(cand.disabled, '') = d.disabled
+        LEFT JOIN db_common${region}.rpo_std_veteran v ON IFNULL(cand.veteran, '') = v.veteran
+       LEFT JOIN db${region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
+       LEFT JOIN db${region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(req_mst.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(req.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(req_mst.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, '')
 
         WHERE cand.dedupe_rnk = 1
         ) subquery1
-    LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_race_diverse rd ON subquery1.rsr_race = rd.rsr_race
-    LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_ethnicity_diverse ed ON subquery1.rsr_ethnicity = ed.rsr_ethnicity
-    LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_gender_diverse gd ON subquery1.rsr_gender = gd.rsr_gender
-    LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_disabled_diverse dd ON subquery1.rsr_disabled = dd.rsr_disabled
-    LEFT JOIN db_common${dataform.projectConfig.vars.region}.rpo_std_veteran_diverse vd ON subquery1.rsr_veteran = vd.rsr_veteran
-    ) subquery2)""",gold_dataset,candidate_table_id);
+    LEFT JOIN db_common${region}.rpo_std_race_diverse rd ON subquery1.rsr_race = rd.rsr_race
+    LEFT JOIN db_common${region}.rpo_std_ethnicity_diverse ed ON subquery1.rsr_ethnicity = ed.rsr_ethnicity
+    LEFT JOIN db_common${region}.rpo_std_gender_diverse gd ON subquery1.rsr_gender = gd.rsr_gender
+    LEFT JOIN db_common${region}.rpo_std_disabled_diverse dd ON subquery1.rsr_disabled = dd.rsr_disabled
+    LEFT JOIN db_common${region}.rpo_std_veteran_diverse vd ON subquery1.rsr_veteran = vd.rsr_veteran
+    ) subquery2)""",gold_dataset,candidate_table_id,slvr_ph1_c,slvr_ph2_c,slvr_ph2_c);
