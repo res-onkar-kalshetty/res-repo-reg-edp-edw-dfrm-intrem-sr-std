@@ -5,7 +5,83 @@ config {
     dependencies: ['msp_template_assignment_sowonly_gold'],
     description: 'This file creates the  stdrv layer'
 }
-CREATE OR REPLACE TABLE `${dataform.projectConfig.vars.ds_name}.stdrv_assignment_trend_sowonly_${dataform.projectConfig.vars.client_code}` AS (
+
+js {
+    const helper = require("/includes/helper");
+
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const slvr_dataset = (env == "prd") ?
+        `slvr_${dataset_id}` :
+        `dev_slvr_${dataset_id}`;
+}
+DECLARE
+  sow_assignment_sowonly_table_id STRING;
+DECLARE
+  sow_assignment_trend_sowonly_table_id STRING;
+DECLARE
+  requisition_table_id STRING;
+DECLARE
+  gold_dataset STRING;
+DECLARE
+  slvr_dataset STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  region STRING;
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region = '${region}';
+SET
+  gold_dataset = '${gold_dataset}';
+SET
+  slvr_dataset = '${slvr_dataset}';
+
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `%s.%s`
+    WHERE standard_report_type = 'assignment_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''', config_ds_name,config_table_name) INTO sow_assignment_sowonly_table_id;
+IF
+  sow_assignment_sowonly_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'sow_assignment_sowonly_table_id TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `%s.%s`
+    WHERE standard_report_type = 'assignment_trend_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''', config_ds_name,config_table_name) INTO sow_assignment_trend_sowonly_table_id;
+IF
+  sow_assignment_trend_sowonly_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'sow_assignment_trend_sowonly_table_id TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+
+EXECUTE IMMEDIATE FORMAT ("""
+CREATE OR REPLACE TABLE `%s.%s` AS (
 WITH 
 derv_wo AS(
   select
@@ -27,9 +103,9 @@ derv_wo AS(
 	gbl_cal_445.reporting_week_date as reporting_date_445_week,
     gbl_cal_445.week
     FROM 
-    ${dataform.projectConfig.vars.ds_name}.stdrv_assignment_sowonly_${dataform.projectConfig.vars.client_code} req_assign_in
+   %s.%s req_assign_in
 	CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(DATE_TRUNC(CAST(req_assign_in.worker_start_date AS DATE), WEEK), CAST(req_assign_in.reporting_date_ends AS DATE), INTERVAL 1 WEEK)) r_dates
-	left join db_common${dataform.projectConfig.vars.region}.global_calendar_445 gbl_cal_445 ON r_dates = PARSE_DATE('%m/%d/%Y',gbl_cal_445.day)
+	left join db_common${region}.global_calendar_445 gbl_cal_445 ON r_dates = PARSE_DATE('%%m/%%d/%%Y',gbl_cal_445.day)
 ),
 temp5 AS (
          SELECT 
@@ -167,13 +243,13 @@ SELECT
 	assign.rsr_assignment_close_rating,
 	assign.contingent_vs_sow,
 	DATE_TRUNC(cal_comp.r_dates, MONTH) AS reporting_date_calendar,
-	PARSE_DATE("%m/%d/%Y", cal_comp.calendar_reporting_month_date) as reporting_date_month_calendar,
+	PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date) as reporting_date_month_calendar,
 	assign.current_date,
 	cast(assign.reporting_date_ends as DATE) as reporting_date_ends,
     cal_comp.r_dates AS reporting_date_week_start,
 	cal_comp.month_filter,
-	PARSE_DATE("%m/%d/%Y",cal_comp.reporting_month_date) as reporting_date_445_month,
-	PARSE_DATE("%m/%d/%Y",cal_comp.reporting_date_445_week) as reporting_date_445_week,
+	PARSE_DATE("%%m/%%d/%%Y",cal_comp.reporting_month_date) as reporting_date_445_month,
+	PARSE_DATE("%%m/%%d/%%Y",cal_comp.reporting_date_445_week) as reporting_date_445_week,
 	assign.sourcing_type_wk_mapped,
 	assign.sourcing_type_wo_mapped,
 	assign.rsr_state,
@@ -181,6 +257,9 @@ SELECT
    assign.rsr_processed_date
    ,CAST(NULL AS STRING) AS preferred_supplier_status
 FROM 
-	${dataform.projectConfig.vars.ds_name}.stdrv_assignment_sowonly_${dataform.projectConfig.vars.client_code} assign
+	%s.%s assign
 	LEFT JOIN cal_comp ON assign.assignment_id = cal_comp.assignment_id AND assign.main_document_id = cal_comp.main_document_id
-  LEFT JOIN db_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM PARSE_DATE("%m/%d/%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM PARSE_DATE("%m/%d/%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER))
+  LEFT JOIN db_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER))""",
+  gold_dataset,sow_assignment_trend_sowonly_table_id,
+  gold_dataset,sow_assignment_sowonly_table_id,
+  gold_dataset,sow_assignment_sowonly_table_id);
