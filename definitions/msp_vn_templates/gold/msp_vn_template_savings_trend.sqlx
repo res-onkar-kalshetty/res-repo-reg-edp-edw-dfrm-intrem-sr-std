@@ -1,61 +1,109 @@
 config {
     type: "operations",
-    name: "msp_vn_template_savings_trend_gold",
+    name: "msp_vn_template_requisition_distribution_gold",
     tags: 'msp_vn_template_gold',
-    dependencies: ['msp_vn_template_assignment_gold','msp_vn_template_spend_gold'],
-    description: 'This file creates the  stdrv layer'
+    dependencies: ["msp_vn_template_assignment_gold","msp_vn_template_requisition_gold"],
+    description: 'This file creates the  stdrv layer '
 }
 
 js {
-    const {
-        getCompleteTableConfig
-    } = require("includes/table_config");
-    const config = getCompleteTableConfig(ctx);
-    const baseTables = config.baseTables.defaults;
+    const helper = require("/includes/helper");
+
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const slvr_dataset = (env == "prd") ?
+        `slvr_${dataset_id}` :
+        `dev_slvr_${dataset_id}_`;
+
+    const slvr_req_dist = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_distribution_src', dataset_id);
+    const slvr_supplier = helper.getSlvrTableName(config_ds_name, config_table_name, 'supplier_src', dataset_id);
+    const slvr_cand = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
 }
 DECLARE
-  savings_trend_table_id STRING;
+  requisition_distribution_table_id STRING;
 DECLARE
-  spend_table_id STRING;
+  requisition_table_id STRING;
 DECLARE
   assignment_table_id STRING;
 DECLARE
   gold_dataset STRING;
-  EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT table_id,
-  FROM
-  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
-    WHERE standard_report_type = 'savings_trend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' )INTO savings_trend_table_id;
-  EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT table_id,
-  FROM
-  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
-    WHERE standard_report_type = 'spend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' )INTO spend_table_id;
+DECLARE
+  slvr_dataset STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  region STRING;
+DECLARE
+  slvr_req_dist STRING;
+DECLARE
+  slvr_supplier STRING;
+DECLARE
+  slvr_cand STRING;
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region = '${region}';
+SET
+  gold_dataset = '${gold_dataset}';
+SET
+  slvr_dataset = '${slvr_dataset}';
+SET
+  slvr_req_dist=${slvr_req_dist};
+SET
+  slvr_supplier=${slvr_supplier};
+SET
+  slvr_cand=${slvr_cand};
+
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
   DISTINCT table_id,
   FROM
-  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+  `%s.%s`
+    WHERE standard_report_type = 'requisition_distribution_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' , config_ds_name,config_table_name)INTO requisition_distribution_table_id;
+
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `%s.%s`
+    WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''' , config_ds_name,config_table_name)INTO requisition_table_id;
+
+
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `%s.%s`
     WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' )INTO assignment_table_id;
+''' , config_ds_name,config_table_name)INTO assignment_table_id;
 
 IF
-  savings_trend_table_id IS NULL THEN RAISE
+  requisition_distribution_table_id IS NULL THEN RAISE
 USING
-  MESSAGE = 'savings trend distribution TABLE ID IS MISSING FROM CONFIGS';
+  MESSAGE = 'requisition distribution TABLE ID IS MISSING FROM CONFIGS';
 END IF
   ;
 IF
-  spend_table_id IS NULL THEN RAISE
+  requisition_table_id IS NULL THEN RAISE
 USING
-  MESSAGE = 'spend TABLE ID IS MISSING FROM CONFIGS';
+  MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
 END IF
   ;
 IF
@@ -65,299 +113,288 @@ USING
 END IF
   ;
 
-
-SET
-  gold_dataset = CONCAT("dev","_gold_","${dataform.projectConfig.vars.dataset_id}");
-
-EXECUTE IMMEDIATE FORMAT ("""
+EXECUTE IMMEDIATE FORMAT("""
 CREATE OR REPLACE TABLE `%s.%s` AS (
-with calendar as (
-    select
-    calendar_reporting_month,
-    Parse_date("%%m/%%d/%%Y",calendar_reporting_month_date) as calendar_reporting_month_date,
-    calendar_reporting_quarter,
-    calendar_reporting_year
-    from
-    db_common${dataform.projectConfig.vars.region}.global_calendar_445 calendar group by 1,2,3,4 
-)
-,spend as (select 
-sum(extension_negotiated_savings) as extension_negotiated_savings,
-sum(extension_negotiated_savings_in_usd) as extension_negotiated_savings_in_usd,
-sum(extension_negotiated_savings_in_eur) as extension_negotiated_savings_in_eur,
-sum(extension_negotiated_savings_in_cad) as extension_negotiated_savings_in_cad,
-sum(extension_negotiated_savings_in_inr) as extension_negotiated_savings_in_inr,
-sum(extension_negotiated_savings_in_gbp) as extension_negotiated_savings_in_gbp,
-sum(savings_vs_max_rate) as savings_vs_max_rate,
-sum(savings_vs_max_rate_in_inr) as savings_vs_max_rate_in_inr,
-sum(savings_vs_max_rate_in_usd) as savings_vs_max_rate_in_usd,
-sum(savings_vs_max_rate_in_eur) as savings_vs_max_rate_in_eur,
-sum(savings_vs_max_rate_in_cad) as savings_vs_max_rate_in_cad,
-sum(savings_vs_max_rate_in_gbp) as savings_vs_max_rate_in_gbp,
-sum(initial_negotiated_savings) as initial_negotiated_savings,
-sum(initial_negotiated_savings_in_inr) as initial_negotiated_savings_in_inr,
-sum(initial_negotiated_savings_in_usd) as initial_negotiated_savings_in_usd,
-sum(initial_negotiated_savings_in_cad) as initial_negotiated_savings_in_cad,
-sum(initial_negotiated_savings_in_eur) as initial_negotiated_savings_in_eur,
-sum(initial_negotiated_savings_in_gbp) as initial_negotiated_savings_in_gbp,
-sum(direct_sourcing_savings) as direct_sourcing_savings,
-sum(direct_sourcing_savings_in_inr) as direct_sourcing_savings_in_inr,
-sum(direct_sourcing_savings_in_usd) as direct_sourcing_savings_in_usd,
-sum(direct_sourcing_savings_in_eur) as direct_sourcing_savings_in_eur,
-sum(direct_sourcing_savings_in_cad) as direct_sourcing_savings_in_cad,
-sum(direct_sourcing_savings_in_gbp) as direct_sourcing_savings_in_gbp,
-sum(payroll_savings) as payroll_savings,
-sum(payroll_savings_in_inr) as payroll_savings_in_inr,
-sum(payroll_savings_in_usd) as payroll_savings_in_usd,
-sum(payroll_savings_in_eur) as payroll_savings_in_eur,
-sum(payroll_savings_in_cad) as payroll_savings_in_cad,
-sum(payroll_savings_in_gbp) as payroll_savings_in_gbp,
-sum(tenure_discount_savings) as tenure_discount_savings,
-sum(tenure_discount_savings_in_inr) as tenure_discount_savings_in_inr,
-sum(tenure_discount_savings_in_usd) as tenure_discount_savings_in_usd,
-sum(tenure_discount_savings_in_eur) as tenure_discount_savings_in_eur,
-sum(tenure_discount_savings_in_cad) as tenure_discount_savings_in_cad,
-sum(tenure_discount_savings_in_gbp) as tenure_discount_savings_in_gbp,
-sum(prior_state_savings) as prior_state_savings,
-sum(prior_state_savings_in_inr) as prior_state_savings_in_inr,
-sum(prior_state_savings_in_usd) as prior_state_savings_in_usd,
-sum(prior_state_savings_in_eur) as prior_state_savings_in_eur,
-sum(prior_state_savings_in_cad) as prior_state_savings_in_cad,
-sum(prior_state_savings_in_gbp) as prior_state_savings_in_gbp,
---supplier_tier_savings,
-sum(savings_vs_highest_rate) as savings_vs_highest_rate,
-sum(savings_vs_highest_rate_in_inr) as savings_vs_highest_rate_in_inr,
-sum(savings_vs_highest_rate_in_usd) as savings_vs_highest_rate_in_usd,
-sum(savings_vs_highest_rate_in_eur) as savings_vs_highest_rate_in_eur,
-sum(savings_vs_highest_rate_in_cad) as savings_vs_highest_rate_in_cad,
-sum(savings_vs_highest_rate_in_gbp) as savings_vs_highest_rate_in_gbp,
-sum(qualified_cand_savings) as qualified_cand_savings,
-sum(qualified_cand_savings_in_inr) as qualified_cand_savings_in_inr,
-sum(qualified_cand_savings_in_usd) as qualified_cand_savings_in_usd,
-sum(qualified_cand_savings_in_eur) as qualified_cand_savings_in_eur,
-sum(qualified_cand_savings_in_cad) as qualified_cand_savings_in_cad,
-sum(qualified_cand_savings_in_gbp) as qualified_cand_savings_in_gbp,
-sum(previous_years_bill_rate_savings) as previous_years_bill_rate_savings,
-sum(previous_years_bill_rate_savings_in_inr) as previous_years_bill_rate_savings_in_inr,
-sum(previous_years_bill_rate_savings_in_usd) as previous_years_bill_rate_savings_in_usd,
-sum(previous_years_bill_rate_savings_in_eur) as previous_years_bill_rate_savings_in_eur,
-sum(previous_years_bill_rate_savings_in_cad) as previous_years_bill_rate_savings_in_cad,
-sum(previous_years_bill_rate_savings_in_gbp) as previous_years_bill_rate_savings_in_gbp,
-
-DATE_TRUNC(consolidated_invoice_approved_date,MONTH) as month_start_spend
- from %s.%s group by month_start_spend,rsr_client_code),
-
- assign as (select 
-  SUM(perm_recruitment_fee_savings) as perm_recruitment_fee_savings,
- SUM(perm_recruitment_fee_savings_in_cad) as perm_recruitment_fee_savings_in_cad,
- SUM(perm_recruitment_fee_savings_in_usd) as perm_recruitment_fee_savings_in_usd,
- SUM(perm_recruitment_fee_savings_in_inr) as perm_recruitment_fee_savings_in_inr,
- SUM(perm_recruitment_fee_savings_in_gbp) as perm_recruitment_fee_savings_in_gbp,
- SUM(perm_recruitment_fee_savings_in_eur) as perm_recruitment_fee_savings_in_eur,
- SUM(rehire_onboarding_savings) as rehire_onboarding_savings,
-SUM(rehire_onboarding_savings_in_cad) as rehire_onboarding_savings_in_cad,
- SUM(rehire_onboarding_savings_in_usd) as rehire_onboarding_savings_in_usd,
- SUM(rehire_onboarding_savings_in_inr) as rehire_onboarding_savings_in_inr,
- SUM(rehire_onboarding_savings_in_gbp) as rehire_onboarding_savings_in_gbp,
- SUM(rehire_onboarding_savings_in_eur) as rehire_onboarding_savings_in_eur,
-
-DATE_TRUNC(assignment_create_date_initial,MONTH) as month_start_assign
-  from %s.%s group by month_start_assign, rsr_client_code),
-savings as (select savings.client_code,
-savings.currency,
-reporting_date,	
-date_from,
-date_to,
-supplier_invoice_consolidation_fixed as supplier_invoice_consolidation_savings,
-supplier_legal_fixed as supplier_legal_savings,
-background_check_fixed as background_check_savings,
-from (select * from db_common${dataform.projectConfig.vars.region}.msp_cost_saving savings where savings.client_code = '${dataform.projectConfig.vars.client_code}') savings,
-UNNEST(GENERATE_DATE_ARRAY(
-    DATE_TRUNC(date_from, MONTH),
-    DATE_TRUNC(date_to, MONTH),
-    INTERVAL 1 MONTH
-) ) AS reporting_date), 
-fx_rates AS (
+WITH
+-- Vyndly specific logic to identify one row by req_id_supplier_code in case of duplicates
+  job_posting_dist_data AS (
+  SELECT *
+  FROM (
+    SELECT *,
+      ROW_NUMBER() OVER (PARTITION BY req_id, supplier_code ORDER BY req_distribution_date) AS rn
+    FROM `%s.%s`) AS ranked WHERE rn = 1),
+  wo_data AS (
   SELECT
-      CAST(fx_rate AS FLOAT64) AS fx_rate,
-      from_currency,
-      PARSE_DATE("%%Y-%%m-%%d", month) AS month,
-      to_currency
-    FROM
-      db_common${dataform.projectConfig.vars.region}.global_fx_rates
+    wo_in.buyer,
+    wo_in.buyer_code,
+    wo_in.supplier,
+    wo_in.supplier_code,
+    wo_in.main_document_id,
+    wo_in.assignment_id,
+    wo_in.assignment_create_date_initial
+  FROM
+    %s.%s AS wo_in ),
+  aggregates_wo_wsupp AS (
+  SELECT
+    wo_data.buyer,
+    wo_data.buyer_code,
+    wo_data.main_document_id,
+    wo_data.supplier_code,
+    MIN(wo_data.assignment_create_date_initial) AS min_assignment_create_date,
+    COUNT(assignment_id) AS no_hired_assignment
+  FROM
+    wo_data
+  GROUP BY
+    wo_data.buyer,
+     wo_data.buyer_code,
+    wo_data.main_document_id,
+    wo_data.supplier_code ),
+  aggregates_min_req_dist_date AS (
+  SELECT
+      supplier_code,
+      MIN(req_initial_distribution_date) AS min_req_initial_distribution_date,
+      MAX(req_initial_distribution_date) AS max_req_initial_distribution_date
+  FROM
+	`%s.%s`
+  GROUP BY
+	supplier_code),
+  aggregates_jp_dist_supp AS (
+  SELECT
+    jp_dist.buyer_code,
+    jp_dist.req_id,
+    jp_dist.supplier,
+    COUNT(DISTINCT CASE WHEN COALESCE(jp_dist.req_distribution_status, 'na') <> 'Declined' THEN jp_dist.supplier ELSE 'NULL' END ) AS no_of_suppliers_posted
+  FROM
+    job_posting_dist_data jp_dist
+  GROUP BY
+    jp_dist.buyer_code,
+    jp_dist.req_id,
+    jp_dist.supplier ),
+  global_js_status_mapping AS (
+  SELECT
+    DISTINCT TRIM(LOWER(job_seeker_status)) AS job_seeker_status,
+    submittal_status_dw,rejected,shortlisted,interviewed,offered,hired,withdrawn,offer_declined,offer_rescinded,no_show
+  FROM
+    db_common${region}.global_js_status),
+  job_seeker_data AS (
+  SELECT
+    js_in.buyer,
+    js_in.buyer_code,
+    js_in.req_id,
+    js_in.supplier,
+    js_in.supplier_code,
+    js_in.cand_id,
+    js_in.cand_status,
+    js_in.cand_shortlisted_date,
+    js_in.cand_submit_date,
+    js_in.cand_first_submit_date as cand_first_submitted_date, --js_in.cand_first_submitted_date,
+    js_in.cand_first_interview_date as cand_first_interviewed_date, --js_in.cand_first_interviewed_date,
+    js_in.cand_last_interview_date as cand_last_interviewed_date, --js_in.cand_last_interviewed_date,
+    js_in.presented_bill_rate_st_hr,
+    global_js_status_mapping.submittal_status_dw,
+    CAST(global_js_status_mapping.rejected AS NUMERIC) AS rejected,
+    CAST(global_js_status_mapping.shortlisted AS NUMERIC) AS shortlisted,
+    CAST(global_js_status_mapping.interviewed AS NUMERIC) AS interviewed,
+    CAST(global_js_status_mapping.offered AS NUMERIC) AS offered,
+    CAST(global_js_status_mapping.hired AS NUMERIC) AS hired,
+    CAST(global_js_status_mapping.withdrawn AS NUMERIC) AS withdrawn
+  FROM
+    `%s.%s` AS js_in
+  LEFT OUTER JOIN
+    global_js_status_mapping ON TRIM(LOWER(js_in.cand_status)) = global_js_status_mapping.job_seeker_status ),
+  aggregates_job_seekers_wsupp AS (
+  SELECT
+    job_seeker_data.buyer_code,
+    job_seeker_data.req_id,
+    job_seeker_data.supplier_code,
+    COUNT(DISTINCT job_seeker_data.cand_id) AS no_of_job_seekers,
+    COUNT(DISTINCT job_seeker_data.supplier) AS no_of_suppliers_responded,
+    MIN(cand_submit_date) AS min_candidate_submitted_date,
+    MIN(cand_first_submitted_date) AS first_candidate_submitted_date,
+    MIN(cand_first_interviewed_date) AS first_candidate_interview_date,
+    SUM(COALESCE(rejected, 0)) AS no_rejected,
+    SUM(COALESCE(interviewed, 0)) AS no_of_interviewed,
+    SUM(COALESCE(shortlisted, 0)) AS no_shortlisted,
+    SUM(COALESCE(offered, 0)) AS no_offered,
+    SUM(COALESCE(hired, 0)) AS no_hired,
+    SUM(COALESCE(withdrawn, 0)) AS no_withdrawn
+FROM
+  job_seeker_data
+GROUP BY
+  job_seeker_data.buyer_code,
+  job_seeker_data.req_id,
+  job_seeker_data.supplier_code ),
+global_supplier_mapping AS (
+  SELECT
+    DISTINCT TRIM(LOWER(gbl_sup_map_in.buyer)) AS buyer,
+    TRIM(LOWER(gbl_sup_map_in.supplier)) AS supplier,
+    gbl_sup_map_in.suppliername_dw,
+  FROM
+    db_common${region}.global_supplier_mapping AS gbl_sup_map_in ),
+job_posting_data as (
+ SELECT
+  req_id,
+  buyer_code,
+  req_title,
+  labor_type,
+  rsr_labor_type,
+  primary_cost_center,
+  req_status,
+  close_reason AS close_reason_req,
+  business_unit,
+  business_unit_code,
+  req_category as category,
+  site,
+  city,
+  rsr_state,
+  state_province,
+  country,
+  req_approved_date,
+  req_create_date,
+  req_closed_date,
+  max_requested_bill_rate_st_hr,
+  positions_requested_cnt,
+  CASE when sourcing_type is null and  sourcing_type_template is null then ""
+  when sourcing_type is null then sourcing_type_template
+  else sourcing_type
+  end as sourced_type,
+  rsr_sourced_type,
+  max_template_bill_rate_st_hr as max_template_bill_rate,
+  req_type,
+  rsr_req_status,
+  rsr_region,
+  rsr_country,
+  currency,
+  rsr_close_reason
+  FROM %s.%s
 )
-
-select
-calendar.calendar_reporting_month,
-   calendar.calendar_reporting_month_date,
-    calendar.calendar_reporting_quarter,
-    calendar.calendar_reporting_year,
-'${dataform.projectConfig.vars.client_code}' as rsr_client_code,
-savings.currency,
-savings.reporting_date,
-savings.date_from,
-savings.date_to,
-savings.supplier_invoice_consolidation_savings,
-savings.supplier_legal_savings,
-savings.background_check_savings,
-CASE
-    WHEN UPPER(currency) = 'USD' THEN CAST(savings.supplier_invoice_consolidation_savings as FLOAT64)
-    ELSE savings.supplier_invoice_consolidation_savings * fx_usd.fx_rate
-END AS supplier_invoice_consolidation_savings_in_usd,
-CASE
-    WHEN UPPER(currency) = 'EUR' THEN CAST(savings.supplier_invoice_consolidation_savings as FLOAT64)
-    ELSE savings.supplier_invoice_consolidation_savings * fx_eur.fx_rate
-END AS supplier_invoice_consolidation_savings_in_eur,
-CASE
-    WHEN UPPER(currency) = 'GBP' THEN CAST(savings.supplier_invoice_consolidation_savings as FLOAT64)
-    ELSE savings.supplier_invoice_consolidation_savings * fx_gbp.fx_rate
-END AS supplier_invoice_consolidation_savings_in_gbp,
-CASE
-    WHEN UPPER(currency) = 'INR' THEN CAST(savings.supplier_invoice_consolidation_savings as FLOAT64)
-    ELSE savings.supplier_invoice_consolidation_savings * fx_inr.fx_rate
-END AS supplier_invoice_consolidation_savings_in_inr,
-CASE
-    WHEN UPPER(currency) = 'CAD' THEN CAST(savings.supplier_invoice_consolidation_savings as FLOAT64)
-    ELSE savings.supplier_invoice_consolidation_savings * fx_cad.fx_rate
-END AS supplier_invoice_consolidation_savings_in_cad,
-
-CASE
-    WHEN UPPER(currency) = 'USD' THEN CAST(savings.supplier_legal_savings as FLOAT64)
-    ELSE savings.supplier_legal_savings * fx_usd.fx_rate
-END AS supplier_legal_savings_in_usd,
-CASE
-    WHEN UPPER(currency) = 'EUR' THEN CAST(savings.supplier_legal_savings as FLOAT64)
-    ELSE savings.supplier_legal_savings * fx_eur.fx_rate
-END AS supplier_legal_savings_in_eur,
-CASE
-    WHEN UPPER(currency) = 'GBP' THEN CAST(savings.supplier_legal_savings as FLOAT64)
-    ELSE savings.supplier_legal_savings * fx_gbp.fx_rate
-END AS supplier_legal_savings_in_gbp,
-CASE
-    WHEN UPPER(currency) = 'INR' THEN CAST(savings.supplier_legal_savings as FLOAT64)
-    ELSE savings.supplier_legal_savings * fx_inr.fx_rate
-END AS supplier_legal_savings_in_inr,
-CASE
-    WHEN UPPER(currency) = 'CAD' THEN CAST(savings.supplier_legal_savings as FLOAT64)
-    ELSE savings.supplier_legal_savings * fx_cad.fx_rate
-END AS supplier_legal_savings_in_cad,
-
-CASE
-    WHEN UPPER(currency) = 'USD' THEN CAST(savings.background_check_savings as FLOAT64)
-    ELSE savings.background_check_savings * fx_usd.fx_rate
-END AS background_check_savings_in_usd,
-CASE
-    WHEN UPPER(currency) = 'EUR' THEN CAST(savings.background_check_savings as FLOAT64)
-    ELSE savings.background_check_savings * fx_eur.fx_rate
-END AS background_check_savings_in_eur,
-CASE
-    WHEN UPPER(currency) = 'GBP' THEN CAST(savings.background_check_savings as FLOAT64)
-    ELSE savings.background_check_savings * fx_gbp.fx_rate
-END AS background_check_savings_in_gbp,
-CASE
-    WHEN UPPER(currency) = 'INR' THEN CAST(savings.background_check_savings as FLOAT64)
-    ELSE savings.background_check_savings * fx_inr.fx_rate
-END AS background_check_savings_in_inr,
-CASE
-    WHEN UPPER(currency) = 'CAD' THEN CAST(savings.background_check_savings as FLOAT64)
-    ELSE savings.background_check_savings * fx_cad.fx_rate
-END AS background_check_savings_in_cad,
-spend.extension_negotiated_savings,
-spend.extension_negotiated_savings_in_usd,
-spend.extension_negotiated_savings_in_eur,
-spend.extension_negotiated_savings_in_cad,
-spend.extension_negotiated_savings_in_inr,
-spend.extension_negotiated_savings_in_gbp,
-spend.savings_vs_max_rate,
-spend.savings_vs_max_rate_in_inr,
-spend.savings_vs_max_rate_in_usd,
-spend.savings_vs_max_rate_in_eur,
-spend.savings_vs_max_rate_in_cad,
-spend.savings_vs_max_rate_in_gbp,
-spend.initial_negotiated_savings,
-spend.initial_negotiated_savings_in_inr,
-spend.initial_negotiated_savings_in_usd,
-spend.initial_negotiated_savings_in_cad,
-spend.initial_negotiated_savings_in_eur,
-spend.initial_negotiated_savings_in_gbp,
-spend.direct_sourcing_savings,
-spend.direct_sourcing_savings_in_inr,
-spend.direct_sourcing_savings_in_usd,
- spend.direct_sourcing_savings_in_eur,
-spend.direct_sourcing_savings_in_cad,
-spend.direct_sourcing_savings_in_gbp,
- spend.payroll_savings,
- spend.payroll_savings_in_inr,
-spend.payroll_savings_in_usd,
-spend.payroll_savings_in_eur,
-spend.payroll_savings_in_cad,
-spend.payroll_savings_in_gbp,
-tenure_discount_savings,
-tenure_discount_savings_in_inr,
-tenure_discount_savings_in_usd,
-tenure_discount_savings_in_eur,
-tenure_discount_savings_in_cad,
-tenure_discount_savings_in_gbp,
-prior_state_savings,
-prior_state_savings_in_inr,
-prior_state_savings_in_usd,
-prior_state_savings_in_eur,
-prior_state_savings_in_cad,
-prior_state_savings_in_gbp,
---supplier_tier_savings,
-savings_vs_highest_rate,
-savings_vs_highest_rate_in_inr,
-savings_vs_highest_rate_in_usd,
-savings_vs_highest_rate_in_eur,
-savings_vs_highest_rate_in_cad,
-savings_vs_highest_rate_in_gbp,
-qualified_cand_savings,
-qualified_cand_savings_in_inr,
-qualified_cand_savings_in_usd,
-qualified_cand_savings_in_eur,
-qualified_cand_savings_in_cad,
-qualified_cand_savings_in_gbp,
-previous_years_bill_rate_savings,
-previous_years_bill_rate_savings_in_inr,
-previous_years_bill_rate_savings_in_usd,
-previous_years_bill_rate_savings_in_eur,
-previous_years_bill_rate_savings_in_cad,
-previous_years_bill_rate_savings_in_gbp,
-assign.perm_recruitment_fee_savings,
-assign.perm_recruitment_fee_savings_in_usd,
-assign.perm_recruitment_fee_savings_in_eur,
-assign.perm_recruitment_fee_savings_in_cad,
-assign.perm_recruitment_fee_savings_in_inr,
-assign.perm_recruitment_fee_savings_in_gbp,
-assign.rehire_onboarding_savings as rehire_onboarding_savings,
-assign.rehire_onboarding_savings_in_usd as rehire_onboarding_savings_in_usd,
-assign.rehire_onboarding_savings_in_eur as rehire_onboarding_savings_in_eur,
-assign.rehire_onboarding_savings_in_cad as rehire_onboarding_savings_in_cad,
-assign.rehire_onboarding_savings_in_inr as rehire_onboarding_savings_in_inr,
-assign.rehire_onboarding_savings_in_gbp as rehire_onboarding_savings_in_gbp,
-current_date() as current_date
-from calendar
-Left join savings on savings.reporting_date=calendar.calendar_reporting_month_date
-LEFT JOIN spend on spend.month_start_spend=calendar.calendar_reporting_month_date
-LEFT JOIN assign on assign.month_start_assign=calendar.calendar_reporting_month_date
-LEFT JOIN fx_rates AS fx_usd 
-      ON trim(lower(savings.currency)) = trim(lower(fx_usd.from_currency))
-      AND savings.reporting_date = fx_usd.month
-      AND trim(upper(fx_usd.to_currency)) = 'USD'
-    LEFT JOIN fx_rates AS fx_eur 
-      ON trim(lower(savings.currency)) = trim(lower(fx_eur.from_currency))
-      AND savings.reporting_date = fx_eur.Month
-      AND trim(upper(fx_eur.to_currency)) = 'EUR'
-    LEFT JOIN fx_rates AS fx_gbp 
-      ON trim(lower(savings.currency)) = trim(lower(fx_gbp.from_currency))
-      AND savings.reporting_date = fx_gbp.month
-      AND trim(upper(fx_gbp.to_currency)) = 'GBP'
-    LEFT JOIN fx_rates AS fx_inr 
-      ON trim(lower(savings.currency)) = trim(lower(fx_inr.from_currency))
-      AND savings.reporting_date = fx_inr.month
-      AND trim(upper(fx_inr.to_currency)) = 'INR'
-    LEFT JOIN fx_rates AS fx_cad 
-      ON trim(lower(savings.currency)) = trim(lower(fx_cad.from_currency))
-      AND savings.reporting_date = fx_cad.month
-      AND trim(upper(fx_cad.to_currency)) = 'CAD'
-      order by calendar_reporting_month_date
-)""",gold_dataset,savings_trend_table_id,gold_dataset,spend_table_id,gold_dataset,assignment_table_id);
+SELECT
+  job_posting_dist_data.buyer,
+  job_posting_dist_data.buyer_code,
+  job_posting_dist_data.req_id,
+  job_posting_dist_data.decline_reason,
+  job_posting_dist_data.req_distribution_date,
+  job_posting_dist_data.req_initial_distribution_date,
+  job_posting_dist_data.dist_list,
+  job_posting_dist_data.supplier,
+  job_posting_dist_data.supplier_code,
+  job_posting_data.req_title,
+  job_posting_data.labor_type,
+  job_posting_data.rsr_labor_type,
+  job_posting_data.primary_cost_center,
+  job_posting_data.req_status,
+  job_posting_data.close_reason_req,
+  job_posting_data.business_unit,
+  job_posting_data.business_unit_code,
+  job_posting_data.category,
+  job_posting_data.site,
+  job_posting_data.city,
+  job_posting_data.state_province,
+  job_posting_data.country,
+  job_posting_data.req_approved_date,
+  job_posting_data.req_create_date,
+  job_posting_data.req_closed_date,
+  job_posting_data.max_requested_bill_rate_st_hr,
+  job_posting_data.positions_requested_cnt,
+  job_posting_data.currency,
+  supplier_data.supplier_status,
+  job_posting_data.sourced_type,
+  ifnull(job_posting_data.rsr_sourced_type,'Recruited') as rsr_sourced_type ,
+  global_supplier_mapping.suppliername_dw AS rsr_supplier,
+  aggregates_wo_wsupp.min_assignment_create_date AS first_assignment_create_date_supplier,
+  aggregates_min_req_dist_date.min_req_initial_distribution_date,
+  aggregates_min_req_dist_date.max_req_initial_distribution_date,
+  CAST(Function_library${region}.f_calendarday(aggregates_min_req_dist_date.min_req_initial_distribution_date, aggregates_min_req_dist_date.max_req_initial_distribution_date) AS INT64) AS active_supplier_duration,
+  aggregates_job_seekers_wsupp.first_candidate_submitted_date AS first_cand_submitted_date_supplier,
+  aggregates_job_seekers_wsupp.first_candidate_interview_date AS first_cand_interviewed_date_supplier,
+  CURRENT_DATE() AS current_date,
+  aggregates_wo_wsupp.no_hired_assignment AS hired_assignment_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_of_job_seekers AS cand_submitted_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_shortlisted AS shortlisted_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_of_interviewed AS interviewed_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_withdrawn AS withdrawn_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_rejected AS rejected_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_offered AS offered_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_hired AS hired_cnt_supplier,
+  aggregates_jp_dist_supp.no_of_suppliers_posted AS posted_cnt_supplier,
+  aggregates_job_seekers_wsupp.no_of_suppliers_responded AS responded_cnt_supplier,
+  CAST(Function_library${region}.f_calendarday(job_posting_dist_data.req_distribution_date,
+      aggregates_job_seekers_wsupp.first_candidate_submitted_date) AS INT64) AS dist_to_submit_first_cand_in_cd,
+  CAST(Function_library${region}.f_calendarday(job_posting_dist_data.req_distribution_date,
+      aggregates_job_seekers_wsupp.first_candidate_interview_date) AS INT64) AS dist_to_interview_first_cand_in_cd,
+  job_posting_data.max_template_bill_rate,
+  job_posting_data.req_type,
+  CASE
+	WHEN job_posting_data.rsr_country='United States of America' THEN div_supp.primary_diversity_type
+	ELSE CAST(NULL AS STRING)
+  END AS supplier_primary_diversity_type,
+  CASE
+	WHEN job_posting_data.rsr_country='United States of America' THEN div_supp.small_business
+    ELSE CAST(NULL AS STRING)
+  END AS supplier_small_business,
+  CASE
+	WHEN job_posting_data.rsr_country='United States of America' THEN div_supp.diverse_and_small
+    ELSE CAST(NULL AS STRING)
+  END AS supplier_diverse_small,
+  CASE
+	WHEN job_posting_data.rsr_country='United States of America' THEN div_supp.supplier_id_erp
+    ELSE CAST(NULL AS STRING)
+  END AS supplier_erp_id,
+  job_posting_data.rsr_req_status,
+  job_posting_data.rsr_region,
+  '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
+  job_posting_data.rsr_country,
+  job_posting_data.rsr_state,
+  job_posting_dist_data.rsr_processed_date
+  ,CAST(NULL AS STRING) AS preferred_supplier_status
+  ,job_posting_data.rsr_close_reason,
+job_posting_dist_data.rsr_staffing_entity, -- winter_release 2025
+norm_jt.suppressed_title,
+norm_jt.pii_found,
+norm_jt.process_status,
+norm_jt.suppression_type,
+norm_jt.llm_cleaned,
+norm_jt.title_cleaned,
+norm_jt.ms_category_1,
+norm_jt.ms_category_2,
+norm_jt.onet_career_pathway,
+norm_jt.onet_job_family,
+norm_jt.onet_career_cluster,
+norm_jt.onet_occupation,
+norm_jt.soc_major_group,
+norm_jt.soc_minor_group,
+norm_jt.soc_broad_group,
+norm_jt.onet_detailed_occupation,
+norm_jt.bg_categorization,
+norm_jt.tk_categorization,
+norm_jt.rand_categorization,
+norm_jt.rmi_categorization,
+norm_jt.R1_label,
+norm_jt.R2_label,
+norm_jt.R3_label,
+norm_jt.R4_label,
+norm_jt.R5_label,
+norm_jt.R6_label,
+norm_loc.location_level_1,
+norm_loc.location_level_2,
+norm_loc.location_level_3,
+norm_loc.location_level_4,
+norm_loc.location_level_5,
+norm_loc.location_level_6,
+norm_loc.location_level_7,
+norm_loc.location_level_8,
+norm_loc.location_level_1a,
+norm_loc.location_level_2a
+FROM job_posting_dist_data
+LEFT OUTER JOIN aggregates_min_req_dist_date ON job_posting_dist_data.supplier_code = aggregates_min_req_dist_date.supplier_code
+LEFT OUTER JOIN  job_posting_data ON job_posting_data.req_id = job_posting_dist_data.req_id
+LEFT OUTER JOIN  aggregates_jp_dist_supp ON job_posting_dist_data.req_id = aggregates_jp_dist_supp.req_id AND job_posting_dist_data.supplier = aggregates_jp_dist_supp.supplier
+LEFT OUTER JOIN  aggregates_wo_wsupp ON  job_posting_dist_data.req_id = aggregates_wo_wsupp.main_document_id AND job_posting_dist_data.supplier_code = aggregates_wo_wsupp.supplier_code
+LEFT OUTER JOIN  aggregates_job_seekers_wsupp ON  job_posting_dist_data.req_id = aggregates_job_seekers_wsupp.req_id AND job_posting_dist_data.supplier_code = aggregates_job_seekers_wsupp.supplier_code
+LEFT OUTER JOIN  `%s.%s` supplier_data ON job_posting_dist_data.supplier_code = supplier_data.supplier_code
+LEFT OUTER JOIN  global_supplier_mapping ON  TRIM(LOWER(job_posting_dist_data.supplier)) = global_supplier_mapping.supplier  AND TRIM(LOWER(job_posting_dist_data.buyer)) = global_supplier_mapping.buyer
+LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(job_posting_dist_data.buyer_code) AND div_supp.supplier_code=job_posting_dist_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER)
+LEFT JOIN db${region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on job_posting_data.req_title = norm_jt.raw_job_title
+    LEFT JOIN db${region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(job_posting_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(job_posting_data.rsr_state, '') = COALESCE(norm_loc.state, '')
+  AND COALESCE(job_posting_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(job_posting_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(job_posting_data.country, '') = COALESCE(norm_loc.country_code, ''))""",
+  gold_dataset,requisition_distribution_table_id,slvr_dataset,slvr_req_dist,gold_dataset,assignment_table_id,slvr_dataset,slvr_req_dist,slvr_dataset,slvr_cand,gold_dataset,requisition_table_id,slvr_dataset,slvr_supplier);

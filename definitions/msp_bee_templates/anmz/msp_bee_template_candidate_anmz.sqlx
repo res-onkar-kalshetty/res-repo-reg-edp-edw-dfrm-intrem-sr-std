@@ -25,7 +25,7 @@ EXECUTE IMMEDIATE
   SELECT
   DISTINCT table_id,
   FROM
-  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_gld_test`
+  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_`
     WHERE standard_report_type = 'candidate_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''' )INTO candidate_table_id;
 IF

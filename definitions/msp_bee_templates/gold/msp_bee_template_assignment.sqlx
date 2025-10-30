@@ -21,7 +21,7 @@ js {
 
     const slvr_dataset = (env == "prd") ?
         `slvr_${dataset_id}` :
-        `dev_slvr_${dataset_id}_praneeth`;
+        `dev_slvr_${dataset_id}_`;
 
     const slvr_assgn = helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_src', dataset_id);
     const slvr_assgn_v0 = helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_v0_src', dataset_id);
