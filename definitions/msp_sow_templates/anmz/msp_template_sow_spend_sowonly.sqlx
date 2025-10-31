@@ -1,0 +1,548 @@
+config {
+    type: "operations",
+    dependencies:  "msp_template_spend_sowonly_gold",
+   tags: ["anonymized", "msp_template_sow_gold"],
+    dependencies: ['msp_template_assignment_sowonly_gold'],
+    description: "Dynamically creates the anonymized table"
+}
+
+js {
+    const helper = require("/includes/helper");
+
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const slvr_dataset = (env == "prd") ?
+        `slvr_${dataset_id}` :
+        `dev_slvr_${dataset_id}`;
+    
+    const slvr_spend = helper.getSlvrTableName(config_ds_name, config_table_name, 'spend_src', dataset_id);
+
+}
+DECLARE
+  sow_assignment_sowonly_table_id STRING;
+DECLARE
+  spend_sowonly_table_id STRING;
+DECLARE
+  requisition_table_id STRING;
+DECLARE
+  gold_dataset STRING;
+DECLARE
+  slvr_dataset STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  region STRING;
+DECLARE
+  slvr_spend STRING;
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region = '${region}';
+SET
+  gold_dataset = '${gold_dataset}';
+SET
+  slvr_dataset = '${slvr_dataset}';
+SET
+  slvr_spend = ${slvr_spend};
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `%s.%s`
+    WHERE standard_report_type = 'assignment_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''', config_ds_name,config_table_name) INTO sow_assignment_sowonly_table_id;
+IF
+  sow_assignment_sowonly_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'sow_assignment_sowonly_table_id TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `%s.%s`
+    WHERE standard_report_type = 'spend_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''', config_ds_name,config_table_name) INTO spend_sowonly_table_id;
+IF
+  spend_sowonly_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'spend_sowonly_table_id IS MISSING FROM CONFIGS';
+END IF
+  ;
+EXECUTE IMMEDIATE FORMAT ("""
+CREATE OR REPLACE TABLE `%s.%s` AS (
+SELECT buyer
+,buyer_code
+,main_document_id
+,assignment_id
+,statement_of_work_id
+,consolidated_invoice_id
+,parent_invoice_id
+,invoice_id
+,invoice_line_item_id
+,invoice_approved_date
+,consolidated_invoice_approved_date
+,invoice_line_item_date
+,main_document_type
+,invoice_type
+,invoice_line_item_type
+,main_document_title
+,billable_hours
+,line_item_amount
+,invoice_line_item_amt
+,invoice_tax_adj_amt
+,invoice_amount
+,msp_amt
+,msp_line_item_amt
+,msp_invoice_tax_adj_amt
+,supplier_bill_rate_st_hr
+,bill_rate_st_hr
+,pay_rate_st_hr
+,currency
+,cost_center_code
+,cost_center
+,legal_entity
+,supplier_code
+,supplier
+,calendar_reporting_month_date
+,reporting_date_445_month
+,reporting_date_445_week
+,supplier_primary_diversity_type
+,supplier_small_business
+,supplier_diverse_small
+,supplier_erp_id
+,max_template_bill_rate_st_hr
+,labor_type
+,primary_cost_center
+,max_requested_bill_rate_st_hr
+,presented_bill_rate_st_hr
+,assignment_bill_rate_st_hr
+,assignment_bill_rate_st_hr_initial
+,usd_fx_rate
+,eur_fx_rate
+,gbp_fx_rate
+,inr_fx_rate
+,cad_fx_rate
+,rsr_labor_type
+,rsr_sourced_type
+,rsr_supplier
+,rsr_state
+,rsr_country
+,rsr_region
+,req_type
+,`current_date`
+,reporting_date
+,invoice_year_calendar
+,year_calendar
+,month_calendar
+,month_name_calendar
+,invoice_bill_rate_st_hr
+,negotiated_savings
+,savings_under_max_rate
+,savings_vs_requested_rate
+,spend_in_usd
+,spend_in_eur
+,spend_in_gbp
+,spend_in_inr
+,spend_in_cad
+,sourcing_type_wo_mapped
+,sourcing_type_wk_mapped
+,business_unit_code
+,business_unit
+,site
+,city
+,state_province
+,country
+,contingent_vs_sow
+,reporting_date_ends
+,bill_rate_st_hr_usd
+,bill_rate_st_hr_eur
+,bill_rate_st_hr_gbp
+,bill_rate_st_hr_inr
+,bill_rate_st_hr_cad
+,pay_rate_st_hr_usd
+,pay_rate_st_hr_eur
+,pay_rate_st_hr_gbp
+,pay_rate_st_hr_inr
+,pay_rate_st_hr_cad
+,rsr_client_code
+,rsr_processed_date
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(negotiated_savings as FLOAT64)
+    ELSE negotiated_savings * usd_fx_rate
+END AS negotiated_savings_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(negotiated_savings as FLOAT64)
+    ELSE negotiated_savings * eur_fx_rate
+END AS negotiated_savings_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(negotiated_savings as FLOAT64)
+    ELSE negotiated_savings * gbp_fx_rate
+END AS negotiated_savings_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(negotiated_savings as FLOAT64)
+    ELSE negotiated_savings * inr_fx_rate
+END AS negotiated_savings_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(negotiated_savings as FLOAT64)
+    ELSE negotiated_savings * cad_fx_rate
+END AS negotiated_savings_in_cad
+,CASE
+    WHEN UPPER(currency) = 'USD' THEN CAST(savings_vs_requested_rate as FLOAT64)
+    ELSE savings_vs_requested_rate * usd_fx_rate
+END AS savings_vs_requested_rate_in_usd
+,CASE
+    WHEN UPPER(currency) = 'EUR' THEN CAST(savings_vs_requested_rate as FLOAT64)
+    ELSE savings_vs_requested_rate * eur_fx_rate
+END AS savings_vs_requested_rate_in_eur
+,CASE
+    WHEN UPPER(currency) = 'GBP' THEN CAST(savings_vs_requested_rate as FLOAT64)
+    ELSE savings_vs_requested_rate * gbp_fx_rate
+END AS savings_vs_requested_rate_in_gbp
+,CASE
+    WHEN UPPER(currency) = 'INR' THEN CAST(savings_vs_requested_rate as FLOAT64)
+    ELSE savings_vs_requested_rate * inr_fx_rate
+END AS savings_vs_requested_rate_in_inr
+,CASE
+    WHEN UPPER(currency) = 'CAD' THEN CAST(savings_vs_requested_rate as FLOAT64)
+    ELSE savings_vs_requested_rate * cad_fx_rate
+END AS savings_vs_requested_rate_in_cad
+,CAST(NULL AS STRING) AS preferred_supplier_status
+FROM (
+WITH spend_data AS (
+  SELECT
+      spend_in.buyer,
+      spend_in.buyer_code,
+      spend_in.main_document_id,
+      spend_in.assignment_id,
+      spend_in.consolidated_invoice_id,
+      spend_in.statement_of_work_id,
+      spend_in.parent_invoice_id,
+      spend_in.invoice_id,
+      spend_in.invoice_line_item_id,
+      spend_in.invoice_approved_date,
+      spend_in.consolidated_invoice_approved_date,
+      spend_in.invoice_line_item_date,
+      spend_in.main_document_type,
+      spend_in.invoice_type,
+      spend_in.invoice_line_item_type,
+      spend_in.main_document_title,
+      spend_in.billable_hours,
+      spend_in.invoice_line_item_amt,
+      spend_in.line_item_amount,
+      spend_in.invoice_tax_adj_amt,
+      spend_in.invoice_amount,
+      spend_in.msp_amt,
+      spend_in.msp_line_item_amt,
+      spend_in.msp_invoice_tax_adj_amt,
+      spend_in.supplier_bill_rate_st_hr,
+      spend_in.bill_rate_st_hr,
+      spend_in.pay_rate_st_hr,
+      spend_in.currency,
+      spend_in.cost_center_code,
+      spend_in.cost_center,
+      spend_in.legal_entity,
+      spend_in.supplier_code,
+      spend_in.supplier,
+      spend_in.view_billable_hours_st_hr,
+       CASE
+        WHEN spend_in.main_document_id LIKE '%%JP%%' THEN 'Time Materials'
+         WHEN spend_in.main_document_id LIKE '%%TQ%%' THEN 'SOW'
+       ELSE NULL
+      END AS tm_sow,
+      DATE(CASE
+        WHEN spend_in.consolidated_invoice_approved_date IS NULL THEN spend_in.invoice_approved_date
+        ELSE spend_in.consolidated_invoice_approved_date
+      END) AS reporting_date,
+      spend_in.rsr_processed_date
+    FROM
+      ${slvr_dataset}.%s AS spend_in
+), reqs_assignment_data AS (
+  SELECT
+      req_asg_in.buyer,
+      req_asg_in.buyer_code,
+      req_asg_in.assignment_id,
+      req_asg_in.max_requested_bill_rate_st_hr,
+      req_asg_in.presented_bill_rate_st_hr,
+      req_asg_in.bill_rate_st_hr,
+      req_asg_in.bill_rate_st_hr_initial,
+      req_asg_in.primary_cost_center,
+      req_asg_in.labor_type,
+      req_asg_in.rsr_labor_type,
+	  req_asg_in.sourcing_type_wo_mapped,
+      req_asg_in.sourcing_type_wk_mapped,
+      req_asg_in.business_unit_code,
+      req_asg_in.business_unit,
+      req_asg_in.site,
+      req_asg_in.city,
+      req_asg_in.state_province,
+      req_asg_in.rsr_state,
+      req_asg_in.country,
+      req_asg_in.rsr_country,
+	  req_asg_in.rsr_region,
+	  req_asg_in.rsr_sourced_type,
+	  req_asg_in.max_template_bill_rate_st_hr,
+	  req_asg_in.reporting_date_ends
+    FROM
+      %s.%s AS req_asg_in
+      
+), gbl_sup_map AS (
+  SELECT DISTINCT
+      trim(lower(gbl_sup_map_in.buyer)) AS buyer,
+      trim(lower(gbl_sup_map_in.supplier)) AS supplier,
+      gbl_sup_map_in.suppliername_dw,
+    FROM
+      db_common${region}.global_supplier_mapping AS gbl_sup_map_in
+), fx_rates AS (
+  SELECT
+      CAST(fx_rate AS FLOAT64) AS fx_rate,
+      from_currency,
+      PARSE_DATE("%%Y-%%m-%%d", month) AS month,
+      to_currency
+    FROM
+      db_common${region}.global_fx_rates
+)
+SELECT
+    spend_data.buyer,
+    spend_data.buyer_code,
+    spend_data.main_document_id,
+    spend_data.assignment_id,
+    statement_of_work_id,
+    spend_data.consolidated_invoice_id,
+    spend_data.parent_invoice_id,
+    spend_data.invoice_id,
+    spend_data.invoice_line_item_id,
+    spend_data.invoice_approved_date,
+    spend_data.consolidated_invoice_approved_date,
+    spend_data.invoice_line_item_date,
+    spend_data.main_document_type,
+    spend_data.invoice_type,
+    spend_data.invoice_line_item_type,
+    spend_data.main_document_title,
+    spend_data.billable_hours,
+    spend_data.line_item_amount,
+    spend_data.invoice_line_item_amt,
+    spend_data.invoice_tax_adj_amt,
+    spend_data.invoice_amount,
+    spend_data.msp_amt,
+    spend_data.msp_line_item_amt,
+    spend_data.msp_invoice_tax_adj_amt,
+    spend_data.supplier_bill_rate_st_hr,
+    spend_data.bill_rate_st_hr,
+    spend_data.pay_rate_st_hr,    
+    spend_data.currency,
+    spend_data.cost_center_code,
+    spend_data.cost_center,
+    spend_data.legal_entity,
+    spend_data.supplier_code,
+    spend_data.supplier,
+    PARSE_DATE("%%m/%%d/%%Y", global_calendar_445.calendar_reporting_month_date) AS calendar_reporting_month_date,
+    PARSE_DATE("%%m/%%d/%%Y",global_calendar_445.reporting_month_date) as reporting_date_445_month,
+	  PARSE_DATE("%%m/%%d/%%Y",global_calendar_445.reporting_week_date) as reporting_date_445_week,
+    CASE
+      WHEN reqs_assignment_data.rsr_country='United States of America' THEN div_supp.primary_diversity_type
+      ELSE CAST(NULL AS STRING)
+    END AS supplier_primary_diversity_type,
+    CASE
+      WHEN reqs_assignment_data.rsr_country='United States of America' THEN div_supp.small_business
+      ELSE CAST(NULL AS STRING)
+    END AS supplier_small_business,
+    CASE
+      WHEN reqs_assignment_data.rsr_country='United States of America' THEN div_supp.diverse_and_small
+      ELSE CAST(NULL AS STRING)
+    END AS supplier_diverse_small,
+    CASE
+      WHEN reqs_assignment_data.rsr_country='United States of America' THEN div_supp.supplier_id_erp
+      ELSE CAST(NULL AS STRING)
+    END AS supplier_erp_id,
+    reqs_assignment_data.max_template_bill_rate_st_hr,
+    reqs_assignment_data.labor_type,
+    reqs_assignment_data.primary_cost_center,
+    reqs_assignment_data.max_requested_bill_rate_st_hr,
+    reqs_assignment_data.presented_bill_rate_st_hr,
+    reqs_assignment_data.bill_rate_st_hr AS assignment_bill_rate_st_hr,
+    reqs_assignment_data.bill_rate_st_hr_initial AS assignment_bill_rate_st_hr_initial,
+    CASE
+      WHEN upper(spend_data.currency) = 'USD' THEN 1.0
+      ELSE fx_usd.fx_rate
+    END AS usd_fx_rate,
+    CASE
+      WHEN upper(spend_data.currency) = 'EUR' THEN 1.0
+      ELSE fx_eur.fx_rate
+    END AS eur_fx_rate,
+    CASE
+      WHEN upper(spend_data.currency) = 'GBP' THEN 1.0
+      ELSE fx_gbp.fx_rate
+    END AS gbp_fx_rate,
+    CASE
+      WHEN upper(spend_data.currency) = 'INR' THEN 1.0
+      ELSE fx_inr.fx_rate
+    END AS inr_fx_rate,
+    CASE
+      WHEN upper(spend_data.currency) = 'CAD' THEN 1.0
+      ELSE fx_cad.fx_rate
+    END AS cad_fx_rate,
+    reqs_assignment_data.rsr_labor_type,
+    reqs_assignment_data.rsr_sourced_type,
+    gbl_sup_map.suppliername_dw as rsr_supplier,
+    reqs_assignment_data.rsr_state,
+    reqs_assignment_data.rsr_country,
+    reqs_assignment_data.rsr_region,
+    spend_data.tm_sow,
+    Null as req_type,
+    CURRENT_DATE() AS `current_date`,
+    spend_data.reporting_date,
+    CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS STRING) AS `invoice_year_calendar`,
+    CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AS `year_calendar`,
+    EXTRACT(MONTH FROM CAST(spend_data.reporting_date AS DATE)) AS `month_calendar`,
+    UPPER(FORMAT_DATETIME("%%B", DATETIME(spend_data.reporting_date))) AS `month_name_calendar`,
+    CASE WHEN spend_data.bill_rate_st_hr IS NULL THEN (
+         CASE WHEN SAFE_DIVIDE(ROUND(spend_data.line_item_amount, 4), ROUND(spend_data.view_billable_hours_st_hr, 4)) < 0.0000 THEN NULL
+              ELSE SAFE_DIVIDE(ROUND(spend_data.line_item_amount, 4), ROUND(spend_data.view_billable_hours_st_hr, 4)) END) 
+         ELSE spend_data.bill_rate_st_hr END AS invoice_bill_rate_st_hr,
+     ROUND(CASE
+      WHEN (spend_data.invoice_line_item_id LIKE '%%TS%%' OR spend_data.invoice_line_item_type = 'Time Sheet')
+        AND COALESCE(reqs_assignment_data.bill_rate_st_hr_initial,0) != 0 
+        THEN ((reqs_assignment_data.presented_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount
+      ELSE CAST(0.0 AS FLOAT64)
+    END, 4) AS negotiated_savings,
+    ROUND((reqs_assignment_data.max_template_bill_rate_st_hr - reqs_assignment_data.bill_rate_st_hr_initial),4) AS savings_under_max_rate,
+    ROUND(CASE
+      WHEN COALESCE(reqs_assignment_data.bill_rate_st_hr_initial,0) != 0 
+        THEN ((reqs_assignment_data.max_requested_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount
+      ELSE CAST(NULL AS NUMERIC)
+    END, 4) AS savings_vs_requested_rate,
+    CASE
+      WHEN upper(spend_data.currency) = 'USD' THEN CAST(spend_data.invoice_amount as FLOAT64)
+      ELSE spend_data.invoice_amount * fx_usd.fx_rate
+    END AS spend_in_usd,
+    CASE
+      WHEN upper(spend_data.currency) = 'EUR' THEN CAST(spend_data.invoice_amount as FLOAT64)
+      ELSE spend_data.invoice_amount * fx_eur.fx_rate
+    END AS spend_in_eur,
+    CASE
+      WHEN upper(spend_data.currency) = 'GBP' THEN CAST(spend_data.invoice_amount as FLOAT64)
+      ELSE spend_data.invoice_amount * fx_gbp.fx_rate
+    END AS spend_in_gbp,
+    CASE
+      WHEN upper(spend_data.currency) = 'INR' THEN CAST(spend_data.invoice_amount as FLOAT64)
+      ELSE spend_data.invoice_amount * fx_inr.fx_rate
+    END AS spend_in_inr,
+    CASE
+      WHEN upper(spend_data.currency) = 'CAD' THEN CAST(spend_data.invoice_amount as FLOAT64)
+      ELSE spend_data.invoice_amount * fx_cad.fx_rate
+    END AS spend_in_cad,
+    reqs_assignment_data.sourcing_type_wo_mapped,
+    reqs_assignment_data.sourcing_type_wk_mapped,
+    reqs_assignment_data.business_unit_code,
+    reqs_assignment_data.business_unit,
+    reqs_assignment_data.site,
+    reqs_assignment_data.city,
+    reqs_assignment_data.state_province,
+    reqs_assignment_data.country,
+    CASE 
+      WHEN lower(spend_data.main_document_type) = lower('Contract') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Service Request') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Contingent Labor Request') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Job Posting') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Non-Employee Posting') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Requisition') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Temp Order') THEN 'Contingent'
+      WHEN lower(spend_data.main_document_type) = lower('Statement of Work') THEN 'SOW'
+      WHEN lower(spend_data.main_document_type) = lower('Independent Contractor') THEN 'SOW'
+      WHEN lower(spend_data.main_document_type) = lower('SOW Contract') THEN 'SOW'
+      WHEN spend_data.main_document_id LIKE '%%JP%%' THEN 'Contingent'
+      WHEN spend_data.main_document_id LIKE '%%TQ%%' THEN 'SOW'
+      ELSE 'NULL'
+    END as contingent_vs_sow,
+    reqs_assignment_data.reporting_date_ends,
+    CASE
+      WHEN upper(spend_data.currency) = 'USD' THEN CAST(spend_data.bill_rate_st_hr as FLOAT64)
+      ELSE spend_data.bill_rate_st_hr * fx_usd.fx_rate
+    END bill_rate_st_hr_usd,
+     CASE
+      WHEN upper(spend_data.currency) = 'EUR' THEN CAST(spend_data.bill_rate_st_hr as FLOAT64)
+      ELSE spend_data.bill_rate_st_hr * fx_eur.fx_rate
+    END bill_rate_st_hr_eur,
+    CASE
+      WHEN upper(spend_data.currency) = 'GBP' THEN CAST(spend_data.bill_rate_st_hr as FLOAT64)
+      ELSE spend_data.bill_rate_st_hr * fx_gbp.fx_rate
+    END bill_rate_st_hr_gbp,
+    CASE
+      WHEN upper(spend_data.currency) = 'INR' THEN CAST(spend_data.bill_rate_st_hr as FLOAT64)
+      ELSE spend_data.bill_rate_st_hr * fx_inr.fx_rate
+    END bill_rate_st_hr_inr,
+    CASE
+      WHEN upper(spend_data.currency) = 'CAD' THEN CAST(spend_data.bill_rate_st_hr as FLOAT64)
+      ELSE spend_data.bill_rate_st_hr * fx_cad.fx_rate
+    END bill_rate_st_hr_cad,
+    CASE
+      WHEN upper(spend_data.currency) = 'USD' THEN CAST(spend_data.pay_rate_st_hr as FLOAT64)
+      ELSE spend_data.pay_rate_st_hr * fx_usd.fx_rate
+    END pay_rate_st_hr_usd,
+    CASE
+      WHEN upper(spend_data.currency) = 'EUR' THEN CAST(spend_data.pay_rate_st_hr as FLOAT64)
+      ELSE spend_data.pay_rate_st_hr * fx_eur.fx_rate
+    END pay_rate_st_hr_eur,
+    CASE
+      WHEN upper(spend_data.currency) = 'GBP' THEN CAST(spend_data.pay_rate_st_hr as FLOAT64)
+      ELSE spend_data.pay_rate_st_hr * fx_gbp.fx_rate
+    END pay_rate_st_hr_gbp,
+    CASE
+      WHEN upper(spend_data.currency) = 'INR' THEN CAST(spend_data.pay_rate_st_hr as FLOAT64)
+      ELSE spend_data.pay_rate_st_hr * fx_inr.fx_rate
+    END pay_rate_st_hr_inr,
+ CASE
+      WHEN upper(spend_data.currency) = 'CAD' THEN CAST(spend_data.pay_rate_st_hr as FLOAT64)
+      ELSE spend_data.pay_rate_st_hr * fx_cad.fx_rate
+    END pay_rate_st_hr_cad,
+    '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
+    spend_data.rsr_processed_date
+  FROM spend_data
+    LEFT JOIN reqs_assignment_data 
+      ON spend_data.assignment_id = reqs_assignment_data.assignment_id
+    LEFT JOIN gbl_sup_map 
+      ON trim(lower(spend_data.supplier)) = trim(lower(gbl_sup_map.supplier))
+      AND trim(lower(spend_data.buyer)) = trim(lower(gbl_sup_map.buyer))
+    LEFT JOIN db_common${region}.global_calendar_445 AS global_calendar_445 
+      ON spend_data.reporting_date = PARSE_DATE("%%m/%%d/%%Y", global_calendar_445.day)
+    LEFT JOIN fx_rates AS fx_usd 
+      ON trim(lower(spend_data.currency)) = trim(lower(fx_usd.from_currency))
+      AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_usd.month
+      AND trim(upper(fx_usd.to_currency)) = 'USD'
+    LEFT JOIN fx_rates AS fx_eur 
+      ON trim(lower(spend_data.currency)) = trim(lower(fx_eur.from_currency))
+      AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_eur.Month
+      AND trim(upper(fx_eur.to_currency)) = 'EUR'
+    LEFT JOIN fx_rates AS fx_gbp 
+      ON trim(lower(spend_data.currency)) = trim(lower(fx_gbp.from_currency))
+      AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_gbp.month
+      AND trim(upper(fx_gbp.to_currency)) = 'GBP'
+    LEFT JOIN fx_rates AS fx_inr 
+      ON trim(lower(spend_data.currency)) = trim(lower(fx_inr.from_currency))
+      AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_inr.month
+      AND trim(upper(fx_inr.to_currency)) = 'INR'
+    LEFT JOIN fx_rates AS fx_cad 
+      ON trim(lower(spend_data.currency)) = trim(lower(fx_cad.from_currency))
+      AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_cad.month
+      AND trim(upper(fx_cad.to_currency)) = 'CAD'
+    LEFT JOIN db_aptus${region}.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(spend_data.buyer_code) AND div_supp.supplier_code=spend_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER)
+))""",gold_dataset,spend_sowonly_table_id,
+slvr_spend,
+gold_dataset,sow_assignment_sowonly_table_id);

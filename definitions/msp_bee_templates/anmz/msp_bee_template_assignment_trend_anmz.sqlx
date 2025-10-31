@@ -1,6 +1,6 @@
 config {
     type: "operations",
-    description: "Dynamically creates the anonymized view for assignment_trends.",
+    description: "Dynamically creates the anonymized table for assignment_trends.",
     dependencies: "msp_bee_template_assignment_trend_gold",
     tags: ["anonymized", "msp_bee_template_gold"]
 }

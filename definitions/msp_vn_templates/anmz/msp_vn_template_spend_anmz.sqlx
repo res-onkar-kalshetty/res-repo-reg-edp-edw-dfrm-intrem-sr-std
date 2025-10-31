@@ -1,6 +1,6 @@
 config {
     type: "operations",
-    description: "Dynamically creates the anonymized view for spends.",
+    description: "Dynamically creates the anonymized table for spends.",
     dependencies: "msp_vn_template_spend_gold",
     tags: ["anonymized", "msp_vn_template_gold"]
 }

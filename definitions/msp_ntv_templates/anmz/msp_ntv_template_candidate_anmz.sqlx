@@ -1,6 +1,6 @@
 config {
     type: "operations",
-    description: "Dynamically creates the anonymized view for candidates.",
+    description: "Dynamically creates the anonymized table for candidates.",
     dependencies: "msp_ntv_template_candidate_gold",
     tags: ["anonymized", "msp_ntv_template_gold"]
 }

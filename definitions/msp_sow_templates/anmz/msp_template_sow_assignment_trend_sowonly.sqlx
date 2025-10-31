@@ -1,0 +1,265 @@
+config {
+    type: "operations",
+    dependencies:  "msp_template_assignment_trend_sowonly_gold",
+   tags: ["anonymized", "msp_template_sow_gold"],
+    dependencies: ['msp_template_assignment_sowonly_gold'],
+    description: "Dynamically creates the anonymized table"
+}
+
+js {
+    const helper = require("/includes/helper");
+
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const slvr_dataset = (env == "prd") ?
+        `slvr_${dataset_id}` :
+        `dev_slvr_${dataset_id}`;
+}
+DECLARE
+  sow_assignment_sowonly_table_id STRING;
+DECLARE
+  sow_assignment_trend_sowonly_table_id STRING;
+DECLARE
+  requisition_table_id STRING;
+DECLARE
+  gold_dataset STRING;
+DECLARE
+  slvr_dataset STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  region STRING;
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region = '${region}';
+SET
+  gold_dataset = '${gold_dataset}';
+SET
+  slvr_dataset = '${slvr_dataset}';
+
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `%s.%s`
+    WHERE standard_report_type = 'assignment_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''', config_ds_name,config_table_name) INTO sow_assignment_sowonly_table_id;
+IF
+  sow_assignment_sowonly_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'sow_assignment_sowonly_table_id TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `%s.%s`
+    WHERE standard_report_type = 'assignment_trend_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''', config_ds_name,config_table_name) INTO sow_assignment_trend_sowonly_table_id;
+IF
+  sow_assignment_trend_sowonly_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'sow_assignment_trend_sowonly_table_id TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+
+EXECUTE IMMEDIATE FORMAT ("""
+CREATE OR REPLACE TABLE `%s.%s` AS (
+WITH 
+derv_wo AS(
+  select
+    req_assign_in.assignment_id,
+    req_assign_in.consolidated_worker_id,
+    req_assign_in.main_document_id,
+    req_assign_in.worker_start_date,
+    req_assign_in.worker_id,
+    req_assign_in.worker_closed_date,
+    req_assign_in.worker_end_date,
+    req_assign_in.buyer_code,
+	req_assign_in.reporting_date_ends,
+	r_dates,
+	gbl_cal_445.reporting_month_date,
+    gbl_cal_445.calendar_reporting_month_date,
+    gbl_cal_445.calendar_reporting_month,
+    gbl_cal_445.reporting_month,
+    gbl_cal_445.calendar_year,
+	gbl_cal_445.reporting_week_date as reporting_date_445_week,
+    gbl_cal_445.week
+    FROM 
+   %s.%s req_assign_in
+	CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(DATE_TRUNC(CAST(req_assign_in.worker_start_date AS DATE), WEEK), CAST(req_assign_in.reporting_date_ends AS DATE), INTERVAL 1 WEEK)) r_dates
+	left join db_common${region}.global_calendar_445 gbl_cal_445 ON r_dates = PARSE_DATE('%%m/%%d/%%Y',gbl_cal_445.day)
+),
+temp5 AS (
+         SELECT 
+            temp1_1.buyer_code,
+            temp1_1.assignment_id,
+            temp1_1.worker_id,
+            temp1_1.reporting_month,
+            temp1_1.calendar_year,
+            min(temp1_1.week) AS min_week_no
+           FROM derv_wo temp1_1
+          WHERE temp1_1.reporting_month IS NOT NULL
+          GROUP BY  temp1_1.buyer_code, temp1_1.assignment_id, temp1_1.worker_id, temp1_1.reporting_month, temp1_1.calendar_year
+        ),
+		temp6 AS (
+  SELECT
+      
+      v.buyer_code,
+      v.assignment_id,
+      v.worker_id,
+      v.calendar_reporting_month_date,
+      v.calendar_year,
+      max(v.r_dates) AS max_reporting_date_week_start
+    FROM
+      derv_wo v
+    WHERE v.calendar_reporting_month IS NOT NULL
+    GROUP BY 1, 2, 3, 4, 5),
+		temp7 AS (
+  SELECT
+      
+      v.buyer_code,
+      v.assignment_id,
+      v.worker_id,
+      max(v.r_dates) AS max_reporting_date_week_start
+    FROM
+      derv_wo v
+    GROUP BY 1, 2, 3),
+  cal_comp As(
+    select
+      mapping_date.assignment_id,
+      mapping_date.main_document_id,
+      mapping_date.worker_id,
+      mapping_date.r_dates,
+      mapping_date.reporting_month_date,
+      mapping_date.calendar_reporting_month_date,
+      mapping_date.calendar_reporting_month,
+      mapping_date.calendar_year,
+      mapping_date.buyer_code,  
+      CASE
+            WHEN mapping_date.week = temp5.min_week_no THEN 1
+            WHEN mapping_date.week <> temp5.min_week_no AND temp5.reporting_month IS NOT NULL THEN 0
+            ELSE NULL
+        END AS month_filter,
+	  mapping_date.reporting_date_445_week,
+	  mapping_date.reporting_month,
+	 case when mapping_date.r_dates=temp6.max_reporting_date_week_start then 1 else 0 end as max_reporting_week_by_month_flag,
+case when mapping_date.r_dates=temp7.max_reporting_date_week_start then 1 else 0 end as max_reporting_week_overall_flag
+	  
+
+    from derv_wo as mapping_date 
+    LEFT JOIN temp5 ON mapping_date.assignment_id = temp5.assignment_id AND mapping_date.worker_id = temp5.worker_id AND mapping_date.reporting_month = temp5.reporting_month AND mapping_date.calendar_year = temp5.calendar_year
+	left join
+    temp6
+    on  mapping_date.buyer_code=temp6.buyer_code
+    and mapping_date.assignment_id=temp6.assignment_id
+    and mapping_date.worker_id=temp6.worker_id
+    and mapping_date.calendar_reporting_month_date=temp6.calendar_reporting_month_date
+    and mapping_date.calendar_year=temp6.calendar_year
+	left join 
+    temp7
+    on  mapping_date.buyer_code=temp7.buyer_code
+    and mapping_date.assignment_id=temp7.assignment_id
+    and mapping_date.worker_id=temp7.worker_id
+  )
+
+SELECT
+	assign.buyer,
+	assign.buyer_code,
+	assign.req_id,
+	assign.assignment_id,
+	assign.worker_id,
+	assign.main_document_id,
+	assign.main_document_type,
+	assign.business_unit,
+	assign.cost_center,
+	assign.site_code,
+	assign.site,
+	assign.site_wk,
+	assign.supplier,
+	assign.supplier_code,
+	assign.sourcing_type_wo,
+	assign.sourcing_type_wk,
+	assign.currency,
+	cal_comp.reporting_month,
+	cal_comp.calendar_reporting_month,
+	cal_comp.max_reporting_week_by_month_flag,
+	cal_comp.max_reporting_week_overall_flag,
+	CASE
+      WHEN assign.rsr_country='United States of America' THEN div_supp.primary_diversity_type
+      ELSE CAST(NULL AS STRING)
+  END AS supplier_primary_diversity_type,
+  CASE
+      WHEN assign.rsr_country='United States of America' THEN div_supp.small_business
+      ELSE CAST(NULL AS STRING)
+  END AS supplier_small_business,
+  CASE
+      WHEN assign.rsr_country='United States of America' THEN div_supp.diverse_and_small
+      ELSE CAST(NULL AS STRING)
+  END AS supplier_diverse_small,
+  CASE
+      WHEN assign.rsr_country='United States of America' THEN div_supp.supplier_id_erp
+      ELSE CAST(NULL AS STRING)
+  END AS supplier_erp_id,
+	assign.consolidated_worker_id,
+	assign.req_title,
+	assign.req_title_classification,
+	assign.req_type,
+	assign.posting_type,
+	assign.labor_type,
+	assign.location,
+	assign.city,
+	assign.state_province,
+	assign.country,
+	assign.req_approved_date,
+	assign.req_closed_date,
+	assign.worker_start_date,
+	assign.worker_end_date,
+	assign.worker_closed_date,
+	assign.worker_close_reason as close_reason, -- discuss
+	assign.rsr_country,
+  assign.rsr_region,
+	assign.rsr_supplier,
+	assign.rsr_labor_type,
+	assign.rsr_sourced_type,
+	assign.rsr_assignment_close_reason,
+	assign.rsr_assignment_close_rating,
+	assign.contingent_vs_sow,
+	DATE_TRUNC(cal_comp.r_dates, MONTH) AS reporting_date_calendar,
+	PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date) as reporting_date_month_calendar,
+	assign.current_date,
+	cast(assign.reporting_date_ends as DATE) as reporting_date_ends,
+    cal_comp.r_dates AS reporting_date_week_start,
+	cal_comp.month_filter,
+	PARSE_DATE("%%m/%%d/%%Y",cal_comp.reporting_month_date) as reporting_date_445_month,
+	PARSE_DATE("%%m/%%d/%%Y",cal_comp.reporting_date_445_week) as reporting_date_445_week,
+	assign.sourcing_type_wk_mapped,
+	assign.sourcing_type_wo_mapped,
+	assign.rsr_state,
+   '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
+   assign.rsr_processed_date
+   ,CAST(NULL AS STRING) AS preferred_supplier_status
+FROM 
+	%s.%s assign
+	LEFT JOIN cal_comp ON assign.assignment_id = cal_comp.assignment_id AND assign.main_document_id = cal_comp.main_document_id
+  LEFT JOIN db_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER))""",
+  gold_dataset,sow_assignment_trend_sowonly_table_id,
+  gold_dataset,sow_assignment_sowonly_table_id,
+  gold_dataset,sow_assignment_sowonly_table_id);

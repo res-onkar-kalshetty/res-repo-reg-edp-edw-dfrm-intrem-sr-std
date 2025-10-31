@@ -1,6 +1,6 @@
 config {
     type: "operations",
-    description: "Dynamically creates the anonymized view for assignments.",
+    description: "Dynamically creates the anonymized table for assignments.",
     dependencies: "msp_ntv_template_assignment_gold",
     tags: ["anonymized", "msp_ntv_template_gold"]
 }

@@ -1,6 +1,6 @@
 config {
     type: "operations",
-    description: "Dynamically creates the anonymized view for requisition_distributions.",
+    description: "Dynamically creates the anonymized table for requisition_distributions.",
     dependencies: "msp_bee_template_requisition_distribution_gold",
     tags: ["anonymized", "msp_bee_template_gold"]
 }
