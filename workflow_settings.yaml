@@ -4,11 +4,11 @@ defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.0
 vars:
-    client_code: "rpo_wd_emea_aviva"
-    dataset_id: "tr_aviva_eu"
+    client_code: "msp_bee_gbl_nike_"
+    dataset_id: "tr_eu_nike"
     # env: "dev" # TODO : we are getting env from default project try to remove
     # region: "_emea" # TODO : write function to get region 
-    ds_name: "db_emea_aviva" # TODO : optional (not needed for gold - should be removed later)
+    ds_name: "db_gbl_nike" # TODO : optional (not needed for gold - should be removed later)
     # config_dataset: "dev_reg_edp_edw_schema_eu"
     ph1_r: ""
     ph2_r: ""
