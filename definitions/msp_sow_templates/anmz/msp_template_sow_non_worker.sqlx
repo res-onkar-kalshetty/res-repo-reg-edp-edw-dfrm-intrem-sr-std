@@ -1,0 +1,83 @@
+config {
+    type: "operations",
+    dependencies:  "msp_template_sow_non_worker_gold",
+   tags: ["anonymized", "msp_template_sow_gold"],
+    description: "Dynamically creates the anonymized table"
+}
+js {
+    const anonymization = require("includes/anonymization");
+    const helper = require("/includes/helper");
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const anmz_dataset = (env == "prd") ?
+        `anmz_${dataset_id}` :
+        `dev_anmz_${dataset_id}`;
+}
+
+DECLARE
+  sow_non_worker_table_id STRING;
+DECLARE
+  gold_dataset STRING;
+DECLARE
+  anmz_dataset STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  select_clause STRING;
+DECLARE
+  final_ddl_statement STRING;
+DECLARE
+  region STRING;
+SET
+  gold_dataset='${gold_dataset}';
+SET
+  anmz_dataset='${anmz_dataset}';
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region='${region}';
+BEGIN
+EXECUTE IMMEDIATE
+  FORMAT ('''
+  SELECT
+  DISTINCT table_id,
+  FROM
+  `%s.%s`
+    WHERE standard_report_type = 'sow_non_worker_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''',config_ds_name,config_table_name ) INTO sow_non_worker_table_id;
+IF
+  sow_non_worker_table_id IS NULL THEN RAISE
+USING
+  MESSAGE = 'sow_non_worker TABLE ID IS MISSING FROM CONFIGS';
+END IF
+  ;
+EXECUTE IMMEDIATE
+  FORMAT("""${
+        anonymization.get_anonymized_select_clause({
+            report_type: "sow_non_worker",
+            solution: "SOW",
+            metadata_table: "common%s.master_template_report_fields"
+        })
+    }""",region) INTO select_clause;
+SET
+  final_ddl_statement = FORMAT("""
+  CREATE OR REPLACE TABLE `%s.%s` AS (
+    SELECT %s FROM `%s.%s`
+  )
+  """, anmz_dataset, sow_non_worker_table_id, select_clause, gold_dataset, sow_non_worker_table_id );
+EXECUTE IMMEDIATE
+  final_ddl_statement;
+END
+  ;

@@ -21,7 +21,7 @@ js {
 
     const slvr_dataset = (env == "prd") ?
         `slvr_${dataset_id}` :
-        `dev_slvr_${dataset_id}_`;
+        `dev_slvr_${dataset_id}_praneeth`;
 
     const slvr_req_dist = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_distribution_src', dataset_id);
     const slvr_supplier = helper.getSlvrTableName(config_ds_name, config_table_name, 'supplier_src', dataset_id);
@@ -71,7 +71,7 @@ EXECUTE IMMEDIATE
   SELECT
   DISTINCT table_id,
   FROM
-  `%s.%s`
+  `%s.%s` 
     WHERE standard_report_type = 'requisition_distribution_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''' , config_ds_name,config_table_name)INTO requisition_distribution_table_id;
 
@@ -80,7 +80,7 @@ EXECUTE IMMEDIATE
   SELECT
   DISTINCT table_id,
   FROM
-  `%s.%s`
+  `%s.%s` 
     WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''' , config_ds_name,config_table_name)INTO requisition_table_id;
 
@@ -90,7 +90,7 @@ EXECUTE IMMEDIATE
   SELECT
   DISTINCT table_id,
   FROM
-  `%s.%s`
+  `%s.%s` 
     WHERE standard_report_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''' , config_ds_name,config_table_name)INTO assignment_table_id;
 

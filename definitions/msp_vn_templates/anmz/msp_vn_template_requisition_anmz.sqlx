@@ -1,12 +1,26 @@
 config {
     type: "operations",
-    description: "Dynamically creates the anonymized view for requisitions.",
+    description: "Dynamically creates the anonymized table for requisitions.",
     dependencies: "msp_vn_template_requisition_gold",
     tags: ["anonymized", "msp_vn_template_gold"]
 }
 
 js {
     const anonymization = require("includes/anonymization");
+    const helper = require("/includes/helper");
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const anmz_dataset = (env == "prd") ?
+        `anmz_${dataset_id}` :
+        `dev_anmz_${dataset_id}`;
 }
 
 DECLARE
@@ -15,6 +29,26 @@ DECLARE
   gold_dataset STRING;
 DECLARE
   anmz_dataset STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  select_clause STRING;
+DECLARE
+  final_ddl_statement STRING;
+DECLARE
+  region STRING;
+SET
+  gold_dataset='${gold_dataset}';
+SET
+  anmz_dataset='${anmz_dataset}';
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region='${region}';
 DECLARE
   select_clause STRING;
 DECLARE
@@ -25,27 +59,24 @@ EXECUTE IMMEDIATE
   SELECT
   DISTINCT table_id,
   FROM
-  `${dataform.projectConfig.vars.config_dataset}.ext_slvr_schema_cfg_`
+  `%s.%s`
     WHERE standard_report_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' )INTO requisition_table_id;
+''',config_ds_name,config_table_name  )INTO requisition_table_id;
 IF
   requisition_table_id IS NULL THEN RAISE
 USING
   MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
 END IF
   ;
-SET
-  gold_dataset = CONCAT("dev", "_gold_", "${dataform.projectConfig.vars.dataset_id}");
-SET
-  anmz_dataset = CONCAT("dev", "_anmz_", "${dataform.projectConfig.vars.dataset_id}");
+
 EXECUTE IMMEDIATE
-  """${
+  FORMAT("""${
         anonymization.get_anonymized_select_clause({
             report_type: "requisition",
             solution: "MSP",
-            metadata_table: "common.master_template_report_fields_prd_cpy"
+            metadata_table: "common%s.master_template_report_fields"
         })
-    }""" INTO select_clause;
+    }""",region) INTO select_clause;
 SET
   final_ddl_statement = FORMAT("""
   CREATE OR REPLACE TABLE `%s.%s` AS (
