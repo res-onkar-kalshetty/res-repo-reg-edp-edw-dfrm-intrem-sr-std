@@ -5,8 +5,8 @@ config {
     description: "Dynamically creates the anonymized table"
 }
 js {
+    const anonymization = require("includes/anonymization");
     const helper = require("/includes/helper");
-
     const config_ds_name = helper.get_config_ds();
     const config_table_name = helper.get_config_table();
     const env = helper.get_env();
@@ -17,15 +17,9 @@ js {
         `gold_${dataset_id}` :
         `dev_gold_${dataset_id}`;
 
-    const slvr_dataset = (env == "prd") ?
-        `slvr_${dataset_id}` :
-        `dev_slvr_${dataset_id}`;
-
-    const slvr_sow_bid = helper.getSlvrTableName(config_ds_name, config_table_name, 'sow_bid_src', dataset_id);
-    const slvr_sow = helper.getSlvrTableName(config_ds_name, config_table_name, 'sow_src', dataset_id);
-    const slvr_sow_acnt = helper.getSlvrTableName(config_ds_name, config_table_name, 'sow_acnt_src', dataset_id);
-    const slvr_sow_v0 = helper.getSlvrTableName(config_ds_name, config_table_name, 'sow_v0_src', dataset_id);
-    const slvr_supplier = helper.getSlvrTableName(config_ds_name, config_table_name, 'supplier_src', dataset_id);
+    const anmz_dataset = (env == "prd") ?
+        `anmz_${dataset_id}` :
+        `dev_anmz_${dataset_id}`;
 }
 
 DECLARE
@@ -33,44 +27,28 @@ DECLARE
 DECLARE
   gold_dataset STRING;
 DECLARE
-  slvr_dataset STRING;
+  anmz_dataset STRING;
 DECLARE
   config_ds_name STRING;
 DECLARE
   config_table_name STRING;
 DECLARE
+  select_clause STRING;
+DECLARE
+  final_ddl_statement STRING;
+DECLARE
   region STRING;
-DECLARE
-  slvr_sow_bid STRING;
-DECLARE
-  slvr_sow STRING;
-DECLARE
-  slvr_sow_acnt STRING;
-DECLARE
-  slvr_sow_v0 STRING;
-DECLARE
-  slvr_supplier STRING;
+SET
+  gold_dataset='${gold_dataset}';
+SET
+  anmz_dataset='${anmz_dataset}';
 SET
   config_ds_name = '${config_ds_name}';
 SET
   config_table_name = '${config_table_name}';
 SET
-  region = '${region}';
-SET
-  gold_dataset = '${gold_dataset}';
-SET
-  slvr_dataset = '${slvr_dataset}';
-SET
-  slvr_sow_bid = ${slvr_sow_bid};
-SET
-  slvr_sow=${slvr_sow};
-SET
-  slvr_sow_acnt = ${slvr_sow_acnt};
-SET
-  slvr_sow_v0 = ${slvr_sow_v0};
-SET
-  slvr_supplier = ${slvr_supplier};
-
+  region='${region}';
+BEGIN
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
@@ -78,84 +56,28 @@ EXECUTE IMMEDIATE
   FROM
   `%s.%s`
     WHERE standard_report_type = 'sow_bid_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO sow_bid_table_id;
-
+''',config_ds_name,config_table_name ) INTO sow_bid_table_id;
 IF
   sow_bid_table_id IS NULL THEN RAISE
 USING
-  MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
+  MESSAGE = 'sow_bid TABLE ID IS MISSING FROM CONFIGS';
 END IF
   ;
-
-EXECUTE IMMEDIATE FORMAT ("""
-
-CREATE OR REPLACE TABLE `%s.%s` AS (
-SELECT
-  sow_bid.buyer,
-  sow_bid.buyer_code,
-  sow.city,
-  sow.classification,
-  sow_bid.close_reason,
-  sow.country,
-  sow_bid.created_from_sow_bid_id,
-  sow_bid.currency,
-  sow_bid.sow,
-  sow_bid.sow_bid,
-  sow_bid.sow_bid_approved_date,
-  sow_bid.sow_bid_create_date,
-  sow_bid.sow_bid_id,
-  sow_bid.sow_bid_response_close_date,
-  sow_bid.sow_bid_response_id,
-  sow_bid.sow_bid_response_status,
-  sow_bid.sow_bid_status,
-  sow_bid.sow_id,
-  sow.state,
-  sow_bid.supplier,
-  sow_bid.supplier_code,
-  sow.sow_create_date,
-  sow_acc.original_maximum_budget_amount,
-  sow_v0.sow_create_date_initial,
-  gcr.rsr_country as rsr_country,
-  COALESCE(gsm.suppliername_dw, CAST(NULL AS STRING)) AS rsr_supplier,
-  gbl_sow.service_category_classification as rsr_classification,
-  CASE
-    WHEN COALESCE(TRIM(sow_bid.sow_id), CAST(NULL AS STRING)) IS NULL THEN 0
-    ELSE 1
-  END AS bids_won_cnt,
-  CASE
-    WHEN sow_bid.sow_bid_response_status IN ('Declined', 'Withdrawn') OR sow_bid.supplier_code IS NULL THEN 0
-    ELSE 1
-  END AS submittal_bid_id,
-  CASE
-    WHEN sow_bid.sow_bid_response_status IN ('Declined', 'Withdrawn') OR sow_bid.sow_bid_response_id IS NULL THEN 0
-    ELSE 1
-  END AS response_bid_id,
-  Function_library${region}.f_workday(sow_bid.sow_bid_create_date,sow_bid.sow_bid_submit_date) AS bid_create_to_submit_bd,
-  Function_library${region}.f_workday(sow_bid.sow_bid_submit_date,sow_bid.sow_bid_approved_date) AS bid_submit_to_approve_bd,
-  Function_library${region}.f_workday(sow_bid.sow_bid_approved_date,sow_bid.sow_bid_respond_date) AS bid_approved_to_supplier_response_bd,
-  Function_library${region}.f_workday(sow_bid.sow_bid_respond_date,sow_bid.last_sow_bid_response_reject_date) AS bid_response_to_last_response_reject_bd,
-  Function_library${region}.f_workday(sow_bid.last_sow_bid_response_reject_date,sow_v0.sow_create_date_initial) AS bid_last_response_reject_to_create_bd,
-  Function_library${region}.f_workday(sow_bid.sow_bid_create_date,sow_v0.sow_create_date_initial) AS bid_to_sow_create_bd,
-  sow_bid.presented_budget,
-  sow_bid.last_sow_bid_response_reject_date,
-  sow_bid.classification_0,
-  sow_bid.classification_1,
-  sow_bid.classification_2,
-  sow_bid.classification_3,
-  supplier.rsr_vendor_id,
-  sow_bid.distribute_time,
-  sow_bid.sow_bid_response_time
-FROM ${slvr_dataset}.%s sow_bid
-LEFT JOIN ${slvr_dataset}.%s sow ON sow_bid.sow_bid_id = sow.created_from_sow_bid_id
-LEFT JOIN ${slvr_dataset}.%s sow_acc ON sow.sow_id = sow_acc.sow_id
-LEFT JOIN ${slvr_dataset}.%s sow_v0 ON sow.sow_id = sow_v0.sow_id
-LEFT JOIN ${slvr_dataset}.%s supplier ON sow_bid.supplier_code = supplier.supplier_code
-LEFT JOIN db_common${region}.global_countries gcr on lower(sow.country)=lower(gcr.country)
-LEFT JOIN db_common${region}.global_supplier_mapping gsm ON gsm.buyer = sow_bid.buyer AND gsm.supplier = sow_bid.supplier
-LEFT JOIN db_common${region}.global_sow_classification gbl_sow ON gbl_sow.sub_categories_to_match_those_used_in_the_vms = sow.classification)""",
-gold_dataset,sow_bid_table_id,
-slvr_sow_bid,
-slvr_sow,
-slvr_sow_acnt,
-slvr_sow_v0,
-slvr_supplier);
+EXECUTE IMMEDIATE
+  FORMAT("""${
+        anonymization.get_anonymized_select_clause({
+            report_type: "sow_bid",
+            solution: "SOW",
+            metadata_table: "common%s.master_template_report_fields"
+        })
+    }""",region) INTO select_clause;
+SET
+  final_ddl_statement = FORMAT("""
+  CREATE OR REPLACE TABLE `%s.%s` AS (
+    SELECT %s FROM `%s.%s`
+  )
+  """, anmz_dataset, sow_bid_table_id, select_clause, gold_dataset, sow_bid_table_id );
+EXECUTE IMMEDIATE
+  final_ddl_statement;
+END
+  ;
