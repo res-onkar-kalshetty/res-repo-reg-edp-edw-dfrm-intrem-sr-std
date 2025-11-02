@@ -57,8 +57,8 @@ function get_config_table() {
     return constants['config_table_name']
 }
 
-function getSlvrTableName(dataset,table,standard_report_type,dataset_id) {
-    const keyName = standard_report_type.replace('_src', '');
+function getSlvrTableName(dataset,table,entity_type,dataset_id) {
+    const keyName = entity_type.replace('_src', '');
     const placeholderKey = `ph_${keyName}`;
     const placeholderValue = dataform.projectConfig.vars && dataform.projectConfig.vars[placeholderKey];
     if (placeholderValue && placeholderValue.trim() !== '') {
@@ -68,7 +68,7 @@ function getSlvrTableName(dataset,table,standard_report_type,dataset_id) {
         select
         distinct table_id
         from ${dataset}.${table}
-        where standard_report_type='${standard_report_type}' and dataset_id='${dataset_id}')`
+        where entity_type='${entity_type}' and dataset_id='${dataset_id}')`
   }
 }
 module.exports = {
