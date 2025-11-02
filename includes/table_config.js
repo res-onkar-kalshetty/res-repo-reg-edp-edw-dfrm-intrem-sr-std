@@ -32,10 +32,10 @@ module.exports = {
 //     const datasetId = dataform.projectConfig.vars.dataset_id;
 //     const metadataTable = `\`${datasetId}.table_a\``;
 
-//     // Query to get mapping of standard_report_type → table_id
+//     // Query to get mapping of entity_type → table_id
 //     const rows = ctx
 //         .runQuery(
-//             `SELECT standard_report_type, table_id 
+//             `SELECT entity_type, table_id 
 //        FROM ${metadataTable}
 //        WHERE dataset_id = '${datasetId}'`
 //         )
@@ -44,7 +44,7 @@ module.exports = {
 //     // Build a lookup map from query result
 //     const tableMap = {};
 //     for (const row of rows) {
-//         tableMap[row.standard_report_type] = row.table_id;
+//         tableMap[row.entity_type] = row.table_id;
 //     }
 
 //     // Build defaults object dynamically

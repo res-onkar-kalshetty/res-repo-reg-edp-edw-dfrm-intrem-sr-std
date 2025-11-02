@@ -37,7 +37,7 @@ function get_anonymized_select_clause({
     FROM
       ${metadata_table}
     WHERE
-      standard_report_type = '${report_type}'
+      entity_type = '${report_type}'
       AND solution = '${solution}'
       AND active = 1
   )

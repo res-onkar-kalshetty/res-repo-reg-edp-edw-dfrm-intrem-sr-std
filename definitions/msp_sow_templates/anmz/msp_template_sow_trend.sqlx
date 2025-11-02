@@ -56,7 +56,7 @@ EXECUTE IMMEDIATE
   DISTINCT table_id,
   FROM
   `%s.%s`
-    WHERE standard_report_type = 'sow_trend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+    WHERE entity_type = 'sow_trend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''',config_ds_name,config_table_name ) INTO sow_trend_table_id;
 IF
   sow_trend_table_id IS NULL THEN RAISE
