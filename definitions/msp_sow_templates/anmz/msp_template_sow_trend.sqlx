@@ -49,7 +49,7 @@ SET
   config_table_name = '${config_table_name}';
 SET
   region='${region}';
-BEGIN
+
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT

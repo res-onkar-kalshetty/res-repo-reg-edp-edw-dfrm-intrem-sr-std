@@ -50,7 +50,7 @@ SET
   config_table_name = '${config_table_name}';
 SET
   region='${region}';
-BEGIN
+
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
@@ -81,5 +81,3 @@ SET
   """, anmz_dataset, sow_assignment_trend_sowonly_table_id, select_clause, gold_dataset, sow_assignment_trend_sowonly_table_id );
 EXECUTE IMMEDIATE
   final_ddl_statement;
-END
-  ;

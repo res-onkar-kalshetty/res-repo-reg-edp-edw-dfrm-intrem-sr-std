@@ -53,7 +53,7 @@ DECLARE
   select_clause STRING;
 DECLARE
   final_ddl_statement STRING;
-BEGIN
+
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
@@ -85,5 +85,4 @@ SET
   """, anmz_dataset, candidate_table_id, select_clause, gold_dataset, candidate_table_id );
 EXECUTE IMMEDIATE
   final_ddl_statement;
-END
-  ;
+
