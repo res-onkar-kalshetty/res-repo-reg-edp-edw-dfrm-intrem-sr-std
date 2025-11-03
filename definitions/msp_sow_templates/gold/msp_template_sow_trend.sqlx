@@ -72,7 +72,7 @@ END IF
   ;
 EXECUTE IMMEDIATE
   FORMAT ("""
-CREATE OR REPLACE TABLE `%s.%s` AS (
+CREATE OR REPLACE VIEW `%s.%s` AS (
 WITH date_calc AS (
   SELECT
     sow_details.buyer,

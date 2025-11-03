@@ -106,7 +106,7 @@ END IF
 EXECUTE IMMEDIATE
   FORMAT ("""
 
-CREATE OR REPLACE TABLE
+CREATE OR REPLACE VIEW
   %s.%s AS (
   ------------------------------------------------------------------------
 -- CANDIDATE STATUS CTE

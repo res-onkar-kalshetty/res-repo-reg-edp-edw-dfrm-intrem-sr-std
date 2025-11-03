@@ -21,7 +21,7 @@ js {
 
     const slvr_dataset = (env == "prd") ?
         `slvr_${dataset_id}` :
-        `dev_slvr_${dataset_id}_praneeth`;
+        `dev_slvr_${dataset_id}`;
 }
 
 DECLARE
@@ -101,7 +101,7 @@ END IF
   ;
 
 EXECUTE IMMEDIATE FORMAT ("""
-CREATE OR REPLACE TABLE `%s.%s` AS (
+CREATE OR REPLACE VIEW `%s.%s` AS (
 with calendar as (
     select
     calendar_reporting_month,

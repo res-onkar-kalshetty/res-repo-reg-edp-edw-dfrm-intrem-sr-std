@@ -79,7 +79,7 @@ EXECUTE IMMEDIATE
     }""",region) INTO select_clause;
 SET
   final_ddl_statement = FORMAT("""
-  CREATE OR REPLACE TABLE `%s.%s` AS (
+  CREATE OR REPLACE VIEW `%s.%s` AS (
     SELECT %s FROM `%s.%s`
   )
   """, anmz_dataset, spend_table_id, select_clause, gold_dataset, spend_table_id );

@@ -111,7 +111,7 @@ END IF
   ;
 
 EXECUTE IMMEDIATE FORMAT ("""
-CREATE OR REPLACE TABLE %s.%s AS (
+CREATE OR REPLACE VIEW %s.%s AS (
 with js_assingment_data as (select 
 				js_in.buyer
 				,js_in.buyer_code

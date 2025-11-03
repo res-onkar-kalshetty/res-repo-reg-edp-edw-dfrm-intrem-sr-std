@@ -89,7 +89,7 @@ END IF
 
 EXECUTE IMMEDIATE FORMAT ("""
 
-CREATE OR REPLACE TABLE `%s.%s` AS (
+CREATE OR REPLACE VIEW `%s.%s` AS (
 SELECT
   sow_bid.buyer,
   sow_bid.buyer_code,

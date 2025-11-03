@@ -22,7 +22,7 @@ js {
 
     const slvr_dataset = (env == "prd") ?
         `slvr_${dataset_id}` :
-        `dev_slvr_${dataset_id}_praneeth`;
+        `dev_slvr_${dataset_id}`;
 
     const slvr_cand = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
     const slvr_req_dist = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_distribution_src', dataset_id);
@@ -112,7 +112,7 @@ END IF
 
 
 EXECUTE IMMEDIATE FORMAT (""" 
-CREATE OR REPLACE TABLE `%s.%s` AS (
+CREATE OR REPLACE VIEW `%s.%s` AS (
 with js_assingment_data as (select 
 				js_in.buyer
 				,js_in.buyer_code

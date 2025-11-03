@@ -76,7 +76,7 @@ END IF
 
 EXECUTE IMMEDIATE FORMAT ("""
 
-CREATE OR REPLACE TABLE `%s.%s` AS (
+CREATE OR REPLACE VIEW `%s.%s` AS (
 /* QUERY DOCUMENTATION
 -- TYPE: requisition, non-transactional
 -- outermost query contains calcuations that take fields from subquery1 as input

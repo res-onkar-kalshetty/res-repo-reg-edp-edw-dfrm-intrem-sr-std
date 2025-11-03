@@ -20,7 +20,7 @@ js {
 
     const slvr_dataset = (env == "prd") ?
         `slvr_${dataset_id}` :
-        `dev_slvr_${dataset_id}_`;
+        `dev_slvr_${dataset_id}`;
 
     const slvr_req = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_src', dataset_id);
     const slvr_cand = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
@@ -86,7 +86,7 @@ END IF
   ;
 EXECUTE IMMEDIATE
   FORMAT ("""
-CREATE OR REPLACE TABLE
+CREATE OR REPLACE VIEW
   %s.%s AS (
   WITH
     candidate_data AS (

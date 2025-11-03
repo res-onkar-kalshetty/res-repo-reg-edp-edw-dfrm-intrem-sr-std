@@ -86,7 +86,7 @@ USING
 END IF
   ;
 EXECUTE IMMEDIATE FORMAT ("""
-CREATE OR REPLACE TABLE `%s.%s` AS (
+CREATE OR REPLACE VIEW `%s.%s` AS (
 SELECT buyer
 ,buyer_code
 ,main_document_id

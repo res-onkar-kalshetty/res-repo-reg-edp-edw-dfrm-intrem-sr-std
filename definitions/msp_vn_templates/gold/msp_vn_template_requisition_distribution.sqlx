@@ -21,7 +21,7 @@ js {
 
     const slvr_dataset = (env == "prd") ?
         `slvr_${dataset_id}` :
-        `dev_slvr_${dataset_id}_praneeth`;
+        `dev_slvr_${dataset_id}`;
 
     const slvr_req_dist = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_distribution_src', dataset_id);
     const slvr_supplier = helper.getSlvrTableName(config_ds_name, config_table_name, 'supplier_src', dataset_id);
@@ -114,7 +114,7 @@ END IF
   ;
 
 EXECUTE IMMEDIATE FORMAT("""
-CREATE OR REPLACE TABLE `%s.%s` AS (
+CREATE OR REPLACE VIEW `%s.%s` AS (
 WITH
 -- Vyndly specific logic to identify one row by req_id_supplier_code in case of duplicates
   job_posting_dist_data AS (

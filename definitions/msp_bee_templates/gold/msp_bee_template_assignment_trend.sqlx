@@ -21,7 +21,7 @@ js {
 
     const slvr_dataset = (env == "prd") ?
         `slvr_${dataset_id}` :
-        `dev_slvr_${dataset_id}_`;
+        `dev_slvr_${dataset_id}`;
 }
 
 DECLARE
@@ -82,7 +82,7 @@ END IF
 
 EXECUTE IMMEDIATE
   FORMAT ("""
-CREATE OR REPLACE TABLE %s.%s
+CREATE OR REPLACE VIEW %s.%s
    AS (
   WITH
 derv_wo AS(

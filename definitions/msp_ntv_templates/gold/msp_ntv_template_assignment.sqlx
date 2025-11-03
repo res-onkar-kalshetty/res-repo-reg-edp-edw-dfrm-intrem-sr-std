@@ -112,7 +112,7 @@ SET
   gold_dataset = CONCAT("dev","_gold_","${dataform.projectConfig.vars.dataset_id}");
 EXECUTE IMMEDIATE
   FORMAT ("""
-CREATE OR REPLACE TABLE
+CREATE OR REPLACE VIEW
   %s.%s AS (
  ------------------------------------------------------------------------
 -- CANDIDATE STATUS CTE

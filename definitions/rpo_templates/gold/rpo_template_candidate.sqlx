@@ -72,7 +72,7 @@ END IF
   ;
 
 EXECUTE IMMEDIATE FORMAT ("""
-CREATE OR REPLACE TABLE `%s.%s` AS (
+CREATE OR REPLACE VIEW `%s.%s` AS (
 /* QUERY DOCUMENTATION
 -- TYPE: candidate, single report, non-transactional
 -- deduped_cand CTE de-duplicates the cand data by req_id, cand_id using rules agreed upon by BPs, Blue data, and Data Solutions
