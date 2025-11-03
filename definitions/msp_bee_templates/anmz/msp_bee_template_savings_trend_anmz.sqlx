@@ -2,7 +2,7 @@ config {
     type: "operations",
     description: "Dynamically creates the anonymized table for savings_trends.",
     dependencies: "msp_bee_template_savings_trend_gold",
-    tags: ["anonymized", "msp_bee_template_gold"]
+    tags: ["anonymized"]
 }
 
 js {

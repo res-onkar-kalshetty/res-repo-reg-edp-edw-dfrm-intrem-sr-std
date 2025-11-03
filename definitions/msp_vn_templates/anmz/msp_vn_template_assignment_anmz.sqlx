@@ -2,7 +2,7 @@ config {
     type: "operations",
     description: "Dynamically creates the anonymized table for assignments.",
     dependencies: "msp_vn_template_assignment_gold",
-    tags: ["anonymized", "msp_vn_template_gold"]
+    tags: ["anonymized"] 
 }
 
 js {
