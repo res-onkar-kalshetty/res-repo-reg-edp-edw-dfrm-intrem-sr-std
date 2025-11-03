@@ -2,7 +2,7 @@ config {
     type: "operations",
     description: "Dynamically creates the anonymized table for requisition_distributions.",
     dependencies: "msp_vn_template_requisition_distribution_gold",
-    tags: ["anonymized", "msp_vn_template_gold"]
+    tags: ["anonymized"] 
 }
 
 js {
