@@ -55,14 +55,14 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET 
-  slvr_ph1_r = 't_' || ${slvr_ph1_r};
+  slvr_ph1_r = 'v_' || ${slvr_ph1_r};
 SET
-  slvr_ph2_r = 't_' || ${slvr_ph2_r};
+  slvr_ph2_r = 'v_' || ${slvr_ph2_r};
 
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -76,7 +76,7 @@ END IF
 
 EXECUTE IMMEDIATE FORMAT ("""
 
-CREATE OR REPLACE VIEW `%s.%s` AS (
+CREATE OR REPLACE TABLE `%s.%s` AS (
 /* QUERY DOCUMENTATION
 -- TYPE: requisition, non-transactional
 -- outermost query contains calcuations that take fields from subquery1 as input

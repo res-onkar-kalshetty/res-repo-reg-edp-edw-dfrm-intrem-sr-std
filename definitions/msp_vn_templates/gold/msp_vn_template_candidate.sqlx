@@ -58,14 +58,14 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_req_dist= 't_' || ${slvr_req_dist};
+  slvr_req_dist= 'v_' || ${slvr_req_dist};
 SET
-  slvr_cand= 't_' || ${slvr_cand};
+  slvr_cand= 'v_' || ${slvr_cand};
 
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -74,7 +74,7 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'candidate_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -83,7 +83,7 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -112,7 +112,7 @@ END IF
 
 
 EXECUTE IMMEDIATE FORMAT (""" 
-CREATE OR REPLACE VIEW `%s.%s` AS (
+CREATE OR REPLACE TABLE `%s.%s` AS (
 with js_assingment_data as (select 
 				js_in.buyer
 				,js_in.buyer_code

@@ -68,21 +68,21 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_assgn= 't_' || ${slvr_assgn};
+  slvr_assgn= 'v_' || ${slvr_assgn};
 SET
-  slvr_assgn_v0= 't_' || ${slvr_assgn_v0};
+  slvr_assgn_v0= 'v_' || ${slvr_assgn_v0};
 SET
-  slvr_worker= 't_' || ${slvr_worker};
+  slvr_worker= 'v_' || ${slvr_worker};
 SET
-  slvr_assgn_rt= 't_' || ${slvr_assgn_rt};
+  slvr_assgn_rt= 'v_' || ${slvr_assgn_rt};
 SET
-  slvr_assgn_rt_v0= 't_' || ${slvr_assgn_rt_v0};
+  slvr_assgn_rt_v0= 'v_' || ${slvr_assgn_rt_v0};
 SET
-  slvr_cand= 't_' || ${slvr_cand};
+  slvr_cand= 'v_' || ${slvr_cand};
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -96,7 +96,7 @@ END IF
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -111,7 +111,7 @@ END IF
 
 EXECUTE IMMEDIATE
   FORMAT ("""
-CREATE OR REPLACE VIEW `%s.%s` AS (
+CREATE OR REPLACE TABLE `%s.%s` AS (
 
 WITH fx_rates AS (
   SELECT
