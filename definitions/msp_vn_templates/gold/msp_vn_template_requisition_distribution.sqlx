@@ -21,7 +21,7 @@ js {
 
     const slvr_dataset = (env == "prd") ?
         `slvr_${dataset_id}` :
-        `dev_slvr_${dataset_id}_praneeth`;
+        `dev_slvr_${dataset_id}`;
 
     const slvr_req_dist = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_distribution_src', dataset_id);
     const slvr_supplier = helper.getSlvrTableName(config_ds_name, config_table_name, 'supplier_src', dataset_id);
@@ -60,16 +60,16 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_req_dist=${slvr_req_dist};
+  slvr_req_dist= 't_' || ${slvr_req_dist};
 SET
-  slvr_supplier=${slvr_supplier};
+  slvr_supplier= 't_' || ${slvr_supplier};
 SET
-  slvr_cand=${slvr_cand};
+  slvr_cand= 't_' || ${slvr_cand};
 
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'requisition_distribution_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -78,7 +78,7 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -88,7 +88,7 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -114,7 +114,7 @@ END IF
   ;
 
 EXECUTE IMMEDIATE FORMAT("""
-CREATE OR REPLACE TABLE `%s.%s` AS (
+CREATE OR REPLACE VIEW `%s.%s` AS (
 WITH
 -- Vyndly specific logic to identify one row by req_id_supplier_code in case of duplicates
   job_posting_dist_data AS (

@@ -50,11 +50,11 @@ SET
   config_table_name = '${config_table_name}';
 SET
   region='${region}';
-BEGIN
+
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'sow_assignment_trend_sowonly_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -75,11 +75,9 @@ EXECUTE IMMEDIATE
     }""",region) INTO select_clause;
 SET
   final_ddl_statement = FORMAT("""
-  CREATE OR REPLACE TABLE `%s.%s` AS (
+  CREATE OR REPLACE VIEW `%s.%s` AS (
     SELECT %s FROM `%s.%s`
   )
   """, anmz_dataset, sow_assignment_trend_sowonly_table_id, select_clause, gold_dataset, sow_assignment_trend_sowonly_table_id );
 EXECUTE IMMEDIATE
   final_ddl_statement;
-END
-  ;

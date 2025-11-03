@@ -21,7 +21,7 @@ js {
 
     const slvr_dataset = (env == "prd") ?
         `slvr_${dataset_id}` :
-        `dev_slvr_${dataset_id}_praneeth`;
+        `dev_slvr_${dataset_id}`;
 }
 
 DECLARE
@@ -54,7 +54,7 @@ SET
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'savings_trend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -64,7 +64,7 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -74,7 +74,7 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'spend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -101,7 +101,7 @@ END IF
   ;
 
 EXECUTE IMMEDIATE FORMAT ("""
-CREATE OR REPLACE TABLE `%s.%s` AS (
+CREATE OR REPLACE VIEW `%s.%s` AS (
 with calendar as (
     select
     calendar_reporting_month,

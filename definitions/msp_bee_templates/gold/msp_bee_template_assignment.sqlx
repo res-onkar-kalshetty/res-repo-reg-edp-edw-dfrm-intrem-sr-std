@@ -21,7 +21,7 @@ js {
 
     const slvr_dataset = (env == "prd") ?
         `slvr_${dataset_id}` :
-        `dev_slvr_${dataset_id}_`;
+        `dev_slvr_${dataset_id}`;
 
     const slvr_assgn = helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_src', dataset_id);
     const slvr_assgn_v0 = helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_v0_src', dataset_id);
@@ -68,21 +68,21 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_assgn=${slvr_assgn};
+  slvr_assgn= 't_' || ${slvr_assgn};
 SET
-  slvr_assgn_v0=${slvr_assgn_v0};
+  slvr_assgn_v0= 't_' || ${slvr_assgn_v0};
 SET
-  slvr_worker=${slvr_worker};
+  slvr_worker= 't_' || ${slvr_worker};
 SET
-  slvr_assgn_rt=${slvr_assgn_rt};
+  slvr_assgn_rt= 't_' || ${slvr_assgn_rt};
 SET
-  slvr_assgn_rt_v0=${slvr_assgn_rt_v0};
+  slvr_assgn_rt_v0= 't_' || ${slvr_assgn_rt_v0};
 SET
-  slvr_cand=${slvr_cand};
+  slvr_cand= 't_' || ${slvr_cand};
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -96,7 +96,7 @@ END IF
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -109,7 +109,7 @@ END IF
   ;
 EXECUTE IMMEDIATE
   FORMAT ("""
-CREATE OR REPLACE TABLE
+CREATE OR REPLACE VIEW
   %s.%s AS (
 WITH fx_rates AS (
   SELECT

@@ -53,11 +53,11 @@ DECLARE
   select_clause STRING;
 DECLARE
   final_ddl_statement STRING;
-BEGIN
+
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'spend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -79,11 +79,10 @@ EXECUTE IMMEDIATE
     }""",region) INTO select_clause;
 SET
   final_ddl_statement = FORMAT("""
-  CREATE OR REPLACE TABLE `%s.%s` AS (
+  CREATE OR REPLACE VIEW `%s.%s` AS (
     SELECT %s FROM `%s.%s`
   )
   """, anmz_dataset, spend_table_id, select_clause, gold_dataset, spend_table_id );
 EXECUTE IMMEDIATE
   final_ddl_statement;
-END
-  ;
+

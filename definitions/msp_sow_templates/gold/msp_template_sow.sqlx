@@ -71,25 +71,25 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_spend = ${slvr_spend};
+  slvr_spend = 't_' || ${slvr_spend};
 SET
-  slvr_worker = ${slvr_worker};
+  slvr_worker = 't_' || ${slvr_worker};
 SET
-  slvr_sow_linw = ${slvr_sow_linw};
+  slvr_sow_linw = 't_' || ${slvr_sow_linw};
 SET
-  slvr_sow_bid = ${slvr_sow_bid};
+  slvr_sow_bid = 't_' || ${slvr_sow_bid};
 SET
-  slvr_sow_acnt = ${slvr_sow_acnt};
+  slvr_sow_acnt = 't_' || ${slvr_sow_acnt};
 SET
-  slvr_sow_v0 = ${slvr_sow_v0};
+  slvr_sow_v0 = 't_' || ${slvr_sow_v0};
 SET
-  slvr_sow=${slvr_sow};
+  slvr_sow= 't_' || ${slvr_sow};
 SET
-  slvr_supplier = ${slvr_supplier};
+  slvr_supplier = 't_' || ${slvr_supplier};
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'sow_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -102,7 +102,7 @@ END IF
   ;
 EXECUTE IMMEDIATE
   FORMAT ("""
-CREATE OR REPLACE TABLE `%s.%s` AS (
+CREATE OR REPLACE VIEW `%s.%s` AS (
 WITH fx_rates AS (
   SELECT
       CAST(fx_rate AS FLOAT64) AS fx_rate,

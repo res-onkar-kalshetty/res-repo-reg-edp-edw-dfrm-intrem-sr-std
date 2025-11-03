@@ -20,7 +20,7 @@ js {
 
     const slvr_dataset = (env == "prd") ?
         `slvr_${dataset_id}` :
-        `dev_slvr_${dataset_id}_`;
+        `dev_slvr_${dataset_id}`;
 
     const slvr_req = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_src', dataset_id);
     const slvr_cand = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
@@ -61,19 +61,19 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_req = ${slvr_req};
+  slvr_req = 't_' || ${slvr_req};
 SET
-  slvr_cand = ${slvr_cand};
+  slvr_cand = 't_' || ${slvr_cand};
 SET
-  slvr_req_tmp = ${slvr_req_tmp};
+  slvr_req_tmp = 't_' || ${slvr_req_tmp};
 SET
-  slvr_assgn = ${slvr_assgn};
+  slvr_assgn = 't_' || ${slvr_assgn};
 SET
-  slvr_req_dist = ${slvr_req_dist};
+  slvr_req_dist = 't_' || ${slvr_req_dist};
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -86,7 +86,7 @@ END IF
   ;
 EXECUTE IMMEDIATE
   FORMAT ("""
-CREATE OR REPLACE TABLE
+CREATE OR REPLACE VIEW
   %s.%s AS (
   WITH
     candidate_data AS (
