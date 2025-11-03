@@ -68,7 +68,7 @@ function getSlvrTableName(dataset,table,entity_type,dataset_id) {
         select
         distinct table_id
         from ${dataset}.${table}
-        where entity_type='${entity_type}' and dataset_id='${dataset_id}')`
+        where standard_report_type='${entity_type}' and dataset_id='${dataset_id}')`
   }
 }
 module.exports = {
