@@ -52,7 +52,7 @@ BEGIN
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'sow_non_worker_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1

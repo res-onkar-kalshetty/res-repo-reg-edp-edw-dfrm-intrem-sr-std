@@ -53,13 +53,13 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_sow=${slvr_sow};
+  slvr_sow= 't_' || ${slvr_sow};
 SET
-  slvr_supplier = ${slvr_supplier};
+  slvr_supplier = 't_' || ${slvr_supplier};
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'sow_trnd_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1

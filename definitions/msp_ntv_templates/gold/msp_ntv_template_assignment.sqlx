@@ -69,21 +69,21 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_cand = ${slvr_cand};
+  slvr_cand = 't_' || ${slvr_cand};
 SET
-  slvr_assgn=${slvr_assgn};
+  slvr_assgn= 't_' || ${slvr_assgn};
 SET
-  slvr_assgn_v0=${slvr_assgn_v0};
+  slvr_assgn_v0= 't_' || ${slvr_assgn_v0};
 SET
-  slvr_wrkr=${slvr_wrkr};
+  slvr_wrkr= 't_' || ${slvr_wrkr};
 SET
-  slvr_assgn_rt=${slvr_assgn_rt};
+  slvr_assgn_rt= 't_' || ${slvr_assgn_rt};
 SET
-  slvr_assgn_rt_v0=${slvr_assgn_rt_v0};
+  slvr_assgn_rt_v0= 't_' || ${slvr_assgn_rt_v0};
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -91,7 +91,7 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1

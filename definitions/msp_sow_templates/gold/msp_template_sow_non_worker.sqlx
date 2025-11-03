@@ -56,15 +56,15 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_sow_linw=${slvr_sow_linw};
+  slvr_sow_linw= 't_' || ${slvr_sow_linw};
 SET
-  slvr_supplier = ${slvr_supplier};
+  slvr_supplier = 't_' || ${slvr_supplier};
 SET
-  slvr_sow=${slvr_sow};
+  slvr_sow= 't_' || ${slvr_sow};
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'sow_linw_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1

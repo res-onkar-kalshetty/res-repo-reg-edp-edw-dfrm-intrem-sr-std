@@ -59,14 +59,14 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_req_dist=${slvr_req_dist};
+  slvr_req_dist= 't_' || ${slvr_req_dist};
 SET
-  slvr_supplier=${slvr_supplier};
+  slvr_supplier= 't_' || ${slvr_supplier};
 
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'requisition_distribution_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -75,7 +75,7 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -84,7 +84,7 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'candidate_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -93,7 +93,7 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1

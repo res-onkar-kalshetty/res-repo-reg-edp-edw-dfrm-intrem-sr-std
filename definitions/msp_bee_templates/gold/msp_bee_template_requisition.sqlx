@@ -61,19 +61,19 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_req = ${slvr_req};
+  slvr_req = 't_' || ${slvr_req};
 SET
-  slvr_cand = ${slvr_cand};
+  slvr_cand = 't_' || ${slvr_cand};
 SET
-  slvr_req_tmp = ${slvr_req_tmp};
+  slvr_req_tmp = 't_' || ${slvr_req_tmp};
 SET
-  slvr_assgn = ${slvr_assgn};
+  slvr_assgn = 't_' || ${slvr_assgn};
 SET
-  slvr_req_dist = ${slvr_req_dist};
+  slvr_req_dist = 't_' || ${slvr_req_dist};
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1

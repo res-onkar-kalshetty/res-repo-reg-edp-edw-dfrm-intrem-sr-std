@@ -53,13 +53,13 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET 
-  slvr_ph1_c =${slvr_ph1_c};
+  slvr_ph1_c = 't_' || ${slvr_ph1_c};
 SET
-  slvr_ph2_c =${slvr_ph2_c};
+  slvr_ph2_c = 't_' || ${slvr_ph2_c};
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT table_id,
+  DISTINCT 'v_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'candidate_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
