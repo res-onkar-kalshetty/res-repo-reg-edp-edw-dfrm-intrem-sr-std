@@ -84,7 +84,7 @@ EXECUTE IMMEDIATE
 IF
   savings_trend_table_id IS NULL THEN RAISE
 USING
-  MESSAGE = 'savings trend distribution TABLE ID IS MISSING FROM CONFIGS';
+  MESSAGE = 'savings trend  TABLE ID IS MISSING FROM CONFIGS';
 END IF
   ;
 IF

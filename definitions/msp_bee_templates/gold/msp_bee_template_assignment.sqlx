@@ -124,8 +124,9 @@ WITH fx_rates AS (
   asg_v0.assignment_create_date AS assignment_create_date_initial,
   asg_v0.assignment_activation_date AS assignment_activation_date_initial,
   asg_v0.cand_offer_accepted_date AS cand_offer_accepted_date_initial,
-  EXTRACT(DATE FROM Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])) AS rsr_assignment_control_date,
-  DATE_TRUNC(EXTRACT(DATE FROM Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])),MONTH) AS rsr_assignment_control_date_monthstart,
+  -- EXTRACT(DATE FROM Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])) AS rsr_assignment_control_date,
+  DATE(Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])) AS rsr_assignment_control_date,
+  DATE_TRUNC(DATE(Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])),MONTH) AS rsr_assignment_control_date_monthstart,
 
   savings.currency AS rsr_savings_currency,
   savings.perm_recruitment_fee_fixed,
@@ -452,7 +453,7 @@ END AS worker_status,
     req.req_end_date, -- not needed
     worker.worker_close_reason AS _rf_worker_close_reason, -- need this for audit, can be removed later
     assign.close_reason AS _rf_asgm_close_reason, -- need this for audit, can be removed later
-    assign.rsr_processed_date,
+    assign.updated_ts,
     CASE
         WHEN assign_rates.currency = 'USD' THEN assign_rates.pay_rate_st_hr
         ELSE assign_rates.pay_rate_st_hr * CAST(fx_usd.fx_rate AS NUMERIC)
