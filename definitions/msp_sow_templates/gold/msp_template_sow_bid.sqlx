@@ -61,20 +61,20 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_sow_bid = 't_' || ${slvr_sow_bid};
+  slvr_sow_bid = 'v_' || ${slvr_sow_bid};
 SET
-  slvr_sow= 't_' || ${slvr_sow};
+  slvr_sow= 'v_' || ${slvr_sow};
 SET
-  slvr_sow_acnt = 't_' || ${slvr_sow_acnt};
+  slvr_sow_acnt = 'v_' || ${slvr_sow_acnt};
 SET
-  slvr_sow_v0 = 't_' || ${slvr_sow_v0};
+  slvr_sow_v0 = 'v_' || ${slvr_sow_v0};
 SET
-  slvr_supplier = 't_' || ${slvr_supplier};
+  slvr_supplier = 'v_' || ${slvr_supplier};
 
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'sow_bid_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -89,7 +89,7 @@ END IF
 
 EXECUTE IMMEDIATE FORMAT ("""
 
-CREATE OR REPLACE VIEW `%s.%s` AS (
+CREATE OR REPLACE TABLE `%s.%s` AS (
 SELECT
   sow_bid.buyer,
   sow_bid.buyer_code,

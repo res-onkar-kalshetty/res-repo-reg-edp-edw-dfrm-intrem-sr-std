@@ -53,7 +53,7 @@ SET
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'assignment_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -68,7 +68,7 @@ END IF
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'assignment_trend_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -81,7 +81,7 @@ END IF
   ;
 
 EXECUTE IMMEDIATE FORMAT ("""
-CREATE OR REPLACE VIEW `%s.%s` AS (
+CREATE OR REPLACE TABLE `%s.%s` AS (
 WITH 
 derv_wo AS(
   select

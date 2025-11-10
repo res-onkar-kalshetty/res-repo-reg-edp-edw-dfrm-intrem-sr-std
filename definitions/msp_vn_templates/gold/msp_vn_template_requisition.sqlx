@@ -62,19 +62,19 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_req = 't_' || ${slvr_req};
+  slvr_req = 'v_' || ${slvr_req};
 SET
-  slvr_cand = 't_' || ${slvr_cand};
+  slvr_cand = 'v_' || ${slvr_cand};
 SET
-  slvr_req_tmp = 't_' || ${slvr_req_tmp};
+  slvr_req_tmp = 'v_' || ${slvr_req_tmp};
 SET
-  slvr_assgn = 't_' || ${slvr_assgn};
+  slvr_assgn = 'v_' || ${slvr_assgn};
 SET
-  slvr_req_dist = 't_' || ${slvr_req_dist};
+  slvr_req_dist = 'v_' || ${slvr_req_dist};
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -92,7 +92,7 @@ END IF
 
 EXECUTE IMMEDIATE
   FORMAT ("""
-CREATE OR REPLACE VIEW `%s.%s` AS (
+CREATE OR REPLACE TABLE `%s.%s` AS (
 WITH candidate_data AS 
 (SELECT
 	buyer_code

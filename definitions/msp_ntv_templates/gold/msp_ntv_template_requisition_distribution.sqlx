@@ -58,13 +58,13 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 SET
-  slvr_supp = 't_' || ${slvr_supp};
+  slvr_supp = 'v_' || ${slvr_supp};
 SET
-  slvr_req_dist = 't_' || ${slvr_req_dist};
+  slvr_req_dist = 'v_' || ${slvr_req_dist};
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'requisition_distribution_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -73,7 +73,7 @@ EXECUTE IMMEDIATE
  EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'candidate_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -82,7 +82,7 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -91,7 +91,7 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s`
     WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -124,7 +124,7 @@ END IF
 
 EXECUTE IMMEDIATE
 FORMAT ("""
-CREATE OR REPLACE VIEW
+CREATE OR REPLACE TABLE
   %s.%s AS (
   WITH
   wo_data AS (

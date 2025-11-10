@@ -52,7 +52,7 @@ SET
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'assignment_trend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -61,7 +61,7 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 'v_' || table_id,
+  DISTINCT 't_' || table_id,
   FROM
   `%s.%s` 
     WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -82,7 +82,7 @@ END IF
 
 EXECUTE IMMEDIATE
   FORMAT ("""
-CREATE OR REPLACE VIEW %s.%s
+CREATE OR REPLACE TABLE %s.%s
    AS (
   WITH
 derv_wo AS(
@@ -255,7 +255,7 @@ SELECT
 	assign.sourcing_type_wo_mapped,
 	assign.rsr_state,
    '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
-   assign.rsr_processed_date
+  assign.updated_ts
    ,NULL AS preferred_supplier_status,
 
 assign.rsr_staffing_entity, -- winter_release 2025
