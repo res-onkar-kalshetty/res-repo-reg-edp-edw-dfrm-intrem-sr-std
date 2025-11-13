@@ -207,7 +207,7 @@ CREATE OR REPLACE TABLE
 ,pay_rate_st_hr_gbp
 ,pay_rate_st_hr_inr
 ,pay_rate_st_hr_cad
-,rsr_client_code
+, '${dataform.projectConfig.vars.client_code}' as rsr_client_code
 ,updated_ts
 ,CASE
     WHEN UPPER(currency) = 'USD' THEN CAST(negotiated_savings as FLOAT64)
@@ -1041,7 +1041,7 @@ norm_loc.location_level_2a
       AND trim(upper(fx_cad.to_currency)) = 'CAD'
     LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(spend_data.buyer_code) AND div_supp.supplier_code=spend_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER)
 
-    LEFT JOIN db_common${region}.msp_cost_saving cost_saving on cost_saving.client_code=spend_data.rsr_client_code and cast(spend_data.consolidated_invoice_approved_date as date) BETWEEN cost_saving.date_from AND cost_saving.date_to
+    LEFT JOIN db_common${region}.msp_cost_saving cost_saving on cost_saving.client_code= '${dataform.projectConfig.vars.client_code}' and cast(spend_data.consolidated_invoice_approved_date as date) BETWEEN cost_saving.date_from AND cost_saving.date_to
      LEFT JOIN db${region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on reqs_assignment_data.main_document_title = norm_jt.raw_job_title
      LEFT JOIN db${region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(reqs_assignment_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(reqs_assignment_data.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(reqs_assignment_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( reqs_assignment_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(reqs_assignment_data.country, '') = COALESCE(norm_loc.country_code, '')
