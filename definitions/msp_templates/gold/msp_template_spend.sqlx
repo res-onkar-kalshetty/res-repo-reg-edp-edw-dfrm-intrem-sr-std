@@ -22,7 +22,7 @@ js {
     const slvr_dataset = (env == "prd") ?
         `slvr_${dataset_id}` :
         `dev_slvr_${dataset_id}`;
-const slvr_spend = helper.getSlvrTableName(config_ds_name, config_table_name, 'spend_src', dataset_id);
+    const slvr_spend = helper.getSlvrTableName(config_ds_name, config_table_name, 'spend_src', dataset_id);
     const slvr_cand = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
 }
 
@@ -64,7 +64,14 @@ SET
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 't_' || table_id,
+  DISTINCT 't_' ||                             
+  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
+  '_' ||
+  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
+  '_' ||
+  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
+  '_calc_' ||                            
+  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
   FROM
   `%s.%s` 
     WHERE entity_type = 'spend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -73,7 +80,14 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 't_' || table_id,
+  DISTINCT 't_' ||                             
+  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
+  '_' ||
+  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
+  '_' ||
+  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
+  '_calc_' ||                            
+  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
   FROM
   `%s.%s` 
     WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
@@ -82,7 +96,14 @@ EXECUTE IMMEDIATE
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
-  DISTINCT 't_' || table_id,
+  DISTINCT 't_' ||                             
+  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
+  '_' ||
+  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
+  '_' ||
+  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
+  '_calc_' ||                            
+  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
   FROM
   `%s.%s` 
     WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
