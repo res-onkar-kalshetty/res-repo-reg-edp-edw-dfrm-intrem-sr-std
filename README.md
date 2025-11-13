@@ -69,10 +69,7 @@ deploy/
   deploy.sh             # Main deployment script
   validate_build.sh     # Pre-deployment validation
 
-.github/
-  CODEOWNERS
-  workflows/
-  pull_request_template.md
+workflow_settings.yaml
 ```
 
 ## Key Components
