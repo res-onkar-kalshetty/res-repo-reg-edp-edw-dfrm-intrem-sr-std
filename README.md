@@ -31,9 +31,9 @@ The Gold Layer is configured using parameters passed by Airflow or the orchestra
 |-------------------|:--------:|----------------------------------------------------------------------------------------------|------------------------|
 | `dataset_id`      | **Yes**  | Unique identifier for the dataset/client. Used to construct dataset and table names.          | `eu_nike`              |
 | `client_code`     | **Yes**  | Short code for the client, used for tagging and template selection.                          | `nike`                 |
-| `dataset_name`    | **Yes**  | Legacy or descriptive name for the dataset, used for compatibility or reporting.             | `nike_reporting`       |
+| `dataset_name`    | **Yes**  | Legacy or descriptive name for the dataset, used for compatibility or reporting.             | `db_gbl_nike`       |
 | `env`             | No       | Execution environment. Determines dataset prefixes. Defaults to `dev`.                       | `prd`                  |
-| `custom_reports`  | No       | Comma-separated list of custom report/view names to generate.                                | `t_emea_bee_api_msp_assign_dy`|
+| `custom_reports`  | No       | Comma-separated list of custom report/view names to use.                                | `t_emea_bee_api_msp_assign_dy`|
 | `tags`            | No       | Comma-separated list of tags to filter which templates are executed.                         | `msp_bee_template_gold`|
 | `region`          | No       | Cloud region for resource resolution.                                                        | `us-central1`          |
 | `additional_args` | No       | Any additional arguments for advanced configuration or future use.                            | `{"key":"value"}`      |
