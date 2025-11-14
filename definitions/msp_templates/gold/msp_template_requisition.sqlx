@@ -226,7 +226,7 @@ select distinct
   req.primary_cost_center,
   req.req_title_classification,
   '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
-  req.rsr_processed_date,
+  req.updated_ts,
   req.currency,
 req.rsr_staffing_entity, -- winter_release 2025
 norm_jt.suppressed_title,
@@ -268,7 +268,7 @@ norm_loc.location_level_2a
 
   from `${slvr_dataset}.%s` req
   left join req_dist_data as req_dist ON req.req_id = req_dist.req_id
-  left join candidate_data AS cand ON req.req_id = cand.req_id
+  left join candidate_data AS cand ON req.req_id = cast(cand.req_id as string)
   left join req_temp_data AS req_temp ON req.req_id= req_temp.req_id
   left join wo_data AS assing on req.req_id = assing.main_document_id
   left join `db_common${region}.global_jp_closed_reason` gjcr on req.close_reason = gjcr.close_reason
@@ -277,8 +277,8 @@ norm_loc.location_level_2a
   left join `db_common${region}.global_countries` gcr on lower(req.country)=lower(gcr.country)
   left join `db_common${region}.global_job_posting_status` grs on grs.job_posting_status = req.req_status
   left outer join db_common${region}.global_sourcing as gbl_src on TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, '')))
-  LEFT JOIN db${region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
-    LEFT JOIN db${region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE
+  LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
+    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE
     WHEN IFNULL(gsm.vms_state, '') <> '' THEN gsm.vms_state
     WHEN IFNULL(req.state_province, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
