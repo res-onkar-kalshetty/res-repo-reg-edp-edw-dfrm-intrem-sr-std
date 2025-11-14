@@ -73,7 +73,7 @@ CREATE OR REPLACE TABLE %s.%s AS (
 with js_assingment_data as (select 
 				js_in.buyer
 				,js_in.buyer_code
-				,cast(js_in.req_id as string) as req_id
+				,js_in.req_id
 				,js_in.cand_id
 				,js_in.cand_name
 				,js_in.supplier
@@ -115,7 +115,7 @@ with js_assingment_data as (select
 				,assingment_in.worker_start_date
 				from ${slvr_dataset}.%s js_in
 				left join %s.%s assingment_in  
-				ON js_in.buyer = assingment_in.buyer AND js_in.cand_id= assingment_in.cand_id and cast(js_in.req_id as string) = assingment_in.main_document_id)
+				ON js_in.buyer = assingment_in.buyer AND js_in.cand_id= assingment_in.cand_id and js_in.req_id = assingment_in.main_document_id)
 ,req_data AS (SELECT
 buyer
 ,buyer_code

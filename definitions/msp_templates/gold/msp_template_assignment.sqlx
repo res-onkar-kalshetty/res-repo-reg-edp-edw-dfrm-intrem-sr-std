@@ -504,7 +504,7 @@ norm_loc.location_level_2a
     left join `db_common${region}.global_countries` gcr_worker on lower(worker.country) = lower(gcr_worker.country)
     LEFT OUTER JOIN ${slvr_dataset}.%s AS assign_rates ON assign.assignment_id = assign_rates.assignment_id
     LEFT OUTER JOIN ${slvr_dataset}.%s AS assign_v0_rates ON assign.assignment_id = assign_v0_rates.assignment_id
-    LEFT OUTER JOIN ${slvr_dataset}.%s AS cand ON assign.main_document_id = cast(cand.req_id as string)
+    LEFT OUTER JOIN ${slvr_dataset}.%s AS cand ON assign.main_document_id = cand.req_id
      AND assign.cand_id = cand.cand_id
     LEFT OUTER JOIN db_common${region}.global_wo_term_reason AS global_wo_term_reason ON worker.worker_close_reason = global_wo_term_reason.work_order_close_reason
 --    LEFT OUTER JOIN db_common${region}.global_term_closing_rating AS global_term_closing_rating

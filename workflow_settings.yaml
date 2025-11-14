@@ -4,8 +4,8 @@ defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.0
 vars:
-    client_code: "msp_fg_emea_pfizer"
-    dataset_id: "tr_eu_pfizer"
+    client_code: "" #"msp_fg_emea_pfizer"
+    dataset_id: ""#"tr_eu_pfizer"
     # env: "dev" # TODO : we are getting env from default project try to remove
     # region: "_emea" # TODO : write function to get region 
     # ds_name: "db_us_bose" # TODO : optional (not needed for gold - should be removed later)

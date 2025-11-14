@@ -268,7 +268,7 @@ norm_loc.location_level_2a
 
   from `${slvr_dataset}.%s` req
   left join req_dist_data as req_dist ON req.req_id = req_dist.req_id
-  left join candidate_data AS cand ON req.req_id = cast(cand.req_id as string)
+  left join candidate_data AS cand ON req.req_id = cand.req_id
   left join req_temp_data AS req_temp ON req.req_id= req_temp.req_id
   left join wo_data AS assing on req.req_id = assing.main_document_id
   left join `db_common${region}.global_jp_closed_reason` gjcr on req.close_reason = gjcr.close_reason
