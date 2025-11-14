@@ -71,7 +71,7 @@ SET
 SET
   slvr_req_dist = 'v_' || ${slvr_req_dist};
 
-SET requisition_table_id="stdrv_requisition_" || ${dataform.projectConfig.vars.client_code};
+SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
 
 EXECUTE IMMEDIATE
   FORMAT ("""

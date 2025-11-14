@@ -51,9 +51,9 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 
-SET savings_trend_table_id="stdrv_savings_trend_" || ${dataform.projectConfig.vars.client_code};
-SET spend_table_id="stdrv_spend_" || ${dataform.projectConfig.vars.client_code};
-SET assignment_table_id="stdrv_assignment_" || ${dataform.projectConfig.vars.client_code};
+SET savings_trend_table_id="stdrv_savings_trend_" || '${dataform.projectConfig.vars.client_code}';
+SET spend_table_id="stdrv_spend_" || '${dataform.projectConfig.vars.client_code}';
+SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
 EXECUTE IMMEDIATE
   FORMAT ("""

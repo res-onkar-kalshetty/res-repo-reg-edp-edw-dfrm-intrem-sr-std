@@ -64,10 +64,10 @@ SET
 SET
   slvr_supplier= 'v_' || ${slvr_supplier};
 
-SET requisition_distribution_table_id="stdrv_requisition_distribution_" || ${dataform.projectConfig.vars.client_code};
-SET candidate_table_id="stdrv_candidate_" || ${dataform.projectConfig.vars.client_code};
-SET requisition_table_id="stdrv_requisition_" || ${dataform.projectConfig.vars.client_code};
-SET assignment_table_id="stdrv_assignment_" || ${dataform.projectConfig.vars.client_code};
+SET requisition_distribution_table_id="stdrv_requisition_distribution_" || '${dataform.projectConfig.vars.client_code}';
+SET candidate_table_id="stdrv_candidate_" || '${dataform.projectConfig.vars.client_code}';
+SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
+SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
 EXECUTE IMMEDIATE
   FORMAT ("""

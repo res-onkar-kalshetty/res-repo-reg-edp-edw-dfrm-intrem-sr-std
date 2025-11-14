@@ -49,8 +49,8 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 
-SET assignment_trend_table_id="stdrv_assignment_trend_" || ${dataform.projectConfig.vars.client_code};
-SET assignment_table_id="stdrv_assignment_" || ${dataform.projectConfig.vars.client_code};
+SET assignment_trend_table_id="stdrv_assignment_trend_" || '${dataform.projectConfig.vars.client_code}';
+SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
 EXECUTE IMMEDIATE
   FORMAT ("""

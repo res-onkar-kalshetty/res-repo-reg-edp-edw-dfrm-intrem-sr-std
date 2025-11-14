@@ -79,8 +79,8 @@ SET
 SET
   slvr_cand= 'v_' || ${slvr_cand};
 
-SET requisition_table_id="stdrv_requisition_" || ${dataform.projectConfig.vars.client_code};
-SET assignment_table_id="stdrv_assignment_" || ${dataform.projectConfig.vars.client_code};
+SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
+SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
 EXECUTE IMMEDIATE
   FORMAT ("""
