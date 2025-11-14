@@ -60,74 +60,10 @@ SET
   slvr_spend= 'v_' || ${slvr_spend};
 SET
   slvr_cand= 'v_' || ${slvr_cand};
-
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' ||                             
-  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
-  '_calc_' ||                            
-  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
-  FROM
-  `%s.%s` 
-    WHERE entity_type = 'spend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO spend_table_id;
-
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' ||                             
-  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
-  '_calc_' ||                            
-  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
-  FROM
-  `%s.%s` 
-    WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO requisition_table_id;
-
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' ||                             
-  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
-  '_calc_' ||                            
-  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
-  FROM
-  `%s.%s` 
-    WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO assignment_table_id;
-
-IF
-  spend_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'SPEND TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  requisition_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  assignment_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-
+                           
+SET requisition_table_id="stdrv_requisition_" || ${dataform.projectConfig.vars.client_code};
+SET spend_table_id="stdrv_spend_" || ${dataform.projectConfig.vars.client_code};
+SET assignment_table_id="stdrv_assignment_" || ${dataform.projectConfig.vars.client_code};
 
 EXECUTE IMMEDIATE FORMAT("""
 CREATE OR REPLACE TABLE %s.%s AS (

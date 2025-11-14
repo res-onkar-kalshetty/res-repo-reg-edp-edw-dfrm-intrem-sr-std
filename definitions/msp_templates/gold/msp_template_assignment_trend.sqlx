@@ -49,50 +49,8 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT  't_' ||                             
-  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
-  '_calc_' ||                            
-  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
-  FROM
-  `%s.%s` 
-    WHERE entity_type = 'assignment_trend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO assignment_trend_table_id;
-
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT  't_' ||                             
-  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
-  '_calc_' ||                            
-  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
-  FROM
-  `%s.%s` 
-    WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO assignment_table_id;
-
-IF
-  assignment_trend_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'ASSIGNMENT TREND TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  assignment_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
+SET assignment_trend_table_id="stdrv_assignment_trend_" || ${dataform.projectConfig.vars.client_code};
+SET assignment_table_id="stdrv_assignment_" || ${dataform.projectConfig.vars.client_code};
 
 EXECUTE IMMEDIATE
   FORMAT ("""

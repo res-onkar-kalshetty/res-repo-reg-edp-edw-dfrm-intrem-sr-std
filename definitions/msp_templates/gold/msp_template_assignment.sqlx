@@ -78,48 +78,9 @@ SET
   slvr_assgn_rt_v0= 'v_' || ${slvr_assgn_rt_v0};
 SET
   slvr_cand= 'v_' || ${slvr_cand};
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' ||                             
-  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
-  '_calc_' ||                            
-  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO assignment_table_id;
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' ||                             
-  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
-  '_calc_' ||                            
-  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO requisition_table_id;
-IF
-  assignment_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  requisition_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'REQUSITION TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
+
+SET requisition_table_id="stdrv_requisition_" || ${dataform.projectConfig.vars.client_code};
+SET assignment_table_id="stdrv_assignment_" || ${dataform.projectConfig.vars.client_code};
 
 EXECUTE IMMEDIATE
   FORMAT ("""
@@ -154,7 +115,7 @@ WITH fx_rates AS (
     END AS rsr_country
   FROM ${slvr_dataset}.%s AS asg
     LEFT OUTER JOIN ${slvr_dataset}.%s AS asg_v0 ON asg.assignment_id = asg_v0.assignment_id
-    LEFT JOIN db_common${region}.msp_cost_saving savings on savings.client_code=asg.rsr_client_code and cast(asg_v0.assignment_create_date as date) BETWEEN savings.date_from AND savings.date_to
+    LEFT JOIN db_common${region}.msp_cost_saving savings on savings.client_code='${dataform.projectConfig.vars.client_code}' and cast(asg_v0.assignment_create_date as date) BETWEEN savings.date_from AND savings.date_to
     LEFT OUTER JOIN db_common${region}.global_state_mapping AS global_state_mapping ON asg.state_province = global_state_mapping.vms_state
     left join `db_common${region}.global_countries` gcr on lower(asg.country) = lower(gcr.country)
 ), worker AS (
