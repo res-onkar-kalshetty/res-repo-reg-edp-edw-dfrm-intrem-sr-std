@@ -64,86 +64,10 @@ SET
 SET
   slvr_supplier= 'v_' || ${slvr_supplier};
 
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s` 
-    WHERE entity_type = 'requisition_distribution_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO requisition_distribution_table_id;
-
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT  't_' ||                             
-  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
-  '_calc_' ||                            
-  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
-  FROM
-  `%s.%s` 
-    WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO requisition_table_id;
-
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT  't_' ||                             
-  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
-  '_calc_' ||                            
-  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
-  FROM
-  `%s.%s` 
-    WHERE entity_type = 'candidate_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO candidate_table_id;
-
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT  't_' ||                             
-  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
-  '_calc_' ||                            
-  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
-  FROM
-  `%s.%s` 
-    WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO assignment_table_id;
-
-IF
-  requisition_distribution_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'requisition distribution TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  candidate_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'candidate TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  requisition_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  assignment_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
-END IF;
+SET requisition_distribution_table_id="stdrv_requisition_distribution_" || '${dataform.projectConfig.vars.client_code}';
+SET candidate_table_id="stdrv_candidate_" || '${dataform.projectConfig.vars.client_code}';
+SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
+SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
 EXECUTE IMMEDIATE
   FORMAT ("""

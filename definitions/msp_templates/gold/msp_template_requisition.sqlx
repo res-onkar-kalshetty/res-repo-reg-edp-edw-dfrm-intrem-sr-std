@@ -70,27 +70,8 @@ SET
   slvr_assgn = 'v_' || ${slvr_assgn};
 SET
   slvr_req_dist = 'v_' || ${slvr_req_dist};
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' ||                             
-  SPLIT(table_id, '_')[SAFE_OFFSET(1)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(3)] || 
-  '_' ||
-  SPLIT(table_id, '_')[SAFE_OFFSET(4)] || 
-  '_calc_' ||                            
-  SPLIT(table_id, '_')[SAFE_OFFSET(5)]
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO requisition_table_id;
-IF
-  requisition_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
+
+SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
 
 EXECUTE IMMEDIATE
   FORMAT ("""
