@@ -226,7 +226,7 @@ select distinct
   req.primary_cost_center,
   req.req_title_classification,
   '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
-  req.updated_ts,
+  req.updated_ts as rsr_processed_date,
   req.currency,
 req.rsr_staffing_entity, -- winter_release 2025
 norm_jt.suppressed_title,
