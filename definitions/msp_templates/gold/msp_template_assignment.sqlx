@@ -360,7 +360,7 @@ SELECT
 	req.posting_type,
 	assign.cand_offer_accepted_date_initial as cand_offer_accepted_date,
 	'${dataform.projectConfig.vars.client_code}' as rsr_client_code,
-    assign.updated_ts,
+    assign.updated_ts as rsr_processed_date,
     CASE
         WHEN assign_rates.currency = 'USD' THEN assign_rates.pay_rate_st_hr
         ELSE assign_rates.pay_rate_st_hr * CAST(fx_usd.fx_rate AS NUMERIC)

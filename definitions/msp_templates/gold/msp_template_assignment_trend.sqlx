@@ -226,7 +226,7 @@ SELECT
 	assign.sourcing_type_wo_mapped,
 	assign.rsr_state,
    '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
-   assign.updated_ts
+   assign.rsr_processed_date
    ,CAST(NULL AS STRING) AS preferred_supplier_status,
 assign.rsr_staffing_entity, -- winter_release 2025
 norm_jt.suppressed_title,

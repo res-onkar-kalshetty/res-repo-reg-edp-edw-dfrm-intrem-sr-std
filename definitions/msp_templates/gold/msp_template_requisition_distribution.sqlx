@@ -300,7 +300,7 @@ SELECT
   '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
   job_posting_data.rsr_country,
   job_posting_data.rsr_state,
-  job_posting_dist_data.updated_ts
+  job_posting_dist_data.updated_ts as rsr_processed_date
   ,CAST(NULL AS STRING) AS preferred_supplier_status
   ,job_posting_data.rsr_close_reason,
 job_posting_dist_data.rsr_staffing_entity, -- winter_release 2025
