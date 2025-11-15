@@ -355,7 +355,7 @@ end) AS compliance_vs_max_template_bill_rate
 ,ROUND(Function_library${region}.f_workday(candidate_assingment.cand_submit_date,candidate_assingment.cand_shortlisted_date), 4)AS submit_to_shortlist_bd
 ,'${dataform.projectConfig.vars.client_code}' as rsr_client_code
 ,CURRENT_DATE() as current_date
-,candidate_assingment.updates_ts
+,candidate_assingment.rsr_processed_date
 ,CAST(NULL AS STRING) AS preferred_supplier_status
 ,req_dist_data.min_req_dist_date AS req_distribution_date
 ,candidate_assingment.rsr_staffing_entity, -- winter_release 2025
