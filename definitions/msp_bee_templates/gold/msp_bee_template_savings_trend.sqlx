@@ -51,54 +51,10 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s` 
-    WHERE entity_type = 'savings_trend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO savings_trend_table_id;
 
-
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s` 
-    WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO assignment_table_id;
-
-
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s` 
-    WHERE entity_type = 'spend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''' , config_ds_name,config_table_name)INTO spend_table_id;
-
-
-IF
-  savings_trend_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'savings trend  TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  spend_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'spend TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  assignment_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
+SET savings_trend_table_id="stdrv_savings_trend_" || '${dataform.projectConfig.vars.client_code}';
+SET spend_table_id="stdrv_spend_" || '${dataform.projectConfig.vars.client_code}';
+SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
 
 EXECUTE IMMEDIATE

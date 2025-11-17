@@ -61,48 +61,12 @@ SET
   slvr_cand = 'v_' || ${slvr_cand};
 SET
   slvr_req_dist = 'v_' || ${slvr_req_dist};
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'candidate_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO candidate_table_id;
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO requisition_table_id;
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO assignment_table_id;
-IF
-  candidate_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'CANDIDATE TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  requisition_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  assignment_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
+
+
+SET candidate_table_id="stdrv_candidate_" || '${dataform.projectConfig.vars.client_code}';
+SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
+SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
+
 EXECUTE IMMEDIATE
   FORMAT ("""
 
@@ -124,7 +88,7 @@ FROM (
     cand_id,
     new_status as activity_status,
     MAX(new_status_datetime) AS status_datetime,
-    MAX(rsr_processed_date) AS rsr_processed_date
+    MAX(updated_ts) AS rsr_processed_date
     FROM
      `${slvr_dataset}.%s`
     GROUP BY
@@ -227,7 +191,7 @@ cand.buyer
         AND cand.cand_id = status_dates.cand_id
         AND status_dates.activity_status IN ('interview_1','interview_2')) AS cand_last_interviewed_date
 
-,(SELECT MAX(rsr_processed_date)
+,(SELECT MAX(updated_ts)
     FROM status_dates
     WHERE cand.req_id = status_dates.req_id
     AND cand.cand_id = status_dates.cand_id) AS rsr_processed_date
@@ -562,6 +526,6 @@ LEFT JOIN fx_rates fx_gbp ON candidate_assingment_req.currency = fx_gbp.from_cur
 LEFT JOIN fx_rates fx_inr ON candidate_assingment_req.currency = fx_inr.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_inr.month AND fx_inr.to_currency = 'INR'
 LEFT JOIN fx_rates fx_cad ON candidate_assingment_req.currency = fx_cad.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_cad.month AND fx_cad.to_currency = 'CAD'
 LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(candidate_assingment_req.buyer_code) AND div_supp.supplier_code=candidate_assingment_req.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER)
-LEFT JOIN db${region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on candidate_assingment_req.req_title = norm_jt.raw_job_title
-    LEFT JOIN db${region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(candidate_assingment_req.req_city, '') = COALESCE(norm_loc.city, '') AND COALESCE(candidate_assingment_req.rsr_state, '') = COALESCE(norm_loc.state, '')
+LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on candidate_assingment_req.req_title = norm_jt.raw_job_title
+    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(candidate_assingment_req.req_city, '') = COALESCE(norm_loc.city, '') AND COALESCE(candidate_assingment_req.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(candidate_assingment_req.req_state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(candidate_assingment_req.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(candidate_assingment_req.req_country, '') = COALESCE(norm_loc.country_code, ''))""", gold_dataset,candidate_table_id, slvr_cand, slvr_cand, gold_dataset,assignment_table_id, gold_dataset,assignment_table_id, gold_dataset,requisition_table_id, slvr_req_dist);

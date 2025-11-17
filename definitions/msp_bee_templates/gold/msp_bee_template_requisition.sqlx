@@ -70,20 +70,9 @@ SET
   slvr_assgn = 'v_' || ${slvr_assgn};
 SET
   slvr_req_dist = 'v_' || ${slvr_req_dist};
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO requisition_table_id;
-IF
-  requisition_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
+
+SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
+
 EXECUTE IMMEDIATE
   FORMAT ("""
 CREATE OR REPLACE TABLE
@@ -307,7 +296,7 @@ CREATE OR REPLACE TABLE
     req.primary_cost_center,
     req.req_title_classification,
     '${dataform.projectConfig.vars.client_code}' AS rsr_client_code,
-    req.updated_ts ,
+    req.updated_ts as rsr_processed_date,
     req.currency,
     req.days_per_week,
     req.service_type,
@@ -396,11 +385,11 @@ CREATE OR REPLACE TABLE
   ON
     TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, '')))
   LEFT JOIN
-    db%s_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt
+    db%s_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt
   ON
     req.req_title = norm_jt.raw_job_title
   LEFT JOIN
-    db%s_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc
+    db%s_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc
   ON
     COALESCE(req.city, '') = COALESCE(norm_loc.city, '')
     AND COALESCE((CASE
