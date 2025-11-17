@@ -56,20 +56,10 @@ SET
   slvr_sow= 'v_' || ${slvr_sow};
 SET
   slvr_supplier = 'v_' || ${slvr_supplier};
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'sow_trnd_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO sow_trend_table_id;
-IF
-  sow_trend_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
+
+SET sow_trend_table_id="stdrv_sow_trend_" || '${dataform.projectConfig.vars.client_code}';
+
+
 EXECUTE IMMEDIATE
   FORMAT ("""
 CREATE OR REPLACE TABLE `%s.%s` AS (

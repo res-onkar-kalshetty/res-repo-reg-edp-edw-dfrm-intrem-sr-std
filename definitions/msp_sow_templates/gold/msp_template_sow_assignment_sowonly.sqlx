@@ -77,20 +77,9 @@ SET
   slvr_assgn_rt_v0= 'v_' || ${slvr_assgn_rt_v0};
 SET
   slvr_cand= 'v_' || ${slvr_cand};
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'assignment_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO sow_assignment_sowonly_table_id;
-IF
-  sow_assignment_sowonly_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'sow_assignment_sowonly_table_id TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
+
+SET sow_assignment_sowonly_table_id="stdrv_sow_assignment_sowonly_" || '${dataform.projectConfig.vars.client_code}';
+
 EXECUTE IMMEDIATE
   FORMAT ('''
   SELECT
@@ -343,7 +332,7 @@ SELECT
 	CAST(Null AS STRING) as posting_type,
 	assign.cand_offer_accepted_date_initial as cand_offer_accepted_date,
 	'${dataform.projectConfig.vars.client_code}' as rsr_client_code,
-    assign.rsr_processed_date,
+    assign.updated_ts as rsr_processed_date,
     CASE
         WHEN assign_rates.currency = 'USD' THEN assign_rates.pay_rate_st_hr
         ELSE assign_rates.pay_rate_st_hr * CAST(fx_usd.fx_rate AS NUMERIC)

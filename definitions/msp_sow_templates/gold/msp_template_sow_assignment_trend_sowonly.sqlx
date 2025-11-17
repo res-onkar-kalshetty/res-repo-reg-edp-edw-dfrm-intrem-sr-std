@@ -50,35 +50,8 @@ SET
 SET
   slvr_dataset = '${slvr_dataset}';
 
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'assignment_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO sow_assignment_sowonly_table_id;
-IF
-  sow_assignment_sowonly_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'sow_assignment_sowonly_table_id TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'assignment_trend_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO sow_assignment_trend_sowonly_table_id;
-IF
-  sow_assignment_trend_sowonly_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'sow_assignment_trend_sowonly_table_id TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
+SET sow_assignment_sowonly_table_id="stdrv_sow_assignment_sowonly_" || '${dataform.projectConfig.vars.client_code}';
+SET sow_assignment_trend_sowonly_table_id="stdrv_sow_assignment_trend_sowonly_" || '${dataform.projectConfig.vars.client_code}';
 
 EXECUTE IMMEDIATE FORMAT ("""
 CREATE OR REPLACE TABLE `%s.%s` AS (

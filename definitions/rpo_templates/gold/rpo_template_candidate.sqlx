@@ -55,21 +55,9 @@ SET
 SET 
   slvr_ph1_c = 'v_' || ${slvr_ph1_c};
 SET
-  slvr_ph2_c = 'v_' || ${slvr_ph2_c};
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'candidate_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO candidate_table_id;
-IF
-  candidate_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'candidate_table_id TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
+  slvr_ph2_c = 'v_' || ${slvr_ph2_c};\
+
+SET candidate_table_id="stdrv_candidate_" || '${dataform.projectConfig.vars.client_code}';
 
 EXECUTE IMMEDIATE FORMAT ("""
 CREATE OR REPLACE TABLE `%s.%s` AS (
@@ -93,7 +81,7 @@ WITH deduped_cand AS (
                     ,cand_screen_date ASC NULLS LAST
                     ,cand_advisor_review_date ASC NULLS LAST
                     ,cand_submit_date ASC NULLS LAST
-                    ,rsr_processed_date DESC
+                    ,updated_ts DESC
                     ,row_num DESC
             ) AS dedupe_rnk
     FROM (
@@ -387,7 +375,7 @@ FROM (
         ,CAST(COALESCE(req.days_on_hold_bd, ROUND((req.days_on_hold_cd / 7) * 5), 0) AS INT64) AS days_on_hold_bd
         ,CAST(COALESCE(req.days_on_hold_cd, ROUND((req.days_on_hold_bd / 5) * 7), 0) AS INT64) AS days_on_hold_cd
         ,req.recruiter_name
-        ,req.rsr_processed_date
+        ,req.updated_ts as rsr_processed_date
         ,req_mst.rsr_country as rsr_req_country
         ,req_mst.rsr_state as rsr_req_state
         ,req.req_title
@@ -441,8 +429,8 @@ FROM (
         LEFT JOIN db_common${region}.rpo_std_gender g ON IFNULL(cand.gender, '') = g.gender
         LEFT JOIN db_common${region}.rpo_std_disabled d ON IFNULL(cand.disabled, '') = d.disabled
         LEFT JOIN db_common${region}.rpo_std_veteran v ON IFNULL(cand.veteran, '') = v.veteran
-       LEFT JOIN db${region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
-       LEFT JOIN db${region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(req_mst.rsr_state, '') = COALESCE(norm_loc.state, '')
+       LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
+       LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(req_mst.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(req.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(req_mst.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, '')
 
         WHERE cand.dedupe_rnk = 1

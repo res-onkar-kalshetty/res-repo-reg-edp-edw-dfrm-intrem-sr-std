@@ -68,62 +68,12 @@ SET
   slvr_assgn = 'v_' || ${slvr_assgn};
 SET
   slvr_assgn_rt= 'v_' || ${slvr_assgn_rt};
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'spend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO spend_table_id;
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'requisition_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO requisition_table_id;
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'assignment_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO assignment_table_id;
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'candidate_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO candidate_table_id;
-IF
-  spend_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'SPEND TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  requisition_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'REQUISITION TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  assignment_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'ASSIGNMENT TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
-IF
-  candidate_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'CANDIDATE TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
+                         
+SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
+SET spend_table_id="stdrv_spend_" || '${dataform.projectConfig.vars.client_code}';
+SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
+SET candidate_table_id="stdrv_candidate_" || '${dataform.projectConfig.vars.client_code}';
+
 EXECUTE IMMEDIATE
   FORMAT("""
 
@@ -587,7 +537,7 @@ WITH spend_data AS (
         WHEN spend_in.consolidated_invoice_approved_date IS NULL THEN spend_in.invoice_approved_date
         ELSE spend_in.consolidated_invoice_approved_date
       END) AS reporting_date,
-      spend_in.rsr_processed_date,
+      spend_in.updated_ts as rsr_processed_date,
       #cost_savings 2024
        case when spend_in.invoice_line_item_id LIKE '%%TS%%' OR spend_in.invoice_line_item_type = 'Time Sheet' OR LOWER(spend_in.invoice_line_item_type) LIKE 'regular%%'
     then True else False end as timesheet_regular_flag,
@@ -1034,8 +984,8 @@ norm_loc.location_level_2a
     LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(spend_data.buyer_code) AND div_supp.supplier_code=spend_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER)
     LEFT JOIN db_common${region}.msp_cost_saving cost_saving on cost_saving.client_code = spend_data.rsr_client_code
     and cast(spend_data.consolidated_invoice_approved_date as date) BETWEEN cost_saving.date_from AND cost_saving.date_to
-     LEFT JOIN db${region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on reqs_assignment_data.main_document_title = norm_jt.raw_job_title
-     LEFT JOIN db${region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(reqs_assignment_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(reqs_assignment_data.rsr_state, '') = COALESCE(norm_loc.state, '')
+     LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on reqs_assignment_data.main_document_title = norm_jt.raw_job_title
+     LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(reqs_assignment_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(reqs_assignment_data.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(reqs_assignment_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( reqs_assignment_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(reqs_assignment_data.country, '') = COALESCE(norm_loc.country_code, '')
 
 ))

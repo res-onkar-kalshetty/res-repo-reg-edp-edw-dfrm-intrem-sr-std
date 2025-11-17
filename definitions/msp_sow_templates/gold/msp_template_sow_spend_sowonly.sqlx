@@ -56,20 +56,8 @@ SET
   slvr_dataset = '${slvr_dataset}';
 SET
   slvr_spend = 'v_' || ${slvr_spend};
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'assignment_sow_only_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name,config_table_name) INTO sow_assignment_sowonly_table_id;
-IF
-  sow_assignment_sowonly_table_id IS NULL THEN RAISE
-USING
-  MESSAGE = 'sow_assignment_sowonly_table_id TABLE ID IS MISSING FROM CONFIGS';
-END IF
-  ;
+
+SET sow_assignment_sowonly_table_id="stdrv_assignment_sowonly_" || '${dataform.projectConfig.vars.client_code}';
 
 EXECUTE IMMEDIATE
   FORMAT ('''
@@ -270,7 +258,7 @@ WITH spend_data AS (
         WHEN spend_in.consolidated_invoice_approved_date IS NULL THEN spend_in.invoice_approved_date
         ELSE spend_in.consolidated_invoice_approved_date
       END) AS reporting_date,
-      spend_in.rsr_processed_date
+      spend_in.updated_ts as rsr_processed_date
     FROM
       ${slvr_dataset}.%s AS spend_in
 ), reqs_assignment_data AS (
