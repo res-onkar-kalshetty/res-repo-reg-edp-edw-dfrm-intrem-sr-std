@@ -408,8 +408,8 @@ LEFT JOIN fx_rates fx_gbp ON candidate_assingment.currency = fx_gbp.from_currenc
 LEFT JOIN fx_rates fx_inr ON candidate_assingment.currency = fx_inr.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_inr.month AND fx_inr.to_currency = 'INR' 
 LEFT JOIN fx_rates fx_cad ON candidate_assingment.currency = fx_cad.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_cad.month AND fx_cad.to_currency = 'CAD'
 LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(candidate_assingment.buyer_code) AND div_supp.supplier_code=candidate_assingment.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(candidate_assingment.cand_submit_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(candidate_assingment.cand_submit_date AS DATE)) AS INTEGER)
-LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
-    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(req.req_city, '') = COALESCE(norm_loc.city, '') AND COALESCE(req.rsr_state, '') = COALESCE(norm_loc.state, '')
+LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
+    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(req.req_city, '') = COALESCE(norm_loc.city, '') AND COALESCE(req.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(req.req_state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(req.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(req.req_country, '') = COALESCE(norm_loc.country_code, ''))
 """, gold_dataset, candidate_table_id,
 slvr_cand,
