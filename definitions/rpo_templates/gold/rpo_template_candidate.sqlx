@@ -429,8 +429,8 @@ FROM (
         LEFT JOIN db_common${region}.rpo_std_gender g ON IFNULL(cand.gender, '') = g.gender
         LEFT JOIN db_common${region}.rpo_std_disabled d ON IFNULL(cand.disabled, '') = d.disabled
         LEFT JOIN db_common${region}.rpo_std_veteran v ON IFNULL(cand.veteran, '') = v.veteran
-       LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
-       LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(req_mst.rsr_state, '') = COALESCE(norm_loc.state, '')
+       LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
+       LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(req_mst.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(req.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(req_mst.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, '')
 
         WHERE cand.dedupe_rnk = 1

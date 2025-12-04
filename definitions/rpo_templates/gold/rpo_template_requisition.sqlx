@@ -272,8 +272,8 @@ FROM (
     LEFT JOIN db_common${region}.global_countries gcr on IFNULL(lower(req.country), '') = lower(gcr.country)
     LEFT JOIN db_common${region}.global_state_mapping gsm on IFNULL(req.state_province, '') = gsm.vms_state
     LEFT JOIN db_common${region}.rpo_global_standard_value_mapping rsm on rsm.buyer_code = req.buyer and rsm.req_status=req.req_status
-    LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
-    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE 
+    LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
+    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE 
     WHEN IFNULL(gsm.vms_state, '') <> '' THEN gsm.vms_state
     WHEN IFNULL(req.state_province, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
