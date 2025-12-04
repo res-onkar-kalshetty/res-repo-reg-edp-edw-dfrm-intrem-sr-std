@@ -963,8 +963,8 @@ norm_loc.location_level_2a
       #cost_savings 2024 Fall Release
     LEFT JOIN db_common${region}.msp_cost_saving cost_saving on cost_saving.client_code='${dataform.projectConfig.vars.client_code}'
     and cast(spend_data.consolidated_invoice_approved_date as date) BETWEEN cost_saving.date_from AND cost_saving.date_to
-     LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on reqs_assignment_data.main_document_title = norm_jt.raw_job_title
-     LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(reqs_assignment_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(reqs_assignment_data.rsr_state, '') = COALESCE(norm_loc.state, '')
+     LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on reqs_assignment_data.main_document_title = norm_jt.raw_job_title
+     LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(reqs_assignment_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(reqs_assignment_data.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(reqs_assignment_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( reqs_assignment_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(reqs_assignment_data.country, '') = COALESCE(norm_loc.country_code, '')
 
 ))

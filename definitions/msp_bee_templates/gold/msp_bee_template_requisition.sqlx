@@ -385,11 +385,11 @@ CREATE OR REPLACE TABLE
   ON
     TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, '')))
   LEFT JOIN
-    db%s_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt
+    db%s_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_jt
   ON
     req.req_title = norm_jt.raw_job_title
   LEFT JOIN
-    db%s_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc
+    db%s_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_loc
   ON
     COALESCE(req.city, '') = COALESCE(norm_loc.city, '')
     AND COALESCE((CASE

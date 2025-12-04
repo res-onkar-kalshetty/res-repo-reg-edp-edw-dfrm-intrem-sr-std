@@ -349,8 +349,8 @@ LEFT OUTER JOIN  aggregates_job_seekers_wsupp ON  job_posting_dist_data.req_id =
 LEFT OUTER JOIN  src_supplier_unique supplier_data ON  job_posting_dist_data.buyer_code = supplier_data.buyer_code AND job_posting_dist_data.supplier_code = supplier_data.supplier_code
 LEFT OUTER JOIN  global_supplier_mapping ON  TRIM(LOWER(job_posting_dist_data.supplier)) = global_supplier_mapping.supplier  AND TRIM(LOWER(job_posting_dist_data.buyer)) = global_supplier_mapping.buyer
 LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(job_posting_dist_data.buyer_code) AND div_supp.supplier_code=job_posting_dist_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER)
-LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on job_posting_data.req_title = norm_jt.raw_job_title
-    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(job_posting_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(job_posting_data.rsr_state, '') = COALESCE(norm_loc.state, '')
+LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on job_posting_data.req_title = norm_jt.raw_job_title
+    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(job_posting_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(job_posting_data.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(job_posting_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(job_posting_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(job_posting_data.country, '') = COALESCE(norm_loc.country_code, ''))
 """,
   gold_dataset,

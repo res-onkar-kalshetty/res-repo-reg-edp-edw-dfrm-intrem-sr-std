@@ -273,7 +273,7 @@ FROM
 	%s.%s assign
 	LEFT JOIN cal_comp ON assign.assignment_id = cal_comp.assignment_id AND assign.main_document_id = cal_comp.main_document_id
   LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM PARSE_DATE("%%m/%%d/%%Y", cal_comp.calendar_reporting_month_date)) AS INTEGER)
-   LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on assign.main_document_title = norm_jt.raw_job_title
-    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(assign.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(assign.rsr_state, '') = COALESCE(norm_loc.state, '')
+   LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_jt on assign.main_document_title = norm_jt.raw_job_title
+    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.ds_name}_normalised norm_loc on COALESCE(assign.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(assign.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(assign.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(assign.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(assign.country, '') = COALESCE(norm_loc.country_code, ''))""",
   gold_dataset,assignment_trend_table_id,gold_dataset,assignment_table_id,gold_dataset,assignment_table_id);
