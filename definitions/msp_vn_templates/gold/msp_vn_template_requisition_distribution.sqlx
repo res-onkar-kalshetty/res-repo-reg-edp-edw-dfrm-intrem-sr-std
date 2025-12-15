@@ -79,7 +79,7 @@ WITH
   job_posting_dist_data AS (
   SELECT *
   FROM (
-    SELECT *,
+    SELECT *,updated_ts as rsr_processed_date,
       ROW_NUMBER() OVER (PARTITION BY req_id, supplier_code ORDER BY req_distribution_date) AS rn
     FROM ${slvr_dataset}.%s) AS ranked WHERE rn = 1),
   wo_data AS (
