@@ -4,9 +4,9 @@ defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.0
 vars:
-    client_code: "msp_bee_gbl_nike"
-    dataset_id: "tr_eu_nike"
-    ds_name: "db_gbl_nike"
+    client_code: ""
+    dataset_id: ""
+    ds_name: ""
     ph1_r: ""
     ph2_r: ""
     ph1_c: ""
