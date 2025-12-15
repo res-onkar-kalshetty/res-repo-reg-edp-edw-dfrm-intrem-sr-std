@@ -70,6 +70,7 @@ SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.cl
 EXECUTE IMMEDIATE
   FORMAT("""
 CREATE OR REPLACE TABLE `%s.%s` AS (
+
 SELECT buyer
 ,buyer_code
 ,main_document_id
@@ -517,16 +518,14 @@ WITH spend_data AS (
         ELSE spend_in.consolidated_invoice_approved_date
       END) AS reporting_date,
       spend_in.rsr_processed_date,
-      #cost_savings 2024 Fall release
       spend_in.rsr_client_code,
       case when spend_in.invoice_line_item_id LIKE '%%TS%%' OR spend_in.invoice_line_item_type LIKE '%%Time%%' OR LOWER(spend_in.invoice_line_item_type) LIKE 'regular%%'
     then True else False end as timesheet_regular_flag,
-	# Winter release 2025
 	spend_in.business_unit,
 	spend_in.business_unit_code,
 	spend_in.rsr_staffing_entity
     FROM
-      `${slvr_dataset}.%s` AS spend_in
+      ${slvr_dataset}.%s AS spend_in
 ), reqs_assignment_data AS (
   SELECT
       req_asg_in.buyer,
@@ -582,13 +581,12 @@ WITH spend_data AS (
     FROM
       db_common${region}.global_fx_rates
 )
-#cost_savings 2024 Fall Release
 ,assignment_by_req as (
   select max(bill_rate_st_hr_initial) as highest_assignment_bill_rate_st_hr_initial,
   main_document_id from reqs_assignment_data group by main_document_id
 ),
 candidate as (select max(presented_bill_rate_st_hr) as maximum_presented_bill_rate_st_hr,
-req_id from `${slvr_dataset}.%s` where cand_shortlisted_date is not null group by req_id)
+req_id from ${slvr_dataset}.%s where cand_shortlisted_date is not null group by req_id)
 ,avg_bill_rate as (
   select
   assignment_id,
@@ -784,7 +782,6 @@ SELECT
     END pay_rate_st_hr_cad,
     '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
     spend_data.rsr_processed_date,
-    #cost_savings 2024 Fall Release
 case 
 when reqs_assignment_data.max_requested_bill_rate_st_hr > 0 
 and reqs_assignment_data.bill_rate_st_hr_initial > 0
@@ -958,11 +955,10 @@ norm_loc.location_level_2a
       AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_cad.month
       AND trim(upper(fx_cad.to_currency)) = 'CAD'
 	  LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(spend_data.buyer_code) AND div_supp.supplier_code=spend_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(spend_data.reporting_date AS DATE)) AS INTEGER)
-    #cost_savings 2024 Fall Release
     LEFT JOIN db_common${region}.msp_cost_saving cost_saving on cost_saving.client_code=spend_data.rsr_client_code
     and cast(spend_data.consolidated_invoice_approved_date as date) BETWEEN cost_saving.date_from AND cost_saving.date_to
-     LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on reqs_assignment_data.main_document_title = norm_jt.raw_job_title
-     LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(reqs_assignment_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(reqs_assignment_data.rsr_state, '') = COALESCE(norm_loc.state, '')
+     LEFT JOIN db${region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on reqs_assignment_data.main_document_title = norm_jt.raw_job_title
+     LEFT JOIN db${region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(reqs_assignment_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(reqs_assignment_data.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(reqs_assignment_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( reqs_assignment_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(reqs_assignment_data.country, '') = COALESCE(norm_loc.country_code, '')
     )
-)""",gold_dataset,spend_table_id,slvr_dataset,slvr_spend,gold_dataset,assignment_table_id,slvr_dataset,slvr_cand,gold_dataset,requisition_table_id);
+)""",gold_dataset,spend_table_id,slvr_spend,gold_dataset,assignment_table_id,slvr_cand,gold_dataset,requisition_table_id);

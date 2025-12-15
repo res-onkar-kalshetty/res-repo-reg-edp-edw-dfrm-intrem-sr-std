@@ -101,17 +101,17 @@ FROM (
             -- first_cand_submitted_to_hm_date
         ,MIN(stdz_cand.cand_shortlisted_date) AS first_cand_submitted_to_hm_date
             -- cand_applied_cnt
-        ,COUNT(stdz_cand.cand_submit_date) AS cand_applied_cnt
+        ,COALESCE(COUNT(stdz_cand.cand_submit_date),0) AS cand_applied_cnt
         -- cand_submitted_to_hm_cnt
-        ,COUNT(stdz_cand.cand_shortlisted_date) AS cand_submitted_to_hm_cnt
+        ,COALESCE(COUNT(stdz_cand.cand_shortlisted_date),0) AS cand_submitted_to_hm_cnt
         -- cand_interviewed_cnt
-        ,COUNT(stdz_cand.cand_interview_date) AS cand_interviewed_cnt
+        ,COALESCE(COUNT(stdz_cand.cand_interview_date),0) AS cand_interviewed_cnt
         -- cand_offered_cnt
-        ,COUNT(stdz_cand.cand_offer_extended_date) AS cand_offered_cnt
+        ,COALESCE(COUNT(stdz_cand.cand_offer_extended_date),0) AS cand_offered_cnt
         -- cand_offers_accepted_cnt
-        ,COUNT(stdz_cand.cand_offer_accepted_date) AS cand_offers_accepted_cnt
+        ,COALESCE(COUNT(stdz_cand.cand_offer_accepted_date),0) AS cand_offers_accepted_cnt
         -- cand_hired_cnt
-        ,COUNT(stdz_cand.cand_hired_date) AS cand_hired_cnt
+        ,COALESCE(COUNT(stdz_cand.cand_hired_date),0) AS cand_hired_cnt
         FROM %s.%s stdz_cand
         GROUP BY stdz_cand.req_id
     )
@@ -206,26 +206,26 @@ FROM (
     -- first_cand_submitted_to_hm_date
     ,cand_aggs.first_cand_submitted_to_hm_date
     -- cand_applied_cnt
-    ,cand_aggs.cand_applied_cnt
+    ,CASE WHEN cand_aggs.cand_applied_cnt IS NULL THEN 0 ELSE cand_aggs.cand_applied_cnt END AS cand_applied_cnt
     -- cand_submitted_to_hm_cnt
-    ,cand_aggs.cand_submitted_to_hm_cnt
+    ,CASE WHEN cand_aggs.cand_submitted_to_hm_cnt IS NULL THEN 0 ELSE cand_aggs.cand_submitted_to_hm_cnt END AS cand_submitted_to_hm_cnt
     -- cand_interviewed_cnt
-    ,cand_aggs.cand_interviewed_cnt
+    ,CASE WHEN cand_aggs.cand_interviewed_cnt IS NULL THEN 0 ELSE cand_aggs.cand_interviewed_cnt END AS cand_interviewed_cnt
     -- cand_offered_cnt
-    ,cand_aggs.cand_offered_cnt
+    ,CASE WHEN cand_aggs.cand_offered_cnt IS NULL THEN 0 ELSE cand_aggs.cand_offered_cnt END AS cand_offered_cnt
     -- cand_offers_accepted_cnt
-    ,cand_aggs.cand_offers_accepted_cnt
+    ,CASE WHEN cand_aggs.cand_offers_accepted_cnt IS NULL THEN 0 ELSE cand_aggs.cand_offers_accepted_cnt END AS cand_offers_accepted_cnt
     -- cand_hired_cnt
-    ,cand_aggs.cand_hired_cnt
+    ,CASE WHEN cand_aggs.cand_hired_cnt IS NULL THEN 0 ELSE cand_aggs.cand_hired_cnt END AS cand_hired_cnt
     -- time_to_submit_first_cand_to_hm
     ,Function_library${region}.f_workday(req.rsr_recruiting_start_date, cand_aggs.first_cand_submitted_to_hm_date) AS time_to_submit_first_cand_to_hm
     -- rsr_positions_remaining
-    ,CASE WHEN req.positions_requested_cnt - cand_aggs.cand_hired_cnt < 0 THEN 0
-          ELSE req.positions_requested_cnt - cand_aggs.cand_hired_cnt
-     END AS rsr_positions_remaining
+    ,CASE WHEN req.positions_requested_cnt - (CASE WHEN cand_aggs.cand_hired_cnt IS NULL THEN 0 ELSE cand_aggs.cand_hired_cnt END) < 0 THEN 0
+          ELSE req.positions_requested_cnt - (CASE WHEN cand_aggs.cand_hired_cnt IS NULL THEN 0 ELSE cand_aggs.cand_hired_cnt END)
+      END AS rsr_positions_remaining
     ,CAST(COALESCE(req.days_on_hold_bd, ROUND((req.days_on_hold_cd / 7) * 5), 0) AS INT64) AS days_on_hold_bd
     ,CAST(COALESCE(req.days_on_hold_cd, ROUND((req.days_on_hold_bd / 5) * 7), 0) AS INT64) AS days_on_hold_cd
-    ,req.updated_ts as rsr_processed_date
+    ,req.rsr_processed_date
     ,norm_jt.suppressed_title,
         norm_jt.pii_found,
         norm_jt.process_status,
@@ -272,8 +272,8 @@ FROM (
     LEFT JOIN db_common${region}.global_countries gcr on IFNULL(lower(req.country), '') = lower(gcr.country)
     LEFT JOIN db_common${region}.global_state_mapping gsm on IFNULL(req.state_province, '') = gsm.vms_state
     LEFT JOIN db_common${region}.rpo_global_standard_value_mapping rsm on rsm.buyer_code = req.buyer and rsm.req_status=req.req_status
-    LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
-    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE 
+    LEFT JOIN db${region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
+    LEFT JOIN db${region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE 
     WHEN IFNULL(gsm.vms_state, '') <> '' THEN gsm.vms_state
     WHEN IFNULL(req.state_province, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
@@ -284,6 +284,7 @@ FROM (
     ELSE 'Unmapped'
   END), '') = COALESCE(norm_loc.country_name, '') AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, '')
     
-    ) subquery1)""",gold_dataset,requisition_table_id,
+    ) subquery1
+)""",gold_dataset,requisition_table_id,
     gold_dataset,slvr_ph1_r,slvr_ph2_r
     );
