@@ -103,7 +103,7 @@ SELECT
 END
   AS max_template_bill_rate_st_hr,
 FROM
-  ${slvr_dataset}.%s req_temp_in
+  `${slvr_dataset}.%s` req_temp_in
 LEFT JOIN
   `${slvr_dataset}.%s` req_in
 ON
@@ -114,7 +114,7 @@ SELECT
   buyer_code,
   main_document_id
 FROM
-  ${slvr_dataset}.%s
+  `${slvr_dataset}.%s`
 WHERE
   last_assignment_in_chain = 1 -- netive specific FILTER which picks the latest revision OF the ASSIGNMENT
 GROUP BY
@@ -132,7 +132,7 @@ SELECT
   buyer_code,
   req_id
 FROM
-  ${slvr_dataset}.%s
+  `${slvr_dataset}.%s`
 GROUP BY
   buyer_code,
   req_id )
@@ -354,8 +354,8 @@ LEFT OUTER JOIN
 db_common${region}.global_sourcing AS gbl_src
 ON
 TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, '')))
-LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
-    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE 
+LEFT JOIN db${region}_yellowdata_normalization.job_titles_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
+    LEFT JOIN db${region}_yellowdata_normalization.locations_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE 
     WHEN IFNULL(gsm.vms_state, '') <> '' THEN gsm.vms_state
     WHEN IFNULL(req.state_province, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
