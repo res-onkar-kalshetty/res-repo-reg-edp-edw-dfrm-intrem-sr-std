@@ -72,7 +72,7 @@ EXECUTE IMMEDIATE
 
 CREATE OR REPLACE TABLE
   %s.%s AS (
-  ------------------------------------------------------------------------
+ ------------------------------------------------------------------------
 -- CANDIDATE STATUS CTE
 ------------------------------------------------------------------------
 WITH
@@ -104,6 +104,9 @@ FROM (
 
 cand_non_transactional as(
 SELECT DISTINCT
+------------------------------------------------------------------------
+-- STANDARD FIELDS FROM SOURCE
+------------------------------------------------------------------------
 cand.buyer
 ,cand.buyer_code
 ,cand.req_id
@@ -135,6 +138,10 @@ cand.buyer
 ,cand.presented_pay_rate
 ---- needed for supporting other calcs---
 ,cand.assignment_id
+
+------------------------------------------------------------------------
+-- PIVOTED DATE FIELDS
+------------------------------------------------------------------------
 -- cand_submit_date
 ,(SELECT MIN(status_datetime)
     FROM status_dates
@@ -184,12 +191,14 @@ cand.buyer
         AND cand.cand_id = status_dates.cand_id
         AND status_dates.activity_status IN ('interview_1','interview_2')) AS cand_first_interviewed_date
 
+
 -- cand_last_interview_date
 ,(SELECT MAX(status_datetime)
     FROM status_dates
     WHERE cand.req_id = status_dates.req_id
         AND cand.cand_id = status_dates.cand_id
         AND status_dates.activity_status IN ('interview_1','interview_2')) AS cand_last_interviewed_date
+
 
 ,(SELECT MAX(updated_ts)
     FROM status_dates
@@ -200,11 +209,16 @@ FROM `${slvr_dataset}.%s` cand
 QUALIFY ROW_NUMBER() OVER (partition by cand.req_id, cand.cand_id order by cand_last_modified_date desc)= 1 -- this needs to be done beacuse we would want to get the latest details for each candidate id and req_id, incase there are two dates in cand_last_modified date two rows will appear even for 1 can id and req id combination
 ),
 
+
+------------------------------------------------------------------------
+-- Standard MSP template after pivitoing to non transactional
+------------------------------------------------------------------------
+
 js_assingment_data as (select
 				cand.*
         except(presented_bill_rate,presented_bill_rate_st_basis,presented_pay_rate) -- removing these fields since they are not standalone fields in the template
 				,assingment_in.assignment_create_date_initial as cand_offer_extended_date
-				-- ,assingment_in.supplier_code
+				-- ,assingment_in.supplier_code,
 				,assingment_supplier_details.supplier_code
 				,case when LOWER(req.rate_unit_type) like '%%hour%%' then cand.presented_bill_rate
 					when LOWER(req.rate_unit_type) like '%%day%%' then (cand.presented_bill_rate /(req.hours_per_week/req.days_per_week))
@@ -263,7 +277,7 @@ js_assingment_data as (select
 				left join %s.%s assingment_in ON cand.buyer = assingment_in.buyer
         and assingment_in.cand_id is not null  AND cand.cand_id= assingment_in.cand_id
 				left join %s.%s as assingment_supplier_details
-				on lower(regexp_replace(cand.supplier, r"\\s+","")) = lower(regexp_replace(assingment_supplier_details.supplier, r"\\s+",""))
+				on lower(regexp_replace(cand.supplier, r"\\s+", "")) = lower(regexp_replace(assingment_supplier_details.supplier, r"\\s+", ""))
 				left join %s.%s  req on cand.buyer = req.buyer AND cand.req_id= req.req_id
 				)
 ,fx_rates AS (
@@ -278,7 +292,7 @@ js_assingment_data as (select
 ,req_dist_data AS (
 	SELECT buyer_code
 		  -- ,supplier_code --- null in req_dist hence not using in ntv template
-			  , lower(regexp_replace(supplier, r"\\s+", "")) as supplier
+			, lower(regexp_replace(supplier, r"\\s+", "")) as supplier
 		  ,req_id
 		  ,MIN(req_distribution_date) AS min_req_dist_date
 	FROM ${slvr_dataset}.%s
@@ -469,7 +483,7 @@ end) AS compliance_vs_max_template_bill_rate
 ,ROUND(Function_library${region}.f_workday(candidate_assingment_req.req_approved_date, candidate_assingment_req.cand_submit_date), 4)AS approved_to_submit_bd
 ,CAST(Function_library${region}.f_calendarday( candidate_assingment_req.cand_submit_date,candidate_assingment_req.cand_shortlisted_date) AS INT64) as submit_to_shortlist_cd
 ,ROUND(Function_library${region}.f_workday(candidate_assingment_req.cand_submit_date,candidate_assingment_req.cand_shortlisted_date), 4)AS submit_to_shortlist_bd
-,'${dataform.projectConfig.vars.client_code}' as rsr_client_code
+,'[client_code]' as rsr_client_code
 , CURRENT_DATE() as current_date
 ,candidate_assingment_req.rsr_processed_date
 ,NULL AS preferred_supplier_status

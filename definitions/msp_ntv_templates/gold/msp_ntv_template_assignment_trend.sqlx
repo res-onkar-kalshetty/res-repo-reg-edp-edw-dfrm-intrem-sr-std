@@ -229,7 +229,7 @@ SELECT
 	assign.sourcing_type_wo_mapped,
 	assign.rsr_state,
    '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
-   assign.updated_ts as rsr_processed_date
+   assign.rsr_processed_date
    ,NULL AS preferred_supplier_status,
 	
 assign.rsr_staffing_entity, -- winter_release 2025

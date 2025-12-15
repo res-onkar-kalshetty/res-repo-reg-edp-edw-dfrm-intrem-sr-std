@@ -113,7 +113,7 @@ with js_assingment_data as (select
 				,js_in.updated_ts as rsr_processed_date
 				,js_in.rsr_staffing_entity -- winter_release 2025
 				,assingment_in.worker_start_date
-				from `${slvr_dataset}.%s` js_in
+				from ${slvr_dataset}.%s js_in
 				left join %s.%s assingment_in  
 				ON js_in.buyer = assingment_in.buyer AND js_in.cand_id= assingment_in.cand_id and js_in.req_id = assingment_in.main_document_id)
 ,req_data AS (SELECT
@@ -154,7 +154,7 @@ buyer
 ,rsr_req_status
 ,primary_cost_center
 ,rsr_sourced_type
-FROM `%s.%s` )
+FROM %s.%s )
 ,fx_rates AS (
   SELECT
       CAST(fx_rate AS FLOAT64) AS fx_rate,
@@ -169,7 +169,7 @@ FROM `%s.%s` )
 		  ,supplier_code
 		  ,req_id
 		  ,MIN(req_distribution_date) AS min_req_dist_date
-	FROM ` ${slvr_dataset}.%s`
+	FROM ${slvr_dataset}.%s
 	GROUP BY buyer_code, supplier_code, req_id
 ),global_supp_map AS (
   SELECT

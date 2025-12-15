@@ -87,6 +87,7 @@ EXECUTE IMMEDIATE
   FORMAT ("""
 CREATE OR REPLACE TABLE
   %s.%s AS (
+
 WITH fx_rates AS (
   SELECT
       CAST(fx_rate AS FLOAT64) AS fx_rate,
@@ -100,27 +101,26 @@ WITH fx_rates AS (
   asg_v0.assignment_create_date AS assignment_create_date_initial,
   asg_v0.assignment_activation_date AS assignment_activation_date_initial,
   asg_v0.cand_offer_accepted_date AS cand_offer_accepted_date_initial,
-  -- EXTRACT(DATE FROM Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])) AS rsr_assignment_control_date,
-  DATE(Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])) AS rsr_assignment_control_date,
-  DATE_TRUNC(DATE(Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])),MONTH) AS rsr_assignment_control_date_monthstart,
-
+  EXTRACT(DATE FROM Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])) AS rsr_assignment_control_date,
+  DATE_TRUNC(EXTRACT(DATE FROM Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])),MONTH) AS rsr_assignment_control_date_monthstart,
+  #cost_savings 2024 Fall Release
   savings.currency AS rsr_savings_currency,
   savings.perm_recruitment_fee_fixed,
   savings.rehire_onboarding_hours,
-    CASE
+    CASE 
       WHEN IFNULL(global_state_mapping.rsr_state, '') <> '' THEN global_state_mapping.rsr_state
       WHEN IFNULL(asg.state_province, '') = '' THEN 'Undisclosed'
       ELSE 'Unmapped'
     END AS rsr_state,
-     CASE
+     CASE 
       WHEN IFNULL(gcr.rsr_country, '') <> '' THEN gcr.rsr_country
       WHEN IFNULL(asg.country, '') = '' THEN 'Undisclosed'
       ELSE 'Unmapped'
     END AS rsr_country
   FROM ${slvr_dataset}.%s AS asg
     LEFT OUTER JOIN ${slvr_dataset}.%s AS asg_v0 ON asg.assignment_id = asg_v0.assignment_id
-
-    LEFT JOIN db_common${region}.msp_cost_saving savings on savings.client_code=  '${dataform.projectConfig.vars.client_code}' and cast(asg_v0.assignment_create_date as date) BETWEEN savings.date_from AND savings.date_to
+    #cost_savings 2024 Fall Release
+    LEFT JOIN db_common${region}.msp_cost_saving savings on savings.client_code=asg.rsr_client_code and cast(asg_v0.assignment_create_date as date) BETWEEN savings.date_from AND savings.date_to
     LEFT OUTER JOIN db_common${region}.global_state_mapping AS global_state_mapping ON asg.state_province = global_state_mapping.vms_state
     LEFT JOIN db_common${region}.global_countries gcr on lower(asg.country) = lower(gcr.country)
 ), worker AS (
@@ -131,7 +131,7 @@ WITH fx_rates AS (
 	wk.worker_end_date,
 	wk.site,
     CASE
-        WHEN LOWER(wk.worker_status)='yes' THEN 'Open'
+        WHEN (LOWER(wk.worker_status)='yes' OR LOWER(wk.worker_status)='active' OR LOWER(wk.worker_status)='open') AND  wk.worker_end_date >= CURRENT_DATE() THEN 'Open'
         ELSE 'Closed'
     END AS worker_status,
 	wk.worker_close_reason,
@@ -313,38 +313,35 @@ SELECT
         ELSE 'NULL'
     END AS contingent_vs_sow,
     worker.reporting_date_ends,
-    CASE
-WHEN LOWER(worker.worker_status)='yes' AND  worker.worker_end_date >= CURRENT_DATE() THEN 'Open'
-ELSE 'Closed'
-END AS worker_status,
+    worker.worker_status,
     CAST(Function_library${region}.f_calendarday(req.req_approved_date, assign.assignment_create_date_initial) AS INT64) AS time_to_fill_cd,
     ROUND(Function_library${region}.f_workday(req.req_approved_date, assign.assignment_create_date_initial), 2) AS time_to_fill_bd,
     CAST(Function_library${region}.f_calendarday(req.req_approved_date, cand.cand_submit_date) AS INT64) AS approve_to_submit_cd,
-    ROUND(Function_library${region}.f_workday(req.req_approved_date, cand.cand_submit_date), 4) AS approve_to_submit_bd,
-
+    ROUND(Function_library${region}.f_workday(req.req_approved_date, cand.cand_submit_date), 4) AS approve_to_submit_bd, 
+    
     CASE
       WHEN req.max_requested_bill_rate_st_hr >= assign_v0_rates.bill_rate_st_hr_initial THEN 'Compliant'
-      ELSE
+      ELSE 
         CASE
             WHEN assign_v0_rates.bill_rate_st_hr_initial <  (CAST('1.15' AS NUMERIC) * req.max_requested_bill_rate_st_hr) THEN 'Non-Compliant - Under 115%% Max Bill Rate'
             ELSE 'Non-Compliant - Over 115%% Max Bill Rate'
         END
     END AS compliance_vs_max_bill_rate,
--- As per BP TBA, teplate bill rate shd be replaced with max requested bill rate for Because its not captured
+-- As per BP TBA, teplate bill rate shd be replaced with max requested bill rate for Bee coz its not captured
     CASE
       WHEN req.max_template_bill_rate_st_hr >= assign_v0_rates.bill_rate_st_hr_initial THEN 'Compliant'
-      ELSE
+      ELSE 
         CASE
             WHEN assign_v0_rates.bill_rate_st_hr_initial <  (CAST('1.15' AS NUMERIC) * req.max_template_bill_rate_st_hr) THEN 'Non-Compliant - Under 115%% Max Bill Rate'
             ELSE 'Non-Compliant - Over 115%% Max Bill Rate'
         END
     END AS compliance_vs_max_template_bill_rate,
-
+    
     ROUND(CASE
             WHEN assign_rates.pay_rate_st_hr = 0 THEN 0.0000
             ELSE (assign_rates.bill_rate_st_hr / assign_rates.pay_rate_st_hr - 1)
         END
-    , 4) AS markup,
+    , 4) AS markup, 
     CASE
         WHEN assign_rates.currency = 'USD' THEN 1.0
         ELSE CAST(fx_usd.fx_rate AS NUMERIC)
@@ -409,7 +406,7 @@ END AS worker_status,
     CAST(NULL AS STRING) AS vendor_id,
 	-- Fields needed for other MSTs
     CASE
-      WHEN LOWER(cand.presented_bill_rate_st_basis) = 'hourly' THEN cand.presented_bill_rate
+      WHEN LOWER(cand.presented_bill_rate_st_basis) = 'hourly' THEN cand.presented_bill_rate 
       WHEN LOWER(cand.presented_bill_rate_st_basis) = 'daily' THEN (cand.presented_bill_rate /(req.hours_per_week/req.days_per_week))
       WHEN LOWER(cand.presented_bill_rate_st_basis) = 'monthly' THEN (cand.presented_bill_rate /((req.hours_per_week/req.days_per_week)*4.33))
       WHEN LOWER(cand.presented_bill_rate_st_basis) = 'weekly' THEN (cand.presented_bill_rate /(req.hours_per_week))
@@ -451,6 +448,7 @@ END AS worker_status,
         ELSE assign_rates.pay_rate_st_hr * CAST(fx_cad.fx_rate AS NUMERIC)
     END AS pay_rate_st_hr_cad
     ,NULL AS preferred_supplier_status,
+    #cost_savings 2024 Fall Release
     assign.assignment_start_date,
     assign.assignment_end_date,
     assign.assignment_original_start_date,
@@ -458,42 +456,42 @@ END AS worker_status,
 
     CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%'
  THEN assign.perm_recruitment_fee_fixed
-  ELSE CAST(NULL AS FLOAT64)
+  ELSE CAST(NULL AS FLOAT64) 
   END as perm_recruitment_fee_savings,
     CASE
-      WHEN assign.rsr_savings_currency = 'USD' THEN
+      WHEN assign.rsr_savings_currency = 'USD' THEN 
         (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END)
       ELSE (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END) * fx_usd_savings.fx_rate
     END AS perm_recruitment_fee_savings_in_usd,
     CASE
-      WHEN assign.rsr_savings_currency = 'EUR' THEN
+      WHEN assign.rsr_savings_currency = 'EUR' THEN 
         (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END)
       ELSE (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END) * fx_eur_savings.fx_rate
     END AS perm_recruitment_fee_savings_in_eur,
     CASE
-      WHEN assign.rsr_savings_currency = 'GBP' THEN
+      WHEN assign.rsr_savings_currency = 'GBP' THEN 
         (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END)
       ELSE (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END) * fx_gbp_savings.fx_rate
     END AS perm_recruitment_fee_savings_in_gbp,
     CASE
-      WHEN assign.rsr_savings_currency = 'INR' THEN
+      WHEN assign.rsr_savings_currency = 'INR' THEN 
         (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END)
       ELSE (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END) * fx_inr_savings.fx_rate
     END AS perm_recruitment_fee_savings_in_inr,
     CASE
-      WHEN assign.rsr_savings_currency = 'CAD' THEN
+      WHEN assign.rsr_savings_currency = 'CAD' THEN 
         (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END)
       ELSE (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END) * fx_cad_savings.fx_rate
     END AS perm_recruitment_fee_savings_in_cad,
-
+   
    CASE
-    WHEN (worker.worker_start_date IS NOT NULL AND assign.assignment_original_start_date IS NOT NULL AND worker.worker_start_date < assign.assignment_original_start_date AND req.rsr_sourced_type NOT LIKE '%%Administrative%%') THEN
-    (assign.rehire_onboarding_hours * assign_v0_rates.bill_rate_st_hr_initial)
+    WHEN (worker.worker_start_date IS NOT NULL AND assign.assignment_original_start_date IS NOT NULL AND worker.worker_start_date < assign.assignment_original_start_date AND req.rsr_sourced_type NOT LIKE '%%Administrative%%') THEN 
+    (assign.rehire_onboarding_hours * assign_v0_rates.bill_rate_st_hr_initial) 
     ELSE CAST(NULL AS FLOAT64) END
     as rehire_onboarding_savings,
 
     CASE
-    WHEN (worker.worker_start_date IS NOT NULL AND assign.assignment_original_start_date IS NOT NULL AND worker.worker_start_date < assign.assignment_original_start_date AND req.rsr_sourced_type NOT LIKE '%%Administrative%%') THEN
+    WHEN (worker.worker_start_date IS NOT NULL AND assign.assignment_original_start_date IS NOT NULL AND worker.worker_start_date < assign.assignment_original_start_date AND req.rsr_sourced_type NOT LIKE '%%Administrative%%') THEN 
         CASE
           WHEN assign.rsr_savings_currency = 'USD' THEN (assign.rehire_onboarding_hours * assign_v0_rates.bill_rate_st_hr_initial)
           ELSE (assign.rehire_onboarding_hours * assign_v0_rates.bill_rate_st_hr_initial) * fx_usd_savings.fx_rate
@@ -527,8 +525,8 @@ END AS worker_status,
           ELSE (assign.rehire_onboarding_hours * assign_v0_rates.bill_rate_st_hr_initial) * fx_eur_savings.fx_rate
         END
     END AS rehire_onboarding_savings_in_eur,
-
-	assign.rsr_staffing_entity,
+	
+	assign.rsr_staffing_entity, -- winter_release 2025
 norm_jt.suppressed_title,
 norm_jt.pii_found,
 norm_jt.process_status,
@@ -569,17 +567,17 @@ norm_loc.location_level_2a
   FROM
     asg_asg_v0 AS assign
     LEFT OUTER JOIN %s.%s AS req ON assign.main_document_id = req.req_id
-    LEFT OUTER JOIN worker ON assign.assignment_id = worker.assignment_id
+    LEFT OUTER JOIN worker ON assign.assignment_id = worker.assignment_id 
     LEFT OUTER JOIN assign_rates ON assign.assignment_id = assign_rates.assignment_id
     LEFT OUTER JOIN assign_v0_rates ON assign.assignment_id = assign_v0_rates.assignment_id
     LEFT OUTER JOIN ${slvr_dataset}.%s cand ON assign.main_document_id = cand.req_id
      AND assign.cand_id = cand.cand_id
-    LEFT OUTER JOIN db_common${region}.global_wo_term_reason AS global_wo_term_reason ON (CASE
-        WHEN LOWER(worker.worker_status) = 'closed' THEN COALESCE(worker.worker_close_reason,assign.close_reason)
-        ELSE CAST(NULL AS STRING)
+    LEFT OUTER JOIN db_common${region}.global_wo_term_reason AS global_wo_term_reason ON (CASE 
+        WHEN LOWER(worker.worker_status) = 'closed' THEN COALESCE(worker.worker_close_reason,assign.close_reason) 
+        ELSE CAST(NULL AS STRING) 
     END) = global_wo_term_reason.work_order_close_reason
     LEFT OUTER JOIN db_common${region}.global_state_mapping AS global_state_mapping ON assign.state_province = global_state_mapping.vms_state
-    LEFT OUTER JOIN db_common${region}.global_sourcing_type_assignment AS global_sourcing_type_wo
+    LEFT OUTER JOIN db_common${region}.global_sourcing_type_assignment AS global_sourcing_type_wo 
         ON assign.sourcing_type_wo = global_sourcing_type_wo.vms_source_type
     LEFT JOIN db_common${region}.global_countries gcr on lower(assign.country) = lower(gcr.country)
     LEFT OUTER JOIN db_common${region}.global_supplier_mapping AS global_supp_map ON assign.buyer = global_supp_map.buyer AND assign.supplier = global_supp_map.supplier
@@ -587,8 +585,8 @@ norm_loc.location_level_2a
     LEFT JOIN fx_rates fx_usd ON assign_rates.currency = fx_usd.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_usd.month AND fx_usd.to_currency = 'USD'
     LEFT JOIN fx_rates fx_eur ON assign_rates.currency = fx_eur.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_eur.month AND fx_eur.to_currency = 'EUR'
     LEFT JOIN fx_rates fx_gbp ON assign_rates.currency = fx_gbp.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_gbp.month AND fx_gbp.to_currency = 'GBP'
-    LEFT JOIN fx_rates fx_inr ON assign_rates.currency = fx_inr.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_inr.month AND fx_inr.to_currency = 'INR'
-    LEFT JOIN fx_rates fx_cad ON assign_rates.currency = fx_cad.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_cad.month AND fx_cad.to_currency = 'CAD'
+    LEFT JOIN fx_rates fx_inr ON assign_rates.currency = fx_inr.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_inr.month AND fx_inr.to_currency = 'INR' 
+    LEFT JOIN fx_rates fx_cad ON assign_rates.currency = fx_cad.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_cad.month AND fx_cad.to_currency = 'CAD' 
     LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(assign.buyer_code) AND div_supp.supplier_code=assign.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(assign.assignment_create_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(assign.assignment_create_date AS DATE)) AS INTEGER)
     LEFT JOIN fx_rates fx_usd_savings ON assign.rsr_savings_currency = fx_usd_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_usd_savings.month AND fx_usd_savings.to_currency = 'USD'
     LEFT JOIN fx_rates fx_eur_savings ON assign.rsr_savings_currency = fx_eur_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_eur_savings.month AND fx_eur_savings.to_currency = 'EUR'

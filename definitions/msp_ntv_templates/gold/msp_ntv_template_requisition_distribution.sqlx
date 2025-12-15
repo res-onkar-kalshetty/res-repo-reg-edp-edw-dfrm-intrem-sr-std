@@ -180,7 +180,7 @@ global_supplier_mapping AS (
   SELECT
     DISTINCT TRIM(LOWER(gbl_sup_map_in.buyer)) AS buyer,
     TRIM(LOWER(gbl_sup_map_in.supplier)) AS supplier,
-    gbl_sup_map_in.suppliername_dw
+    gbl_sup_map_in.suppliername_dw,
   FROM
     db_common${region}.global_supplier_mapping AS gbl_sup_map_in ),
 job_posting_data as (

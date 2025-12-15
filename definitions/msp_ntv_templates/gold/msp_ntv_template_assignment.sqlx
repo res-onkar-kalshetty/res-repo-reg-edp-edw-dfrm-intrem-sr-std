@@ -210,12 +210,14 @@ cand.buyer
         AND cand.cand_id = status_dates.cand_id
         AND status_dates.activity_status IN ('interview_1','interview_2')) AS cand_first_interviewed_date
 
+
 -- cand_last_interview_date
 ,(SELECT MAX(status_datetime)
     FROM status_dates
     WHERE cand.req_id = status_dates.req_id
         AND cand.cand_id = status_dates.cand_id
         AND status_dates.activity_status IN ('interview_1','interview_2')) AS cand_last_interviewed_date
+
 
 ,(SELECT MAX(updated_ts)
     FROM status_dates
@@ -244,12 +246,12 @@ QUALIFY ROW_NUMBER() OVER (partition by cand.req_id, cand.cand_id order by cand_
   savings.currency AS rsr_savings_currency,
   savings.perm_recruitment_fee_fixed,
   savings.rehire_onboarding_hours,
-   CASE
+   CASE 
       WHEN IFNULL(global_state_mapping.rsr_state, '') <> '' THEN global_state_mapping.rsr_state
       WHEN IFNULL(asg.state_province, '') = '' THEN 'Undisclosed'
       ELSE 'Unmapped'
     END AS rsr_state,
-     CASE
+     CASE 
       WHEN IFNULL(gcr.rsr_country, '') <> '' THEN gcr.rsr_country
       WHEN IFNULL(asg.country, '') = '' THEN 'Undisclosed'
       ELSE 'Unmapped'
@@ -260,6 +262,7 @@ QUALIFY ROW_NUMBER() OVER (partition by cand.req_id, cand.cand_id order by cand_
     LEFT JOIN db_common${region}.global_state_mapping AS global_state_mapping ON asg.state_province = global_state_mapping.vms_state
     LEFT JOIN db_common${region}.global_countries gcr on lower(asg.country) = lower(gcr.country)
     where asg.last_assignment_in_chain = 1 -- netive specific FILTER which picks the latest revision of the ASSIGNMENT
+    
 
 ), worker AS (
     SELECT
@@ -391,7 +394,7 @@ SELECT
     -- gcr.rsr_country,
    assign.rsr_country,
     -- gcr.rsr_region,
-    CASE
+    CASE 
       WHEN IFNULL(gcr.rsr_region, '') <> '' THEN gcr.rsr_region
       WHEN IFNULL(assign.country, '') = '' THEN 'Undisclosed'
       ELSE 'Unmapped'
@@ -399,13 +402,13 @@ SELECT
     global_supp_map.suppliername_dw AS rsr_supplier,
     req.rsr_labor_type,
     -- IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') as rsr_assignment_close_reason,
-    CASE
+    CASE 
       WHEN IFNULL(global_wo_term_reason.termination_reason_DW, '') <> '' THEN global_wo_term_reason.termination_reason_DW
       WHEN IFNULL(worker.worker_close_reason, '') = '' THEN 'Undisclosed'
       ELSE 'Unmapped'
     END AS rsr_assignment_close_reason,
     -- IFNULL(global_wo_term_reason.termination_close_rating_DW, 'NULL') AS rsr_assignment_close_rating,
-    CASE
+    CASE 
       WHEN IFNULL(global_wo_term_reason.termination_close_rating_DW, '') <> '' THEN global_wo_term_reason.termination_close_rating_DW
       WHEN IFNULL(worker.worker_close_reason, '') = '' THEN 'Undisclosed'
       ELSE 'Unmapped'
@@ -413,7 +416,7 @@ SELECT
 	assign.sourcing_type_wo,
 	assign.sourcing_type_wo as sourcing_type_wk,
     -- global_sourcing_type_wo.sourced_type_assignment as sourcing_type_wk_mapped,
-    CASE
+    CASE 
       WHEN IFNULL(assign.sourcing_type_wo, '') = '' THEN 'Undisclosed'
       WHEN IFNULL(global_sourcing_type_wo.sourced_type_assignment, '') <> '' THEN global_sourcing_type_wo.sourced_type_assignment
       ELSE 'Unmapped'
@@ -578,42 +581,42 @@ assign.assignment_original_end_date,
 
   CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%'
  THEN assign.perm_recruitment_fee_fixed
-  ELSE CAST(NULL AS FLOAT64)
+  ELSE CAST(NULL AS FLOAT64) 
   END as perm_recruitment_fee_savings,
    CASE
-      WHEN assign.rsr_savings_currency = 'USD' THEN
+      WHEN assign.rsr_savings_currency = 'USD' THEN 
         (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END)
       ELSE (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END) * fx_usd_savings.fx_rate
     END AS perm_recruitment_fee_savings_in_usd,
     CASE
-      WHEN assign.rsr_savings_currency = 'EUR' THEN
+      WHEN assign.rsr_savings_currency = 'EUR' THEN 
         (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END)
       ELSE (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END) * fx_eur_savings.fx_rate
     END AS perm_recruitment_fee_savings_in_eur,
     CASE
-      WHEN assign.rsr_savings_currency = 'GBP' THEN
+      WHEN assign.rsr_savings_currency = 'GBP' THEN 
         (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END)
       ELSE (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END) * fx_gbp_savings.fx_rate
     END AS perm_recruitment_fee_savings_in_gbp,
     CASE
-      WHEN assign.rsr_savings_currency = 'INR' THEN
+      WHEN assign.rsr_savings_currency = 'INR' THEN 
         (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END)
       ELSE (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END) * fx_inr_savings.fx_rate
     END AS perm_recruitment_fee_savings_in_inr,
     CASE
-      WHEN assign.rsr_savings_currency = 'CAD' THEN
+      WHEN assign.rsr_savings_currency = 'CAD' THEN 
         (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END)
       ELSE (CASE WHEN IFNULL(global_wo_term_reason.termination_reason_DW, 'NULL') LIKE '%%Converted to FTE%%' THEN assign.perm_recruitment_fee_fixed END) * fx_cad_savings.fx_rate
     END AS perm_recruitment_fee_savings_in_cad,
 
    CASE
-    WHEN (worker.worker_start_date IS NOT NULL AND assign.assignment_original_start_date IS NOT NULL AND worker.worker_start_date < assign.assignment_original_start_date AND req.rsr_sourced_type NOT LIKE '%%Administrative%%') THEN
-    (assign.rehire_onboarding_hours * assign_v0_rates.bill_rate_st_hr_initial)
+    WHEN (worker.worker_start_date IS NOT NULL AND assign.assignment_original_start_date IS NOT NULL AND worker.worker_start_date < assign.assignment_original_start_date AND req.rsr_sourced_type NOT LIKE '%%Administrative%%') THEN 
+    (assign.rehire_onboarding_hours * assign_v0_rates.bill_rate_st_hr_initial) 
     ELSE CAST(NULL AS FLOAT64) END
     as rehire_onboarding_savings,
 
   CASE
-    WHEN (worker.worker_start_date IS NOT NULL AND assign.assignment_original_start_date IS NOT NULL AND worker.worker_start_date < assign.assignment_original_start_date AND req.rsr_sourced_type NOT LIKE '%%Administrative%%') THEN
+    WHEN (worker.worker_start_date IS NOT NULL AND assign.assignment_original_start_date IS NOT NULL AND worker.worker_start_date < assign.assignment_original_start_date AND req.rsr_sourced_type NOT LIKE '%%Administrative%%') THEN 
         CASE
           WHEN assign.rsr_savings_currency = 'USD' THEN (assign.rehire_onboarding_hours * assign_v0_rates.bill_rate_st_hr_initial)
           ELSE (assign.rehire_onboarding_hours * assign_v0_rates.bill_rate_st_hr_initial) * fx_usd_savings.fx_rate
@@ -647,7 +650,7 @@ assign.assignment_original_end_date,
           ELSE (assign.rehire_onboarding_hours * assign_v0_rates.bill_rate_st_hr_initial) * fx_eur_savings.fx_rate
         END
     END AS rehire_onboarding_savings_in_eur,
-
+	
 assign.rsr_staffing_entity, -- winter_release 2025
 norm_jt.suppressed_title,
 norm_jt.pii_found,
@@ -685,6 +688,10 @@ norm_loc.location_level_7,
 norm_loc.location_level_8,
 norm_loc.location_level_1a,
 norm_loc.location_level_2a
+
+
+
+
 
   FROM
     asg_asg_v0 AS assign

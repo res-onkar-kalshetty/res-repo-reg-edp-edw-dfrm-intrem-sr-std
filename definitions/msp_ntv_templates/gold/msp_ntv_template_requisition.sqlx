@@ -103,7 +103,7 @@ SELECT
 END
   AS max_template_bill_rate_st_hr,
 FROM
-  ${slvr_dataset}.%s req_temp_in
+  `${slvr_dataset}.%s` req_temp_in
 LEFT JOIN
   `${slvr_dataset}.%s` req_in
 ON
@@ -114,7 +114,7 @@ SELECT
   buyer_code,
   main_document_id
 FROM
-  ${slvr_dataset}.%s
+  `${slvr_dataset}.%s`
 WHERE
   last_assignment_in_chain = 1 -- netive specific FILTER which picks the latest revision OF the ASSIGNMENT
 GROUP BY
@@ -132,7 +132,7 @@ SELECT
   buyer_code,
   req_id
 FROM
-  ${slvr_dataset}.%s
+  `${slvr_dataset}.%s`
 GROUP BY
   buyer_code,
   req_id )

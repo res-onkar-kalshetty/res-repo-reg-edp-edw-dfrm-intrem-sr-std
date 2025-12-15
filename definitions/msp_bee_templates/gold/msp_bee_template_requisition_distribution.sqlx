@@ -84,7 +84,7 @@ CREATE OR REPLACE TABLE
     wo_in.assignment_id,
     wo_in.assignment_create_date_initial
   FROM
-    %s.%s AS wo_in ),
+   %s.%s AS wo_in ),
   aggregates_wo_wsupp AS (
   SELECT
     wo_data.buyer,

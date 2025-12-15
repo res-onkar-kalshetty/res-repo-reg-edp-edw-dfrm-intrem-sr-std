@@ -55,7 +55,7 @@ SET
 SET 
   slvr_ph1_c = 'v_' || ${slvr_ph1_c};
 SET
-  slvr_ph2_c = 'v_' || ${slvr_ph2_c};\
+  slvr_ph2_c = 'v_' || ${slvr_ph2_c};
 
 SET candidate_table_id="stdrv_candidate_" || '${dataform.projectConfig.vars.client_code}';
 

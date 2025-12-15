@@ -100,9 +100,48 @@ with js_assingment_data as (select
 				,js_in.cand_code
 				,js_in.msp_code
 				,js_in.msp_company
-				,js_in.presented_bill_rate_st_hr
-				,js_in.presented_bill_rate_supplier_st_hr
-				,js_in.presented_pay_rate_st_hr
+				,CASE
+                    WHEN NULLIF(js_in.presented_bill_rate_st_hr, 0) IS NOT NULL
+                    THEN js_in.presented_bill_rate_st_hr
+                    WHEN NULLIF(js_in.presented_bill_rate_st_day, 0) IS NOT NULL
+                         AND NULLIF(req.hours_per_day, 0) IS NOT NULL
+                    THEN js_in.presented_bill_rate_st_day / req.hours_per_day
+                    WHEN NULLIF(js_in.presented_bill_rate_st_week, 0) IS NOT NULL
+                         AND NULLIF(req.hours_per_week, 0) IS NOT NULL
+                    THEN js_in.presented_bill_rate_st_week / req.hours_per_week
+                    WHEN NULLIF(js_in.presented_bill_rate_st_month, 0) IS NOT NULL
+                         AND NULLIF(req.hours_per_week, 0) IS NOT NULL
+                    THEN (js_in.presented_bill_rate_st_month / 4.33) / req.hours_per_week
+                    ELSE CAST(NULL AS NUMERIC)
+                END AS presented_bill_rate_st_hr,
+				CASE
+                    WHEN NULLIF(js_in.presented_bill_rate_supplier_st_hr, 0) IS NOT NULL
+                    THEN js_in.presented_bill_rate_supplier_st_hr
+                    WHEN NULLIF(js_in.presented_bill_rate_supplier_st_day, 0) IS NOT NULL
+                         AND NULLIF(req.hours_per_day, 0) IS NOT NULL
+                    THEN js_in.presented_bill_rate_supplier_st_day / req.hours_per_day
+                    WHEN NULLIF(js_in.presented_bill_rate_supplier_st_week, 0) IS NOT NULL
+                         AND NULLIF(req.hours_per_week, 0) IS NOT NULL
+                    THEN js_in.presented_bill_rate_supplier_st_week / req.hours_per_week
+                    WHEN NULLIF(js_in.presented_bill_rate_supplier_st_month, 0) IS NOT NULL
+                         AND NULLIF(req.hours_per_week, 0) IS NOT NULL
+                    THEN (js_in.presented_bill_rate_supplier_st_month / 4.33) / req.hours_per_week
+                    ELSE CAST(NULL AS NUMERIC)
+                END AS presented_bill_rate_supplier_st_hr,
+			    CASE
+                    WHEN NULLIF(js_in.presented_pay_rate_st_hr, 0) IS NOT NULL
+                    THEN js_in.presented_pay_rate_st_hr
+                    WHEN NULLIF(js_in.presented_pay_rate_st_day, 0) IS NOT NULL
+                         AND NULLIF(req.hours_per_day, 0) IS NOT NULL
+                    THEN js_in.presented_pay_rate_st_day / req.hours_per_day
+                    WHEN NULLIF(js_in.presented_pay_rate_st_week, 0) IS NOT NULL
+                         AND NULLIF(req.hours_per_week, 0) IS NOT NULL
+                    THEN js_in.presented_pay_rate_st_week / req.hours_per_week
+                    WHEN NULLIF(js_in.presented_pay_rate_st_month, 0) IS NOT NULL
+                         AND NULLIF(req.hours_per_week, 0) IS NOT NULL
+                    THEN (js_in.presented_pay_rate_st_month / 4.33) / req.hours_per_week
+                    ELSE CAST(NULL AS NUMERIC)
+                END AS presented_pay_rate_st_hr
 				,js_in.supplier_code
 				,js_in.uploaded
 				,assingment_in.assignment_create_date_initial
@@ -113,48 +152,44 @@ with js_assingment_data as (select
 				,js_in.updated_ts as rsr_processed_date
 				,js_in.rsr_staffing_entity -- winter_release 2025
 				,assingment_in.worker_start_date
+                ,req.req_title
+                ,req.req_type
+                ,req.max_requested_bill_rate_st_hr
+                ,req.max_requested_pay_rate_st_hr
+                ,req.min_requested_bill_rate_st_hr
+                ,req.min_requested_pay_rate_st_hr
+                ,req.labor_type
+                ,req.req_status
+                ,req.site as req_site
+                ,req.site_code as req_site_code
+                ,req.location AS req_location
+                ,req.city as req_city
+                ,req.state_province as req_state_province
+                ,req.country as req_country
+                ,req.req_approved_date
+                ,req.req_closed_date
+                ,req.req_create_date
+                ,req.req_end_date
+                ,req.req_submitted_date
+                ,req.req_coordinator_name
+                ,req.positions_requested_cnt
+                ,req.rsr_state
+                ,req.rsr_country
+                ,req.rsr_labor_type
+                ,req.rsr_region
+                ,req.business_unit_code
+                ,req.business_unit
+                ,req.currency as req_currency --null as req_currency
+                ,req.hours_per_day
+                ,req.hours_per_week
+                ,req.max_template_bill_rate_st_hr
+                ,req.rsr_req_status
+                ,req.primary_cost_center
+                ,req.rsr_sourced_type
 				from ${slvr_dataset}.%s js_in
 				left join %s.%s assingment_in  
-				ON js_in.buyer = assingment_in.buyer AND js_in.cand_id= assingment_in.cand_id and js_in.req_id = assingment_in.main_document_id)
-,req_data AS (SELECT
-buyer
-,buyer_code
-,req_id
-,req_title
-,req_type
-,max_requested_bill_rate_st_hr
-,max_requested_pay_rate_st_hr
-,min_requested_bill_rate_st_hr
-,min_requested_pay_rate_st_hr
-,labor_type
-,req_status
-,site as req_site
-,site_code as req_site_code
-,location AS req_location
-,city as req_city
-,state_province as req_state_province
-,country as req_country
-,req_approved_date
-,req_closed_date
-,req_create_date
-,req_end_date
-,req_submitted_date
-,req_coordinator_name
-,positions_requested_cnt
-,rsr_state
-,rsr_country
-,rsr_labor_type
-,rsr_region
-,business_unit_code
-,business_unit
-,currency as req_currency --null as req_currency
-,hours_per_day
-,hours_per_week
-,max_template_bill_rate_st_hr
-,rsr_req_status
-,primary_cost_center
-,rsr_sourced_type
-FROM %s.%s )
+				ON js_in.buyer = assingment_in.buyer AND js_in.cand_id= assingment_in.cand_id and js_in.req_id = assingment_in.main_document_id
+				LEFT JOIN %s.%s AS req ON js_in.buyer=req.buyer and js_in.req_id=req.req_id)
 ,fx_rates AS (
   SELECT
       CAST(fx_rate AS FLOAT64) AS fx_rate,
@@ -174,192 +209,192 @@ FROM %s.%s )
 )
 
 SELECT
-candidate_assingment.buyer
-,candidate_assingment.buyer_code
-,candidate_assingment.req_id
-,candidate_assingment.cand_id
-,candidate_assingment.cand_name
-,candidate_assingment.supplier
-,candidate_assingment.cand_status
-,candidate_assingment.cand_submit_date
-,candidate_assingment.withdrawn_reason
-,candidate_assingment.rejected_reason
-,req.business_unit_code
-,req.business_unit
-,candidate_assingment.currency
-,req.req_currency
-,candidate_assingment.cand_available_date
-,candidate_assingment.cand_buyer_first_viewed_date
-,candidate_assingment.cand_first_interviewed_date
-,candidate_assingment.cand_first_submitted_date
-,candidate_assingment.cand_last_interviewed_date
-,candidate_assingment.cand_last_modified_date
-,candidate_assingment.cand_rejected_date
-,candidate_assingment.cand_shortlisted_date
-,candidate_assingment.cand_unshortlisted_date
-,candidate_assingment.cand_withdrawn_date
-,candidate_assingment.assignment_activation_date
-,candidate_assingment.cand_offer_accepted_date
-,candidate_assingment.cand_offer_extended_date
-,candidate_assingment.location
-,candidate_assingment.site_code
-,candidate_assingment.site
-,candidate_assingment.cand_code
-,candidate_assingment.msp_code
-,candidate_assingment.msp_company
-,req.hours_per_day
-,req.hours_per_week
-,candidate_assingment.presented_bill_rate_st_hr
-,candidate_assingment.presented_bill_rate_supplier_st_hr
-,candidate_assingment.presented_pay_rate_st_hr
-,candidate_assingment.supplier_code
-,candidate_assingment.uploaded
-,req.primary_cost_center
+candidate_assingment_req.buyer
+,candidate_assingment_req.buyer_code
+,candidate_assingment_req.req_id
+,candidate_assingment_req.cand_id
+,candidate_assingment_req.cand_name
+,candidate_assingment_req.supplier
+,candidate_assingment_req.cand_status
+,candidate_assingment_req.cand_submit_date
+,candidate_assingment_req.withdrawn_reason
+,candidate_assingment_req.rejected_reason
+,candidate_assingment_req.business_unit_code
+,candidate_assingment_req.business_unit
+,candidate_assingment_req.currency
+,candidate_assingment_req.req_currency
+,candidate_assingment_req.cand_available_date
+,candidate_assingment_req.cand_buyer_first_viewed_date
+,candidate_assingment_req.cand_first_interviewed_date
+,candidate_assingment_req.cand_first_submitted_date
+,candidate_assingment_req.cand_last_interviewed_date
+,candidate_assingment_req.cand_last_modified_date
+,candidate_assingment_req.cand_rejected_date
+,candidate_assingment_req.cand_shortlisted_date
+,candidate_assingment_req.cand_unshortlisted_date
+,candidate_assingment_req.cand_withdrawn_date
+,candidate_assingment_req.assignment_activation_date
+,candidate_assingment_req.cand_offer_accepted_date
+,candidate_assingment_req.cand_offer_extended_date
+,candidate_assingment_req.location
+,candidate_assingment_req.site_code
+,candidate_assingment_req.site
+,candidate_assingment_req.cand_code
+,candidate_assingment_req.msp_code
+,candidate_assingment_req.msp_company
+,candidate_assingment_req.hours_per_day
+,candidate_assingment_req.hours_per_week
+,candidate_assingment_req.presented_bill_rate_st_hr
+,candidate_assingment_req.presented_bill_rate_supplier_st_hr
+,candidate_assingment_req.presented_pay_rate_st_hr
+,candidate_assingment_req.supplier_code
+,candidate_assingment_req.uploaded
+,candidate_assingment_req.primary_cost_center
 ,CASE
-	WHEN candidate_assingment.currency = 'USD' 
-		THEN ROUND(candidate_assingment.presented_bill_rate_st_hr, 4)
-	ELSE ROUND((fx_usd.fx_rate * candidate_assingment.presented_bill_rate_st_hr), 4)
+	WHEN candidate_assingment_req.currency = 'USD' 
+		THEN ROUND(candidate_assingment_req.presented_bill_rate_st_hr, 4)
+	ELSE ROUND((fx_usd.fx_rate * candidate_assingment_req.presented_bill_rate_st_hr), 4)
 END AS presented_bill_rate_st_hr_usd
 ,CASE
-	WHEN candidate_assingment.currency = 'USD' 
-		THEN ROUND( candidate_assingment.presented_bill_rate_supplier_st_hr, 4)
-	ELSE ROUND((fx_usd.fx_rate * candidate_assingment.presented_bill_rate_supplier_st_hr), 4)
+	WHEN candidate_assingment_req.currency = 'USD' 
+		THEN ROUND( candidate_assingment_req.presented_bill_rate_supplier_st_hr, 4)
+	ELSE ROUND((fx_usd.fx_rate * candidate_assingment_req.presented_bill_rate_supplier_st_hr), 4)
 END AS supplier_presented_bill_rate_st_hr_usd
 ,CASE
-	WHEN candidate_assingment.currency  = 'USD' 
-		THEN ROUND(candidate_assingment.presented_pay_rate_st_hr, 4)
-	ELSE ROUND((fx_usd.fx_rate * candidate_assingment.presented_pay_rate_st_hr), 4)
+	WHEN candidate_assingment_req.currency  = 'USD' 
+		THEN ROUND(candidate_assingment_req.presented_pay_rate_st_hr, 4)
+	ELSE ROUND((fx_usd.fx_rate * candidate_assingment_req.presented_pay_rate_st_hr), 4)
 END AS presented_pay_rate_st_hr_usd
 ,CASE
-	WHEN candidate_assingment.currency  = 'EUR' 
-		THEN ROUND(candidate_assingment.presented_bill_rate_st_hr, 4)
-	ELSE ROUND((fx_eur.fx_rate * candidate_assingment.presented_bill_rate_st_hr), 4)
+	WHEN candidate_assingment_req.currency  = 'EUR' 
+		THEN ROUND(candidate_assingment_req.presented_bill_rate_st_hr, 4)
+	ELSE ROUND((fx_eur.fx_rate * candidate_assingment_req.presented_bill_rate_st_hr), 4)
 END AS presented_bill_rate_st_hr_eur 
 ,CASE
-	WHEN candidate_assingment.currency  = 'EUR' 
-		THEN ROUND( candidate_assingment.presented_bill_rate_supplier_st_hr, 4)
-	ELSE ROUND((fx_eur.fx_rate * candidate_assingment.presented_bill_rate_supplier_st_hr), 4)
+	WHEN candidate_assingment_req.currency  = 'EUR' 
+		THEN ROUND( candidate_assingment_req.presented_bill_rate_supplier_st_hr, 4)
+	ELSE ROUND((fx_eur.fx_rate * candidate_assingment_req.presented_bill_rate_supplier_st_hr), 4)
 END AS supplier_presented_bill_rate_st_hr_eur
 ,CASE
-	WHEN candidate_assingment.currency = 'EUR' 
-		THEN ROUND(candidate_assingment.presented_pay_rate_st_hr, 4)
-	ELSE ROUND((fx_eur.fx_rate * candidate_assingment.presented_pay_rate_st_hr), 4)
+	WHEN candidate_assingment_req.currency = 'EUR' 
+		THEN ROUND(candidate_assingment_req.presented_pay_rate_st_hr, 4)
+	ELSE ROUND((fx_eur.fx_rate * candidate_assingment_req.presented_pay_rate_st_hr), 4)
 END AS presented_pay_rate_st_hr_eur
 ,CASE
-	WHEN candidate_assingment.currency = 'GBP' 
-		THEN ROUND(candidate_assingment.presented_bill_rate_st_hr, 4)
-	ELSE ROUND((fx_gbp.fx_rate * candidate_assingment.presented_bill_rate_st_hr), 4)
+	WHEN candidate_assingment_req.currency = 'GBP' 
+		THEN ROUND(candidate_assingment_req.presented_bill_rate_st_hr, 4)
+	ELSE ROUND((fx_gbp.fx_rate * candidate_assingment_req.presented_bill_rate_st_hr), 4)
 END AS presented_bill_rate_st_hr_gbp
 ,CASE
-	WHEN candidate_assingment.currency  = 'GBP' 
-		THEN ROUND( candidate_assingment.presented_bill_rate_supplier_st_hr, 4)
-	ELSE ROUND((fx_gbp.fx_rate * candidate_assingment.presented_bill_rate_supplier_st_hr), 4)
+	WHEN candidate_assingment_req.currency  = 'GBP' 
+		THEN ROUND( candidate_assingment_req.presented_bill_rate_supplier_st_hr, 4)
+	ELSE ROUND((fx_gbp.fx_rate * candidate_assingment_req.presented_bill_rate_supplier_st_hr), 4)
 END AS supplier_presented_bill_rate_st_hr_gbp
 ,CASE
-	WHEN candidate_assingment.currency  = 'GBP' 
-		THEN ROUND(candidate_assingment.presented_pay_rate_st_hr, 4)
-	ELSE ROUND((fx_gbp.fx_rate * candidate_assingment.presented_pay_rate_st_hr), 4)
+	WHEN candidate_assingment_req.currency  = 'GBP' 
+		THEN ROUND(candidate_assingment_req.presented_pay_rate_st_hr, 4)
+	ELSE ROUND((fx_gbp.fx_rate * candidate_assingment_req.presented_pay_rate_st_hr), 4)
 END AS presented_pay_rate_st_hr_gbp
 ,CASE
-	WHEN candidate_assingment.currency = 'INR' 
-		THEN ROUND(candidate_assingment.presented_bill_rate_st_hr, 4)
-	ELSE ROUND((fx_inr.fx_rate * candidate_assingment.presented_bill_rate_st_hr), 4)
+	WHEN candidate_assingment_req.currency = 'INR' 
+		THEN ROUND(candidate_assingment_req.presented_bill_rate_st_hr, 4)
+	ELSE ROUND((fx_inr.fx_rate * candidate_assingment_req.presented_bill_rate_st_hr), 4)
 END AS presented_bill_rate_st_hr_inr
 ,CASE
-	WHEN candidate_assingment.currency = 'INR' 
-		THEN ROUND(candidate_assingment.presented_bill_rate_supplier_st_hr, 4)
-	ELSE ROUND((fx_inr.fx_rate * candidate_assingment.presented_bill_rate_supplier_st_hr), 4)
+	WHEN candidate_assingment_req.currency = 'INR' 
+		THEN ROUND(candidate_assingment_req.presented_bill_rate_supplier_st_hr, 4)
+	ELSE ROUND((fx_inr.fx_rate * candidate_assingment_req.presented_bill_rate_supplier_st_hr), 4)
 END AS supplier_presented_bill_rate_st_hr_inr
 ,CASE
-	WHEN candidate_assingment.currency = 'INR' 
-		THEN ROUND( candidate_assingment.presented_pay_rate_st_hr, 4)
-	ELSE ROUND((fx_inr.fx_rate * candidate_assingment.presented_pay_rate_st_hr), 4)
+	WHEN candidate_assingment_req.currency = 'INR' 
+		THEN ROUND( candidate_assingment_req.presented_pay_rate_st_hr, 4)
+	ELSE ROUND((fx_inr.fx_rate * candidate_assingment_req.presented_pay_rate_st_hr), 4)
 END AS presented_pay_rate_st_hr_inr
 ,CASE
-	WHEN candidate_assingment.currency = 'CAD' 
-		THEN ROUND( candidate_assingment.presented_bill_rate_st_hr, 4)
-	ELSE ROUND((fx_cad.fx_rate * candidate_assingment.presented_bill_rate_st_hr), 4)
+	WHEN candidate_assingment_req.currency = 'CAD' 
+		THEN ROUND( candidate_assingment_req.presented_bill_rate_st_hr, 4)
+	ELSE ROUND((fx_cad.fx_rate * candidate_assingment_req.presented_bill_rate_st_hr), 4)
 END AS presented_bill_rate_st_hr_cad
 ,CASE
-	WHEN candidate_assingment.currency = 'CAD' 
-		THEN ROUND(  candidate_assingment.presented_bill_rate_supplier_st_hr, 4)
-	ELSE ROUND((fx_cad.fx_rate * candidate_assingment.presented_bill_rate_supplier_st_hr), 4)
+	WHEN candidate_assingment_req.currency = 'CAD' 
+		THEN ROUND(  candidate_assingment_req.presented_bill_rate_supplier_st_hr, 4)
+	ELSE ROUND((fx_cad.fx_rate * candidate_assingment_req.presented_bill_rate_supplier_st_hr), 4)
 END AS supplier_presented_bill_rate_st_hr_cad
 ,CASE
-	WHEN candidate_assingment.currency = 'CAD' 
-		THEN ROUND(candidate_assingment.presented_pay_rate_st_hr, 4)
-	ELSE ROUND((fx_cad.fx_rate * candidate_assingment.presented_pay_rate_st_hr), 4)
+	WHEN candidate_assingment_req.currency = 'CAD' 
+		THEN ROUND(candidate_assingment_req.presented_pay_rate_st_hr, 4)
+	ELSE ROUND((fx_cad.fx_rate * candidate_assingment_req.presented_pay_rate_st_hr), 4)
 END AS presented_pay_rate_st_hr_cad
 ,PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date) AS control
 ,CASE
-    WHEN req.rsr_country='United States of America' THEN div_supp.primary_diversity_type
+    WHEN candidate_assingment_req.rsr_country='United States of America' THEN div_supp.primary_diversity_type
     ELSE CAST(NULL AS STRING)
 END AS supplier_primary_diversity_type
 ,CASE
-    WHEN req.rsr_country='United States of America' THEN div_supp.small_business
+    WHEN candidate_assingment_req.rsr_country='United States of America' THEN div_supp.small_business
     ELSE CAST(NULL AS STRING)
 END AS supplier_small_business
 ,CASE
-    WHEN req.rsr_country='United States of America' THEN div_supp.diverse_and_small
+    WHEN candidate_assingment_req.rsr_country='United States of America' THEN div_supp.diverse_and_small
     ELSE CAST(NULL AS STRING)
 END AS supplier_diverse_small
 ,CASE
-    WHEN req.rsr_country='United States of America' THEN div_supp.supplier_id_erp
+    WHEN candidate_assingment_req.rsr_country='United States of America' THEN div_supp.supplier_id_erp
     ELSE CAST(NULL AS STRING)
 END AS supplier_erp_id
-,candidate_assingment.assignment_create_date_initial
-,candidate_assingment.assignment_activation_date_initial
-,req.req_title
-,req.req_type
-,req.max_requested_bill_rate_st_hr
-,req.max_requested_pay_rate_st_hr
-,req.min_requested_bill_rate_st_hr
-,req.min_requested_pay_rate_st_hr
-,req.labor_type
-,req.req_status
-,req.req_site
-,req.req_site_code
-,req.req_location
-,req.req_city
-,req.req_state_province
-,req.req_country
-,req.req_approved_date
-,req.req_closed_date
-,req.req_create_date
-,req.req_end_date
-,req.req_submitted_date
-,req.req_coordinator_name
-,req.positions_requested_cnt
-,candidate_assingment.sourcing_type_wk_mapped
-,candidate_assingment.sourcing_type_wo_mapped
-,req.max_template_bill_rate_st_hr
+,candidate_assingment_req.assignment_create_date_initial
+,candidate_assingment_req.assignment_activation_date_initial
+,candidate_assingment_req.req_title
+,candidate_assingment_req.req_type
+,candidate_assingment_req.max_requested_bill_rate_st_hr
+,candidate_assingment_req.max_requested_pay_rate_st_hr
+,candidate_assingment_req.min_requested_bill_rate_st_hr
+,candidate_assingment_req.min_requested_pay_rate_st_hr
+,candidate_assingment_req.labor_type
+,candidate_assingment_req.req_status
+,candidate_assingment_req.req_site
+,candidate_assingment_req.req_site_code
+,candidate_assingment_req.req_location
+,candidate_assingment_req.req_city
+,candidate_assingment_req.req_state_province
+,candidate_assingment_req.req_country
+,candidate_assingment_req.req_approved_date
+,candidate_assingment_req.req_closed_date
+,candidate_assingment_req.req_create_date
+,candidate_assingment_req.req_end_date
+,candidate_assingment_req.req_submitted_date
+,candidate_assingment_req.req_coordinator_name
+,candidate_assingment_req.positions_requested_cnt
+,candidate_assingment_req.sourcing_type_wk_mapped
+,candidate_assingment_req.sourcing_type_wo_mapped
+,candidate_assingment_req.max_template_bill_rate_st_hr
 ,(CASE 
-	WHEN req.max_template_bill_rate_st_hr >= candidate_assingment.presented_bill_rate_supplier_st_hr THEN 'Compliant'
+	WHEN candidate_assingment_req.max_template_bill_rate_st_hr >= candidate_assingment_req.presented_bill_rate_supplier_st_hr THEN 'Compliant'
 	ELSE 
 		CASE
-            WHEN candidate_assingment.presented_bill_rate_supplier_st_hr <  (CAST('1.15' AS NUMERIC) * req.max_template_bill_rate_st_hr) THEN 'Non-Compliant - Under 115%% Max Bill Rate'
+            WHEN candidate_assingment_req.presented_bill_rate_supplier_st_hr <  (CAST('1.15' AS NUMERIC) * candidate_assingment_req.max_template_bill_rate_st_hr) THEN 'Non-Compliant - Under 115%% Max Bill Rate'
             ELSE 'Non-Compliant - Over 115%% Max Bill Rate'
         END
 end) AS compliance_vs_max_template_bill_rate
-,req.rsr_state
-,req.rsr_country
-,req.rsr_region
-,req.rsr_labor_type
+,candidate_assingment_req.rsr_state
+,candidate_assingment_req.rsr_country
+,candidate_assingment_req.rsr_region
+,candidate_assingment_req.rsr_labor_type
 ,global_supp_map.suppliername_dw AS rsr_supplier
-,req.rsr_req_status
-,ifnull(req.rsr_sourced_type,'Recruited') as rsr_sourced_type
+,candidate_assingment_req.rsr_req_status
+,ifnull(candidate_assingment_req.rsr_sourced_type,'Recruited') as rsr_sourced_type
 ,IFNULL(global_js_status_mapping.submittal_status_dw, NULL) AS rsr_cand_status 
-,CAST(Function_library${region}.f_calendarday(req.req_approved_date, candidate_assingment.cand_submit_date) AS INT64) as approved_to_submit_cd
-,ROUND(Function_library${region}.f_workday(req.req_approved_date, candidate_assingment.cand_submit_date), 4)AS approved_to_submit_bd
-,CAST(Function_library${region}.f_calendarday( candidate_assingment.cand_submit_date,candidate_assingment.cand_shortlisted_date) AS INT64) as submit_to_shortlist_cd
-,ROUND(Function_library${region}.f_workday(candidate_assingment.cand_submit_date,candidate_assingment.cand_shortlisted_date), 4)AS submit_to_shortlist_bd
+,CAST(Function_library${region}.f_calendarday(candidate_assingment_req.req_approved_date, candidate_assingment_req.cand_submit_date) AS INT64) as approved_to_submit_cd
+,ROUND(Function_library${region}.f_workday(candidate_assingment_req.req_approved_date, candidate_assingment_req.cand_submit_date), 4)AS approved_to_submit_bd
+,CAST(Function_library${region}.f_calendarday( candidate_assingment_req.cand_submit_date,candidate_assingment_req.cand_shortlisted_date) AS INT64) as submit_to_shortlist_cd
+,ROUND(Function_library${region}.f_workday(candidate_assingment_req.cand_submit_date,candidate_assingment_req.cand_shortlisted_date), 4)AS submit_to_shortlist_bd
 ,'${dataform.projectConfig.vars.client_code}' as rsr_client_code
 ,CURRENT_DATE() as current_date
-,candidate_assingment.rsr_processed_date
+,candidate_assingment_req.rsr_processed_date
 ,CAST(NULL AS STRING) AS preferred_supplier_status
 ,req_dist_data.min_req_dist_date AS req_distribution_date
-,candidate_assingment.rsr_staffing_entity, -- winter_release 2025
-candidate_assingment.worker_start_date,
+,candidate_assingment_req.rsr_staffing_entity, -- winter_release 2025
+candidate_assingment_req.worker_start_date,
 norm_jt.suppressed_title,
 norm_jt.pii_found,
 norm_jt.process_status,
@@ -396,21 +431,20 @@ norm_loc.location_level_7,
 norm_loc.location_level_8,
 norm_loc.location_level_1a,
 norm_loc.location_level_2a
-FROM js_assingment_data as candidate_assingment
-LEFT JOIN req_data as req ON candidate_assingment.buyer = req.buyer AND candidate_assingment.req_id= req.req_id
-LEFT JOIN req_dist_data ON candidate_assingment.buyer_code = req_dist_data.buyer_code AND candidate_assingment.supplier_code = req_dist_data.supplier_code AND candidate_assingment.req_id = req_dist_data.req_id
-LEFT JOIN db_common${region}.global_supplier_mapping AS global_supp_map ON candidate_assingment.buyer = global_supp_map.buyer AND candidate_assingment.supplier = global_supp_map.supplier
-LEFT JOIN db_common${region}.global_js_status AS global_js_status_mapping ON trim(lower(candidate_assingment.cand_status)) = trim(lower(global_js_status_mapping.job_seeker_status))
-LEFT JOIN db_common${region}.global_calendar_445 AS global_calendar_445 ON EXTRACT(DATE FROM Function_library${region}.max_array([candidate_assingment.cand_submit_date, candidate_assingment.assignment_activation_date_initial])) = PARSE_DATE("%%m/%%d/%%Y", global_calendar_445.day)
-LEFT JOIN fx_rates fx_usd ON candidate_assingment.currency = fx_usd.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_usd.month AND fx_usd.to_currency = 'USD'
-LEFT JOIN fx_rates fx_eur ON candidate_assingment.currency = fx_eur.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_eur.month AND fx_eur.to_currency = 'EUR'
-LEFT JOIN fx_rates fx_gbp ON candidate_assingment.currency = fx_gbp.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_gbp.month AND fx_gbp.to_currency = 'GBP'
-LEFT JOIN fx_rates fx_inr ON candidate_assingment.currency = fx_inr.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_inr.month AND fx_inr.to_currency = 'INR' 
-LEFT JOIN fx_rates fx_cad ON candidate_assingment.currency = fx_cad.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_cad.month AND fx_cad.to_currency = 'CAD'
-LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(candidate_assingment.buyer_code) AND div_supp.supplier_code=candidate_assingment.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(candidate_assingment.cand_submit_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(candidate_assingment.cand_submit_date AS DATE)) AS INTEGER)
-LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
-    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(req.req_city, '') = COALESCE(norm_loc.city, '') AND COALESCE(req.rsr_state, '') = COALESCE(norm_loc.state, '')
-  AND COALESCE(req.req_state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(req.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(req.req_country, '') = COALESCE(norm_loc.country_code, ''))
+FROM js_assingment_data as candidate_assingment_req
+LEFT JOIN req_dist_data ON candidate_assingment_req.buyer_code = req_dist_data.buyer_code AND candidate_assingment_req.supplier_code = req_dist_data.supplier_code AND candidate_assingment_req.req_id = req_dist_data.req_id
+LEFT JOIN db_common${region}.global_supplier_mapping AS global_supp_map ON candidate_assingment_req.buyer = global_supp_map.buyer AND candidate_assingment_req.supplier = global_supp_map.supplier
+LEFT JOIN db_common${region}.global_js_status AS global_js_status_mapping ON trim(lower(candidate_assingment_req.cand_status)) = trim(lower(global_js_status_mapping.job_seeker_status))
+LEFT JOIN db_common${region}.global_calendar_445 AS global_calendar_445 ON EXTRACT(DATE FROM Function_library${region}.max_array([candidate_assingment_req.cand_submit_date, candidate_assingment_req.assignment_activation_date_initial])) = PARSE_DATE("%%m/%%d/%%Y", global_calendar_445.day)
+LEFT JOIN fx_rates fx_usd ON candidate_assingment_req.currency = fx_usd.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_usd.month AND fx_usd.to_currency = 'USD'
+LEFT JOIN fx_rates fx_eur ON candidate_assingment_req.currency = fx_eur.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_eur.month AND fx_eur.to_currency = 'EUR'
+LEFT JOIN fx_rates fx_gbp ON candidate_assingment_req.currency = fx_gbp.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_gbp.month AND fx_gbp.to_currency = 'GBP'
+LEFT JOIN fx_rates fx_inr ON candidate_assingment_req.currency = fx_inr.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_inr.month AND fx_inr.to_currency = 'INR' 
+LEFT JOIN fx_rates fx_cad ON candidate_assingment_req.currency = fx_cad.from_currency AND PARSE_DATE('%%m/%%d/%%Y', global_calendar_445.calendar_reporting_month_date)=fx_cad.month AND fx_cad.to_currency = 'CAD'
+LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(candidate_assingment_req.buyer_code) AND div_supp.supplier_code=candidate_assingment_req.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(candidate_assingment_req.cand_submit_date AS DATE)) AS INTEGER)
+LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on candidate_assingment_req.req_title = norm_jt.raw_job_title
+    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(candidate_assingment_req.req_city, '') = COALESCE(norm_loc.city, '') AND COALESCE(candidate_assingment_req.rsr_state, '') = COALESCE(norm_loc.state, '')
+  AND COALESCE(candidate_assingment_req.req_state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(candidate_assingment_req.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(candidate_assingment_req.req_country, '') = COALESCE(norm_loc.country_code, ''))
 """, gold_dataset, candidate_table_id,
 slvr_cand,
  gold_dataset, assignment_table_id,

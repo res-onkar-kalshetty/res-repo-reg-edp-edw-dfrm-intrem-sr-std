@@ -67,6 +67,7 @@ SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.cl
 
 EXECUTE IMMEDIATE FORMAT("""
 CREATE OR REPLACE TABLE %s.%s AS (
+
 SELECT buyer
 ,buyer_code
 ,main_document_id
@@ -427,6 +428,9 @@ END AS tenure_discount_savings_in_inr
     WHEN UPPER(currency) = 'CAD' THEN CAST(tenure_discount_savings as FLOAT64)
     ELSE tenure_discount_savings * cad_fx_rate
 END AS tenure_discount_savings_in_cad
+
+#Winter_release 2025
+
 ,rsr_staffing_entity
 ,spend_business_unit
 ,spend_business_unit_code
@@ -550,6 +554,7 @@ WITH spend_data AS (
 	  req_asg_in.rsr_sourced_type,
 	  req_asg_in.max_template_bill_rate_st_hr,
 	  req_asg_in.reporting_date_ends,
+    #cost_savings 2024 Fall Release
     req_asg_in.assignment_start_date,
       req_asg_in.assignment_end_date,
       req_asg_in.assignment_original_start_date,
@@ -558,7 +563,7 @@ WITH spend_data AS (
   req_asg_in.main_document_title
     FROM
       %s.%s AS req_asg_in
-      
+
 )
 , gbl_sup_map AS (
   SELECT DISTINCT
@@ -576,6 +581,7 @@ WITH spend_data AS (
     FROM
       db_common${region}.global_fx_rates
 )
+  #cost_savings 2024 Fall Release
 ,assignment_by_req as (
   select max(bill_rate_st_hr_initial) as highest_assignment_bill_rate_st_hr_initial,
   main_document_id from reqs_assignment_data group by main_document_id
@@ -618,7 +624,7 @@ SELECT
     spend_data.msp_invoice_tax_adj_amt,
     spend_data.supplier_bill_rate_st_hr,
     spend_data.bill_rate_st_hr,
-    spend_data.pay_rate_st_hr,    
+    spend_data.pay_rate_st_hr,
     spend_data.currency,
     spend_data.cost_center_code,
     spend_data.cost_center,
@@ -786,7 +792,7 @@ SELECT
       WHEN upper(spend_data.currency) = 'CAD' THEN CAST(spend_data.pay_rate_st_hr as FLOAT64)
       ELSE spend_data.pay_rate_st_hr * fx_cad.fx_rate
     END pay_rate_st_hr_cad,
-    '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
+      '${dataform.projectConfig.vars.client_code}'as rsr_client_code,
     spend_data.rsr_processed_date,
 case 
 when reqs_assignment_data.max_requested_bill_rate_st_hr > 0 
@@ -885,6 +891,7 @@ and spend_data.timesheet_regular_flag
 then ( spend_data.invoice_amount / (1 - (cost_saving.tenure_discount_percent/100)) ) - spend_data.invoice_amount
 ELSE CAST(NULL AS FLOAT64) 
 end as tenure_discount_savings,
+#winter_release 2025
 spend_data.rsr_staffing_entity,
 spend_data.business_unit as spend_business_unit,
 spend_data.business_unit_code as spend_business_unit_code,

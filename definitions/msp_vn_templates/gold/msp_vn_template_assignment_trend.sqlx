@@ -78,7 +78,7 @@ derv_wo AS(
 	gbl_cal_445.reporting_week_date as reporting_date_445_week,
     gbl_cal_445.week
     FROM 
-   %s.%s req_assign_in
+    %s.%s req_assign_in
 	CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(DATE_TRUNC(CAST(req_assign_in.worker_start_date AS DATE), WEEK), CAST(req_assign_in.reporting_date_ends AS DATE), INTERVAL 1 WEEK)) r_dates
 	left join db_common${region}.global_calendar_445 gbl_cal_445 ON r_dates = PARSE_DATE('%%m/%%d/%%Y',gbl_cal_445.day)
 ),
