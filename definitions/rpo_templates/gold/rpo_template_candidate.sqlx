@@ -22,8 +22,14 @@ js {
         `slvr_${dataset_id}` :
         `dev_slvr_${dataset_id}`;
     
-    const slvr_ph1_c = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
-    const slvr_ph2_c = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_src', dataset_id);
+    const ph1_c = dataform.projectConfig.vars.ph1_c;
+    const ph2_c = dataform.projectConfig.vars.ph2_c;
+
+    const ds_c_c= ph1_c.includes("stdrv")? gold_dataset: slvr_dataset;
+    const ds_c_r= ph2_c.includes("stdrv")? gold_dataset : slvr_dataset;
+
+    const ph1 = (ds_c_c === slvr_dataset) ? `v_${ph1_c}` : ph1_c;
+    const ph2 = (ds_c_r === slvr_dataset) ? `v_${ph2_c}` : ph2_c;
 }
 
 DECLARE
@@ -31,7 +37,9 @@ DECLARE
 DECLARE
   gold_dataset STRING;
 DECLARE
-  slvr_dataset STRING;
+  ds_c_c STRING;
+DECLARE
+  ds_c_r STRING;
 DECLARE
   config_ds_name STRING;
 DECLARE
@@ -39,9 +47,9 @@ DECLARE
 DECLARE
   region STRING;
 DECLARE
-  slvr_ph1_c STRING;
+  ph1 STRING;
 DECLARE
-  slvr_ph2_c STRING;
+  ph2 STRING;
 SET
   config_ds_name = '${config_ds_name}';
 SET
@@ -49,13 +57,13 @@ SET
 SET
   region = '${region}';
 SET
-  gold_dataset = '${gold_dataset}';
+  ds_c_c = '${ds_c_c}';
 SET
-  slvr_dataset = '${slvr_dataset}';
+  ds_c_c = '${ds_c_r}';
 SET 
-  slvr_ph1_c = 'v_' || ${slvr_ph1_c};
+  ph1 = '${ph1}';
 SET
-  slvr_ph2_c = 'v_' || ${slvr_ph2_c};
+  ph2 = '${ph2}';
 
 SET candidate_table_id="stdrv_candidate_" || '${dataform.projectConfig.vars.client_code}';
 
@@ -87,7 +95,7 @@ WITH deduped_cand AS (
     FROM (
         SELECT *
             ,ROW_NUMBER() OVER () AS row_num
-        FROM ${slvr_dataset}.%s
+        FROM %s.%s
     )
 ),
 req_mst as (
@@ -100,7 +108,7 @@ req_mst as (
         ELSE 'Unmapped'
      END AS rsr_state
      from
-     ${slvr_dataset}.%s req
+     %s.%s req
      LEFT JOIN db_common${region}.global_countries gcr on IFNULL(lower(req.country), '') = lower(gcr.country)
      LEFT JOIN db_common${region}.global_state_mapping gsm on IFNULL(req.state_province, '') = gsm.vms_state
 
@@ -420,7 +428,7 @@ FROM (
         norm_loc.location_level_1a,
         norm_loc.location_level_2a
         FROM deduped_cand cand
-        LEFT JOIN ${slvr_dataset}.%s req ON cand.req_id = req.req_id
+        LEFT JOIN %s.%s req ON cand.req_id = req.req_id
         LEFT JOIN req_mst ON cand.req_id = req_mst.req_id
         LEFT JOIN db_common${region}.rpo_std_source_detail sd ON IFNULL(cand.source_detail, '') = sd.source_detail
         LEFT JOIN db_common${region}.rpo_std_internal_external ie ON IFNULL(cand.internal_external, '') = ie.internal_external
@@ -440,4 +448,4 @@ FROM (
     LEFT JOIN db_common${region}.rpo_std_gender_diverse gd ON subquery1.rsr_gender = gd.rsr_gender
     LEFT JOIN db_common${region}.rpo_std_disabled_diverse dd ON subquery1.rsr_disabled = dd.rsr_disabled
     LEFT JOIN db_common${region}.rpo_std_veteran_diverse vd ON subquery1.rsr_veteran = vd.rsr_veteran
-    ) subquery2)""",gold_dataset,candidate_table_id,slvr_ph1_c,slvr_ph2_c,slvr_ph2_c);
+    ) subquery2)""",gold_dataset,candidate_table_id,ds_c_c,ph1,ds_c_r,ph2,ds_c_r,ph2);

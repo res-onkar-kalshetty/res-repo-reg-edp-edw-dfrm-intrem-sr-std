@@ -24,8 +24,14 @@ js {
         `slvr_${dataset_id}` :
         `dev_slvr_${dataset_id}`;
     
-    const slvr_ph1_r = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
-    const slvr_ph2_r = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_src', dataset_id);
+    const ph1_r = dataform.projectConfig.vars.ph1_r;
+    const ph2_r = dataform.projectConfig.vars.ph2_r;
+
+    const ds_r_c= ph1_r.includes("stdrv")? gold_dataset: slvr_dataset;
+    const ds_r_r= ph2_r.includes("stdrv")? gold_dataset : slvr_dataset;
+
+    const ph1 = (ds_r_c === slvr_dataset) ? `v_${ph1_r}` : ph1_r;
+    const ph2 = (ds_r_r === slvr_dataset) ? `v_${ph2_r}` : ph2_r;
 }
 
 DECLARE
@@ -33,7 +39,9 @@ DECLARE
 DECLARE
   gold_dataset STRING;
 DECLARE
-  slvr_dataset STRING;
+  ds_r_c STRING;
+DECLARE
+  ds_r_r STRING;
 DECLARE
   config_ds_name STRING;
 DECLARE
@@ -41,9 +49,9 @@ DECLARE
 DECLARE
   region STRING;
 DECLARE
-  slvr_ph1_r STRING;
+  ph1 STRING;
 DECLARE
-  slvr_ph2_r STRING;
+  ph2 STRING;
 SET
   config_ds_name = '${config_ds_name}';
 SET
@@ -53,13 +61,16 @@ SET
 SET
   gold_dataset = '${gold_dataset}';
 SET
-  slvr_dataset = '${slvr_dataset}';
-SET 
-  slvr_ph1_r = 'v_' || ${slvr_ph1_r};
+  ds_r_c = '${ds_r_c}';
 SET
-  slvr_ph2_r = 'v_' || ${slvr_ph2_r};
+  ds_r_r = '${ds_r_r}';
+SET 
+  ph1 = '${ph1}';
+SET
+  ph2 = '${ph2}';
 
 SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
+
 EXECUTE IMMEDIATE FORMAT ("""
 
 CREATE OR REPLACE TABLE `%s.%s` AS (
@@ -262,7 +273,7 @@ FROM (
         norm_loc.location_level_8,
         norm_loc.location_level_1a,
         norm_loc.location_level_2a
-    FROM ${slvr_dataset}.%s req
+    FROM %s.%s req
     LEFT JOIN db_common${region}.rpo_calendar_mapping cal_map ON req.closed_date = CAST(cal_map.Day as DATE FORMAT 'MM/DD/YYYY')
     LEFT JOIN db_common${region}.rpo_std_labor_type AS lt ON IFNULL(req.labor_type, '') = lt.labor_type
     LEFT JOIN db_common${region}.rpo_std_job_grade AS jg ON req.buyer = jg.buyer_code AND IFNULL(req.job_grade, '') = jg.job_grade
@@ -286,5 +297,5 @@ FROM (
     
     ) subquery1
 )""",gold_dataset,requisition_table_id,
-    gold_dataset,slvr_ph1_r,slvr_ph2_r
+    ds_r_c,ph1,ds_r_r,ph2
     );
