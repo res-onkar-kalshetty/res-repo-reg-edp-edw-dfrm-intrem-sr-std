@@ -102,7 +102,7 @@ WITH fx_rates AS (
   asg.country,
   asg.hours_per_day,
   asg.hours_per_week,
-  asg.rsr_client_code,
+  '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
   asg.buyer,
   asg.buyer_code,
   asg.cand_id,
@@ -126,7 +126,7 @@ WITH fx_rates AS (
   asg.main_document_type,
   asg.sourcing_type_wo,
   asg.sourcing_type_wk,
-  asg.rsr_processed_date,
+  asg.updated_ts as rsr_processed_date,
   asg.assignment_original_start_date,
   asg.assignment_original_end_date,
   asg.assignment_start_date,
@@ -501,7 +501,7 @@ SELECT
 	req.posting_type,
 	assign.cand_offer_accepted_date_initial as cand_offer_accepted_date,
 	'${dataform.projectConfig.vars.client_code}' as rsr_client_code,
-    assign.updated_ts as rsr_processed_date,
+    assign.rsr_processed_date,
     CASE
         WHEN assign.currency = 'USD' THEN assign.pay_rate_st_hr
         ELSE assign.pay_rate_st_hr * CAST(fx_usd.fx_rate AS NUMERIC)
@@ -676,9 +676,10 @@ norm_loc.location_level_2a
   AND COALESCE(assign.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( assign.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(assign.country, '') = COALESCE(norm_loc.country_code, '')
 )
 """,gold_dataset,assignment_table_id,
-slvr_assgn,slvr_assgn_v0,slvr_worker,
-gold_dataset,requisition_table_id,
+slvr_assgn,slvr_assgn_v0,
 slvr_assgn_rt,
 slvr_assgn_rt_v0,
+slvr_worker,
+gold_dataset,requisition_table_id,
 slvr_cand
 ) ;
