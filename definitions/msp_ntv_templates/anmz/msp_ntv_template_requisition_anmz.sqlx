@@ -2,7 +2,7 @@ config {
     type: "operations",
     description: "Dynamically creates the anonymized table for requisitions.",
     dependencies: "msp_ntv_template_requisition_gold",
-    tags: ["anonymized"] 
+    tags: ["msp_ntv_template_gold_anmz"] 
 }
 
 js {

@@ -1,7 +1,7 @@
 config {
     type: "operations",
     dependencies:  "msp_template_spend_sowonly_gold",
-   tags: ["anonymized"] ,
+   tags: ["msp_template_sow_gold_anmz"] ,
     dependencies: ['msp_template_assignment_sowonly_gold'],
     description: "Dynamically creates the anonymized table"
 }
