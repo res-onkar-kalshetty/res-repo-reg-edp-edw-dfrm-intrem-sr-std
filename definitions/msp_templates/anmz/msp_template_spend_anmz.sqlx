@@ -2,7 +2,7 @@ config {
     type: "operations",
     description: "Dynamically creates the anonymized table for spends.",
     dependencies: "msp_template_spend_gold",
-    tags: ["msp_template_gold_anmz"]
+    tags: ["msp_fg_template_gold_anmz"]
 }
 
 js {
