@@ -30,8 +30,8 @@ js {
     const ds_r_c= ph1_r.includes("stdrv")? gold_dataset: slvr_dataset;
     const ds_r_r= ph2_r.includes("stdrv")? gold_dataset : slvr_dataset;
 
-    const ph1 = (ds_r_c === slvr_dataset) ? `v_${ph1_r}` : ph1_r;
-    const ph2 = (ds_r_r === slvr_dataset) ? `v_${ph2_r}` : ph2_r;
+    const ph1 = (ds_r_c === slvr_dataset) ? `${ph1_r}` : ph1_r;
+    const ph2 = (ds_r_r === slvr_dataset) ? `${ph2_r}` : ph2_r;
 }
 
 DECLARE
