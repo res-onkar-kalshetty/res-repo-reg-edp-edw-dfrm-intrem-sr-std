@@ -59,7 +59,9 @@ SET
 SET
   ds_c_c = '${ds_c_c}';
 SET
-  ds_c_c = '${ds_c_r}';
+  ds_c_r = '${ds_c_r}';
+SET
+  gold_dataset = '${gold_dataset}';
 SET 
   ph1 = '${ph1}';
 SET
