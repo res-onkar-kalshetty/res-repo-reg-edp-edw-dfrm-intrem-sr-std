@@ -80,4 +80,3 @@ SET
   """, anmz_dataset, sow_trend_table_id, select_clause, gold_dataset, sow_trend_table_id );
 EXECUTE IMMEDIATE
   final_ddl_statement;
-END;

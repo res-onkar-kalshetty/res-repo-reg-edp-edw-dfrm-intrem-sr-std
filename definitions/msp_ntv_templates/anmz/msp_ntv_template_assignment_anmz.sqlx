@@ -49,10 +49,7 @@ SET
   config_table_name = '${config_table_name}';
 SET
   region='${region}';
-DECLARE
-  select_clause STRING;
-DECLARE
-  final_ddl_statement STRING;
+
 
 EXECUTE IMMEDIATE
   FORMAT ('''
