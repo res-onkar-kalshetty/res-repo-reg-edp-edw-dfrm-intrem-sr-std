@@ -42,7 +42,7 @@ DECLARE
 SET
   gold_dataset='${gold_dataset}';
 SET
-  anmz_dataset='${anmz_dataset}';
+  anmz_dataset='${anmz_dataset}_test';
 SET
   config_ds_name = '${config_ds_name}';
 SET
