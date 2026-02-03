@@ -12,52 +12,39 @@ js {
     const config_table_name = helper.get_config_table();
     const env = helper.get_env();
     const region = helper.get_region();
+    // Get region_code for the hardcoded dataset name (emea, nam, or apac)
+    const region_code = helper.get_region_code(); 
+    
     const dataset_id = dataform.projectConfig.vars.dataset_id;
-
+    
     const gold_dataset = (env == "prd") ?
-        `gold_${dataset_id}` :
-        `dev_gold_${dataset_id}`;
-
-    const anmz_dataset = (env == "prd") ?
-        `anmz_${dataset_id}` :
-        `dev_anmz_${dataset_id}`;
+     `gold_${dataset_id}` : 
+     `dev_gold_${dataset_id}`;
+     
+    const anmz_dataset =
+     `db_anmz_${region_code}_assignment_trend_stdschema`;
 }
 
-DECLARE
-  assignment_trend_table_id STRING;
-DECLARE
-  gold_dataset STRING;
-DECLARE
-  anmz_dataset STRING;
-DECLARE
-  config_ds_name STRING;
-DECLARE
-  config_table_name STRING;
-DECLARE
-  select_clause STRING;
-DECLARE
-  final_ddl_statement STRING;
-DECLARE
-  region STRING;
-SET
-  gold_dataset='${gold_dataset}';
-SET
-  anmz_dataset='${anmz_dataset}_test';
-SET
-  config_ds_name = '${config_ds_name}';
-SET
-  config_table_name = '${config_table_name}';
-SET
-  region='${region}';
+DECLARE assignment_trend_table_id STRING;
+DECLARE gold_dataset STRING;
+DECLARE config_ds_name STRING;
+DECLARE config_table_name STRING;
+DECLARE select_clause STRING;
+DECLARE final_ddl_statement STRING;
+DECLARE region STRING;
 
+SET gold_dataset='${gold_dataset}';
+SET config_ds_name = '${config_ds_name}';
+SET config_table_name = '${config_table_name}';
+SET region='${region}';
+
+-- Find the stdrv_ table in Gold
 EXECUTE IMMEDIATE
   FORMAT ('''
-  SELECT
-  DISTINCT 't_' || table_id,
-  FROM
-  `%s.%s`
-    WHERE entity_type = 'assignment_trend_src' and dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''',config_ds_name,config_table_name  )INTO assignment_trend_table_id;
+  SELECT DISTINCT table_id FROM `%s.%s`
+  WHERE entity_type = 'assignment_trend_src' AND dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+''', config_ds_name, config_table_name) INTO assignment_trend_table_id;
+
 IF
   assignment_trend_table_id IS NULL THEN RAISE
 USING
@@ -65,6 +52,7 @@ USING
 END IF
   ;
 
+-- Generate Anonymization logic
 EXECUTE IMMEDIATE
   FORMAT("""${
         anonymization.get_anonymized_select_clause({
@@ -72,13 +60,14 @@ EXECUTE IMMEDIATE
             solution: "MSP",
             metadata_table: "common%s.master_template_report_fields"
         })
-    }""",region) INTO select_clause;
-SET
-  final_ddl_statement = FORMAT("""
-  CREATE OR REPLACE TABLE `%s.%s` AS (
+    }""", region) INTO select_clause;
+
+-- Create anmz table in the dynamic region-based dataset
+SET final_ddl_statement = FORMAT("""
+  CREATE OR REPLACE TABLE `${anmz_dataset}.anmz_assignment_trend_${dataform.projectConfig.vars.client_code}` AS (
     SELECT %s FROM `%s.%s`
   )
-  """, anmz_dataset, assignment_trend_table_id, select_clause, gold_dataset, assignment_trend_table_id );
-EXECUTE IMMEDIATE
-  final_ddl_statement;
+""", select_clause, gold_dataset, assignment_trend_table_id );
+
+EXECUTE IMMEDIATE final_ddl_statement;
 
