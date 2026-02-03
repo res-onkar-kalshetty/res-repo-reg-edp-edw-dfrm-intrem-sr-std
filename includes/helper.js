@@ -1,31 +1,53 @@
 const constants = require('./constants');
 
 
+// function get_region_code() {
+//     const locationLower = `${dataform.projectConfig.defaultLocation}`.toLowerCase();
+//     let regionCode = '';
+//     if (locationLower.includes("europe")) {
+//         regionCode = "eu";
+//     } else if (locationLower.includes("us") || locationLower.includes("america")) {
+//         regionCode = "us";
+//     } else {
+//         regionCode = "apac";
+//     }
+//     return regionCode
+// }
 function get_region_code() {
     const locationLower = `${dataform.projectConfig.defaultLocation}`.toLowerCase();
-    let regionCode = '';
-    if (locationLower.includes("europe")) {
-        regionCode = "eu";
-    } else if (locationLower.includes("us") || locationLower.includes("america")) {
-        regionCode = "us";
-    } else {
-        regionCode = "apac";
-    }
-    return regionCode
+    if (locationLower.includes("europe")) return "emea"; 
+    if (locationLower.includes("us")) return "nam"; 
+    return "apac";
 }
 
+// function get_region() {
+//     const regionCode = get_region_code();
+//     let region = '';
+//     if (regionCode=="eu") {
+//         region= "_emea";
+//     } else if (regionCode=="us") {
+//         region = "";
+//     } else {
+//         region = "_apac";
+//     }
+//     return region
+// }
+
 function get_region() {
-    const regionCode = get_region_code();
+    const regionCode = get_region_code(); // returns emea, nam, or apac
     let region = '';
-    if (regionCode=="eu") {
-        region= "_emea";
-    } else if (regionCode=="us") {
+    
+    // UPDATED to match get_region_code values
+    if (regionCode == "emea") { 
+        region = "_emea";
+    } else if (regionCode == "nam") {
         region = "";
     } else {
         region = "_apac";
     }
-    return region
+    return region;
 }
+
 
 function get_env() {
     const project = `${dataform.projectConfig.defaultDatabase}`.toLowerCase();
@@ -40,17 +62,35 @@ function get_env() {
     return env
 }
 
+// function get_config_ds() {
+//     const region_code = get_region_code();
+//     const env = get_env();
+//     const config_ds_prefix = constants[`config_dataset_name`];
+//     let config_ds_name = "";
+//     if (env === "prd") {
+//         config_ds_name = config_ds_prefix + '_' + region_code;
+//     } else {
+//         config_ds_name = env + '_' + config_ds_prefix + '_' + region_code;
+//     }
+//     return config_ds_name
+// }
+
 function get_config_ds() {
-    const region_code = get_region_code();
+    let region_code = get_region_code();
     const env = get_env();
     const config_ds_prefix = constants[`config_dataset_name`];
+
+    // Map "nam" back to "us" and "emea" back to "eu" ONLY for the config dataset lookup
+    if (region_code === "nam") { region_code = "us"; }
+    if (region_code === "emea") { region_code = "eu"; }
+
     let config_ds_name = "";
     if (env === "prd") {
         config_ds_name = config_ds_prefix + '_' + region_code;
     } else {
         config_ds_name = env + '_' + config_ds_prefix + '_' + region_code;
     }
-    return config_ds_name
+    return config_ds_name;
 }
 
 function get_config_table() {
