@@ -23,6 +23,7 @@ js {
      
     const anmz_dataset =
      `db_anmz_${region_code}_assignment_stdschema`;
+    const metadata_path = "`rsr-bi-group-prd-701e.db_emea_mysql_configs.master_template_report_fields`";
 }
 
 DECLARE assignment_table_id STRING;
@@ -48,9 +49,9 @@ EXECUTE IMMEDIATE
         anonymization.get_anonymized_select_clause({
             report_type: "assignment",
             solution: "MSP",
-            metadata_table: "common%s.master_template_report_fields"
+            metadata_table: metadata_path
         })
-    }""", region) INTO select_clause;
+    }""") INTO select_clause;
 
 -- Create anmz table in the dynamic region-based dataset
 SET final_ddl_statement = FORMAT("""
