@@ -8,8 +8,6 @@ config {
 js {
     const anonymization = require("includes/anonymization");
     const helper = require("/includes/helper");
-    const config_ds_name = helper.get_config_ds();
-    const config_table_name = helper.get_config_table();
     const env = helper.get_env();
     const region = helper.get_region();
     // Get region_code for the hardcoded dataset name (emea, nam, or apac)
@@ -27,30 +25,19 @@ js {
 
 DECLARE requisition_distribution_table_id STRING;
 DECLARE gold_dataset STRING;
-DECLARE config_ds_name STRING;
-DECLARE config_table_name STRING;
 DECLARE select_clause STRING;
 DECLARE final_ddl_statement STRING;
 DECLARE region STRING;
 
 SET gold_dataset='${gold_dataset}';
-SET config_ds_name = '${config_ds_name}';
-SET config_table_name = '${config_table_name}';
 SET region='${region}';
-
--- -- Find the stdrv_ table in Gold
--- EXECUTE IMMEDIATE
---   FORMAT ('''
---   SELECT DISTINCT table_id FROM `%s.%s`
---   WHERE entity_type = 'requisition_distribution_src' AND dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
--- ''', config_ds_name, config_table_name) INTO requisition_distribution_table_id;
 
 SET requisition_distribution_table_id = CONCAT('stdrv_requisition_distribution_', '${dataform.projectConfig.vars.client_code}');
 
 IF
   requisition_distribution_table_id IS NULL THEN RAISE
 USING
-  MESSAGE = 'requisition_distribution TABLE ID IS MISSING FROM CONFIGS';
+  MESSAGE = 'requisition_distribution stdrv TABLE IS MISSING';
 END IF
   ;
 

@@ -8,8 +8,6 @@ config {
 js {
     const anonymization = require("includes/anonymization");
     const helper = require("/includes/helper");
-    const config_ds_name = helper.get_config_ds();
-    const config_table_name = helper.get_config_table();
     const env = helper.get_env();
     const region = helper.get_region();
     // Get region_code for the hardcoded dataset name (emea, nam, or apac)
@@ -27,29 +25,18 @@ js {
 
 DECLARE assignment_trend_table_id STRING;
 DECLARE gold_dataset STRING;
-DECLARE config_ds_name STRING;
-DECLARE config_table_name STRING;
 DECLARE select_clause STRING;
 DECLARE final_ddl_statement STRING;
 DECLARE region STRING;
 
 SET gold_dataset='${gold_dataset}';
-SET config_ds_name = '${config_ds_name}';
-SET config_table_name = '${config_table_name}';
 SET region='${region}';
-
--- Find the stdrv_ table in Gold
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT DISTINCT table_id FROM `%s.%s`
-  WHERE entity_type = 'assignment_trend_src' AND dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name, config_table_name) INTO assignment_trend_table_id;
-
 SET assignment_trend_table_id="stdrv_assignment_trend_" || '${dataform.projectConfig.vars.client_code}';
+
 IF
   assignment_trend_table_id IS NULL THEN RAISE
 USING
-  MESSAGE = 'assignment_trend TABLE ID IS MISSING FROM CONFIGS';
+  MESSAGE = 'assignment_trend stdrv TABLE  MISSING ';
 END IF
   ;
 
