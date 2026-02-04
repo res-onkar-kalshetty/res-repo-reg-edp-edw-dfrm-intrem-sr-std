@@ -45,6 +45,7 @@ EXECUTE IMMEDIATE
   WHERE entity_type = 'assignment_trend_src' AND dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
 ''', config_ds_name, config_table_name) INTO assignment_trend_table_id;
 
+SET assignment_trend_table_id="stdrv_assignment_trend_" || '${dataform.projectConfig.vars.client_code}';
 IF
   assignment_trend_table_id IS NULL THEN RAISE
 USING

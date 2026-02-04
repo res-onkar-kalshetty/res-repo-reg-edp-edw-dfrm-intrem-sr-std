@@ -38,12 +38,14 @@ SET config_ds_name = '${config_ds_name}';
 SET config_table_name = '${config_table_name}';
 SET region='${region}';
 
--- Find the stdrv_ table in Gold
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT DISTINCT table_id FROM `%s.%s`
-  WHERE entity_type = 'assignment_src' AND dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name, config_table_name) INTO assignment_table_id;
+-- -- Find the stdrv_ table in Gold
+-- EXECUTE IMMEDIATE
+--   FORMAT ('''
+--   SELECT DISTINCT table_id FROM `%s.%s`
+--   WHERE entity_type = 'assignment_src' AND dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+-- ''', config_ds_name, config_table_name) INTO assignment_table_id;
+
+SET assignment_table_id = CONCAT('stdrv_assignment_', '${dataform.projectConfig.vars.client_code}');
 
 IF
   assignment_table_id IS NULL THEN RAISE

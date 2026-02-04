@@ -39,11 +39,13 @@ SET config_table_name = '${config_table_name}';
 SET region='${region}';
 
 -- Find the stdrv_ table in Gold
-EXECUTE IMMEDIATE
-  FORMAT ('''
-  SELECT DISTINCT table_id FROM `%s.%s`
-  WHERE entity_type = 'candidate_src' AND dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
-''', config_ds_name, config_table_name) INTO candidate_table_id;
+-- EXECUTE IMMEDIATE
+--   FORMAT ('''
+--   SELECT DISTINCT table_id FROM `%s.%s`
+--   WHERE entity_type = 'candidate_src' AND dataset_id = '${dataform.projectConfig.vars.dataset_id}' LIMIT 1
+-- ''', config_ds_name, config_table_name) INTO candidate_table_id;
+
+SET candidate_table_id="stdrv_candidate_" || '${dataform.projectConfig.vars.client_code}';
 
 IF
   candidate_table_id IS NULL THEN RAISE
