@@ -21,7 +21,7 @@ js {
      
     const anmz_dataset =
      `db_anmz_${region_code}_requisition_distribution_stdschema`;
-    const metadata_path = "`rsr-bi-group-prd-701e.db_emea_mysql_configs.master_template_report_fields`";
+    const metadata_path = `\`rsr-bi-group-prd-701e.db_${region_code}_mysql_configs.master_template_report_fields\``;
 }
 
 DECLARE requisition_distribution_table_id STRING;
