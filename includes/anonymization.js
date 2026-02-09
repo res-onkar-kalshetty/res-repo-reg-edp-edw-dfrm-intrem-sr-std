@@ -29,7 +29,9 @@ function get_anonymized_select_clause({
               WHEN stdz_field_type = 'NUMERIC'  THEN 'CAST(1 AS NUMERIC)'
               ELSE CONCAT('TO_HEX(SHA256(CAST(\`', stdz_field_name, '\` AS STRING)))')
             END
-          ELSE CONCAT('\`', stdz_field_name, '\`')
+          ELSE 
+          /* IF ANONYMIZATION IS OFF (Flag = 0) - MANDATORY CAST ADDED HERE */
+            CONCAT('CAST(\`', stdz_field_name, '\` AS ', stdz_field_type, ')')
         END
         || ' AS \`' || stdz_field_name || '\`',
         ', ' ORDER BY stdz_field_name
