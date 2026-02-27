@@ -19,7 +19,7 @@ js {
     const gold_dataset = (env == "prd") ? `gold_${dataset_id}` : `dev_gold_${dataset_id}`;
     
      const anmz_dataset =
-     `db_anmz_${region_code}_assignment_stdschema`;
+     `db_anmz_${region_code}_candidate_stdschema`;
     const metadata_path = `\`rsr-bi-group-prd-701e.db_${region_code}_mysql_configs.master_template_report_fields\``;
 }
 
