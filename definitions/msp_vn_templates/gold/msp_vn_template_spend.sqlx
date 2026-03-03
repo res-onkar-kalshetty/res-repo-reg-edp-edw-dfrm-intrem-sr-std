@@ -518,7 +518,7 @@ WITH spend_data AS (
         ELSE spend_in.consolidated_invoice_approved_date
       END) AS reporting_date,
       spend_in.updated_ts as rsr_processed_date,
-      spend_in.rsr_client_code,
+      '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
       case when spend_in.invoice_line_item_id LIKE '%%TS%%' OR spend_in.invoice_line_item_type LIKE '%%Time%%' OR LOWER(spend_in.invoice_line_item_type) LIKE 'regular%%'
     then True else False end as timesheet_regular_flag,
 	spend_in.business_unit,
