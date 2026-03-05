@@ -103,7 +103,7 @@ asg_curr_rev AS (
   SELECT asg_rev.*
   FROM (
     select *,
-    '{dataform.projectConfig.vars.client_code}' as rsr_client_code,
+    '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
     ROW_NUMBER() OVER (PARTITION BY assignment_id ORDER BY COALESCE(revision_number,1) DESC, row_id DESC) as row_num
     FROM  ${slvr_dataset}.%s) asg_rev
     WHERE asg_rev.row_num=1 and  asg_rev.assignment_status IN ('Active','Ended')
@@ -380,7 +380,7 @@ SELECT
     END AS rsr_region,
 	req.posting_type,
     cand.cand_offer_accepted_date AS cand_offer_accepted_date, -- Vndly specific change on 4/12/24, per Sawyer
-	'{dataform.projectConfig.vars.client_code}' as rsr_client_code,
+	'${dataform.projectConfig.vars.client_code}' as rsr_client_code,
     assign.updated_ts as rsr_processed_date,
     CASE
         WHEN assign_rates.currency = 'USD' THEN assign_rates.pay_rate_st_hr
