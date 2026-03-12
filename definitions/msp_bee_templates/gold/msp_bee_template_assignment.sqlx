@@ -98,6 +98,7 @@ WITH fx_rates AS (
       db_common${region}.global_fx_rates
 ), asg_asg_v0 AS (
   select asg.*,
+  '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
   asg_v0.assignment_create_date AS assignment_create_date_initial,
   asg_v0.assignment_activation_date AS assignment_activation_date_initial,
   asg_v0.cand_offer_accepted_date AS cand_offer_accepted_date_initial,
@@ -120,7 +121,7 @@ WITH fx_rates AS (
   FROM ${slvr_dataset}.%s AS asg
     LEFT OUTER JOIN ${slvr_dataset}.%s AS asg_v0 ON asg.assignment_id = asg_v0.assignment_id
     #cost_savings 2024 Fall Release
-    LEFT JOIN db_common${region}.msp_cost_saving savings on savings.client_code=asg.rsr_client_code and cast(asg_v0.assignment_create_date as date) BETWEEN savings.date_from AND savings.date_to
+    LEFT JOIN db_common${region}.msp_cost_saving savings on savings.client_code='${dataform.projectConfig.vars.client_code}'and cast(asg_v0.assignment_create_date as date) BETWEEN savings.date_from AND savings.date_to
     LEFT OUTER JOIN db_common${region}.global_state_mapping AS global_state_mapping ON asg.state_province = global_state_mapping.vms_state
     LEFT JOIN db_common${region}.global_countries gcr on lower(asg.country) = lower(gcr.country)
 ), worker AS (

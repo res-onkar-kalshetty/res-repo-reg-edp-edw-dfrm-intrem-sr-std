@@ -174,7 +174,7 @@ CREATE OR REPLACE TABLE
 		  ,supplier_code
 		  ,req_id
 		  ,MIN(req_distribution_date) AS min_req_dist_date
-	FROM ${slvr_dataset}.p%s
+	FROM ${slvr_dataset}.%s
 	GROUP BY buyer_code, supplier_code, req_id
 )
 

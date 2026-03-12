@@ -478,7 +478,7 @@ WITH spend_data AS (
   SELECT
       spend_in.buyer,
       spend_in.buyer_code,
-      spend_in.rsr_client_code,
+     '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
       spend_in.main_document_id,
       spend_in.assignment_id,
       spend_in.consolidated_invoice_id,
