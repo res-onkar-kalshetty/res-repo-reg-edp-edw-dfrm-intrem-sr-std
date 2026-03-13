@@ -297,7 +297,7 @@ SELECT
   END AS supplier_erp_id,
   job_posting_data.rsr_req_status,
   job_posting_data.rsr_region,
-  '[client_code]' as rsr_client_code,
+  '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
   job_posting_data.rsr_country,
   job_posting_data.rsr_state,
   job_posting_dist_data.updated_ts as rsr_processed_date

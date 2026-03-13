@@ -483,7 +483,7 @@ end) AS compliance_vs_max_template_bill_rate
 ,ROUND(Function_library${region}.f_workday(candidate_assingment_req.req_approved_date, candidate_assingment_req.cand_submit_date), 4)AS approved_to_submit_bd
 ,CAST(Function_library${region}.f_calendarday( candidate_assingment_req.cand_submit_date,candidate_assingment_req.cand_shortlisted_date) AS INT64) as submit_to_shortlist_cd
 ,ROUND(Function_library${region}.f_workday(candidate_assingment_req.cand_submit_date,candidate_assingment_req.cand_shortlisted_date), 4)AS submit_to_shortlist_bd
-,'[client_code]' as rsr_client_code
+,'${dataform.projectConfig.vars.client_code}' as rsr_client_code
 , CURRENT_DATE() as current_date
 ,candidate_assingment_req.rsr_processed_date
 ,NULL AS preferred_supplier_status
