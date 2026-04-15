@@ -236,7 +236,7 @@ FROM (
       END AS rsr_positions_remaining
     ,CAST(COALESCE(req.days_on_hold_bd, ROUND((req.days_on_hold_cd / 7) * 5), 0) AS INT64) AS days_on_hold_bd
     ,CAST(COALESCE(req.days_on_hold_cd, ROUND((req.days_on_hold_bd / 5) * 7), 0) AS INT64) AS days_on_hold_cd
-    ,req.rsr_processed_date
+    ,req.updated_ts AS rsr_processed_date
     ,norm_jt.suppressed_title,
         norm_jt.pii_found,
         norm_jt.process_status,
