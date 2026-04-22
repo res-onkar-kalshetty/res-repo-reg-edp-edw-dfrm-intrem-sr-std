@@ -254,6 +254,7 @@ WITH fx_rates AS (
 	EXTRACT(DATE FROM Function_library${region}.least_array([CURRENT_DATETIME(),wk.worker_end_date , wk.worker_closed_date])) AS rsr_assignment_control_date,
     DATE_TRUNC(EXTRACT(DATE FROM Function_library${region}.least_array([CURRENT_DATETIME(),wk.worker_end_date , wk.worker_closed_date])),MONTH) AS rsr_assignment_control_date_monthstart,
 	*/
+    updated_ts AS rsr_processed_date,
     Function_library${region}.least_array([wk.worker_end_date , wk.worker_closed_date]) as reporting_date_ends
     FROM ${slvr_dataset}.%s wk
     QUALIFY ROW_NUMBER() OVER (PARTITION BY worker_id ORDER BY worker_end_date DESC, rsr_processed_date DESC) = 1
