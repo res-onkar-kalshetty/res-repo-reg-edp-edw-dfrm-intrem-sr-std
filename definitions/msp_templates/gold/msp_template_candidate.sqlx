@@ -8,6 +8,7 @@ config {
 
 js {
     const helper = require("/includes/helper");
+    const source_builder = require("/includes/resilient_source");
 
     const config_ds_name = helper.get_config_ds();
     const config_table_name = helper.get_config_table();
@@ -28,7 +29,10 @@ js {
 }
 
 
-
+DECLARE
+  resilient_cand_cte_sql STRING;
+DECLARE
+  resilient_req_dist_cte_sql STRING;
 DECLARE
   candidate_table_id STRING;
 DECLARE
@@ -49,6 +53,9 @@ DECLARE
   slvr_req_dist STRING;
 DECLARE
   slvr_cand STRING;
+--  Declare temporary variables to hold the query strings
+DECLARE cand_query STRING;
+DECLARE req_dist_query STRING;
 SET
   config_ds_name = '${config_ds_name}';
 SET
@@ -68,9 +75,18 @@ SET candidate_table_id="stdrv_candidate_" || '${dataform.projectConfig.vars.clie
 SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
 SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
+SET cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, 'shubham_test.ext_gold_schema_registry', 'cand', 'gold_candidate','fg')}""";
+SET req_dist_query = """${source_builder.resilient_source(slvr_req_dist, slvr_dataset, 'shubham_test.ext_gold_schema_registry', 'req_dist', 'gold_candidate','fg')}""";
+
+-- Execute the variables into your CTE strings
+EXECUTE IMMEDIATE cand_query INTO resilient_cand_cte_sql;
+EXECUTE IMMEDIATE req_dist_query INTO resilient_req_dist_cte_sql;
+
 EXECUTE IMMEDIATE FORMAT ("""
 CREATE OR REPLACE TABLE %s.%s AS (
-with js_assingment_data as (select 
+WITH resilient_cand AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_req_dist AS (SELECT %s FROM %s.%s AS T_SOURCE),
+js_assingment_data as (select 
 				js_in.buyer
 				,js_in.buyer_code
 				,js_in.req_id
@@ -186,7 +202,7 @@ with js_assingment_data as (select
                 ,req.rsr_req_status
                 ,req.primary_cost_center
                 ,req.rsr_sourced_type
-				from ${slvr_dataset}.%s js_in
+				from resilient_cand js_in
 				left join %s.%s assingment_in  
 				ON js_in.buyer = assingment_in.buyer AND js_in.cand_id= assingment_in.cand_id and js_in.req_id = assingment_in.main_document_id
 				LEFT JOIN %s.%s AS req ON js_in.buyer=req.buyer and js_in.req_id=req.req_id)
@@ -204,7 +220,7 @@ with js_assingment_data as (select
 		  ,supplier_code
 		  ,req_id
 		  ,MIN(req_distribution_date) AS min_req_dist_date
-	FROM ${slvr_dataset}.%s
+	FROM resilient_req_dist
 	GROUP BY buyer_code, supplier_code, req_id
 )
 
@@ -445,10 +461,10 @@ LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON low
 LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on candidate_assingment_req.req_title = norm_jt.raw_job_title
     LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(candidate_assingment_req.req_city, '') = COALESCE(norm_loc.city, '') AND COALESCE(candidate_assingment_req.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(candidate_assingment_req.req_state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(candidate_assingment_req.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(candidate_assingment_req.req_country, '') = COALESCE(norm_loc.country_code, ''))
-""", gold_dataset, candidate_table_id,
-slvr_cand,
+""", "dev_gold_tr_eu_goldschemacheck", candidate_table_id,
+resilient_cand_cte_sql,slvr_dataset,slvr_cand,
+resilient_req_dist_cte_sql,slvr_dataset,slvr_req_dist,
  gold_dataset, assignment_table_id,
-  gold_dataset, requisition_table_id,
-  slvr_req_dist
+  gold_dataset, requisition_table_id
   )
 ;

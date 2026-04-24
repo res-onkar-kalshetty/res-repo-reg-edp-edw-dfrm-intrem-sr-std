@@ -9,6 +9,7 @@ config {
 
 js {
      const helper = require("/includes/helper");
+     const source_builder = require("/includes/resilient_source");
 
     const config_ds_name = helper.get_config_ds();
     const config_table_name = helper.get_config_table();
@@ -27,6 +28,11 @@ js {
     const slvr_req_dist = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_distribution_src', dataset_id);
     const slvr_supplier = helper.getSlvrTableName(config_ds_name, config_table_name, 'supplier_src', dataset_id);
 }
+
+DECLARE
+  resilient_req_dist_cte_sql STRING;
+DECLARE
+  resilient_supp_cte_sql STRING;
 DECLARE
   requisition_distribution_table_id STRING;
 DECLARE
@@ -49,6 +55,9 @@ DECLARE
   slvr_req_dist STRING;
 DECLARE
   slvr_supplier STRING;
+--  Declare temporary variables to hold the query strings
+DECLARE req_dist_query STRING;
+DECLARE supp_query STRING;
 SET
   config_ds_name = '${config_ds_name}';
 SET
@@ -69,10 +78,17 @@ SET candidate_table_id="stdrv_candidate_" || '${dataform.projectConfig.vars.clie
 SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
 SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
-EXECUTE IMMEDIATE
-  FORMAT ("""
+SET req_dist_query = """${source_builder.resilient_source(slvr_req_dist, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'req_dist', 'gold_requisition_distribution','fg')}""";
+SET supp_query = """${source_builder.resilient_source(slvr_supplier, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'supp', 'gold_requisition_distribution','fg')}""";
+
+-- Execute the variables into your CTE strings
+EXECUTE IMMEDIATE req_dist_query INTO resilient_req_dist_cte_sql;
+EXECUTE IMMEDIATE supp_query INTO resilient_supp_cte_sql;
+
+EXECUTE IMMEDIATE FORMAT ("""
 CREATE OR REPLACE TABLE %s.%s AS (
-  WITH
+WITH resilient_req_dist AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_supp AS (SELECT %s FROM %s.%s AS T_SOURCE),
   wo_data AS (
   SELECT
     wo_in.buyer,
@@ -105,7 +121,7 @@ CREATE OR REPLACE TABLE %s.%s AS (
       MIN(req_initial_distribution_date) AS min_req_initial_distribution_date,
       MAX(req_initial_distribution_date) AS max_req_initial_distribution_date
     FROM 
-	${slvr_dataset}.%s
+	resilient_req_dist
     GROUP BY supplier_code),
   aggregates_jp_dist_supp AS (
   SELECT
@@ -114,7 +130,7 @@ CREATE OR REPLACE TABLE %s.%s AS (
     jp_dist.supplier,
     COUNT(DISTINCT CASE WHEN COALESCE(jp_dist.req_distribution_status, 'na') <> 'Declined' THEN jp_dist.supplier ELSE 'NULL' END ) AS no_of_suppliers_posted
   FROM
-    ${slvr_dataset}.%s jp_dist
+    resilient_req_dist jp_dist
   GROUP BY
     jp_dist.buyer_code,
     jp_dist.req_id,
@@ -219,7 +235,7 @@ src_supplier_unique AS (
   FROM (
       SELECT *,
       ROW_NUMBER() OVER (PARTITION BY buyer_code, supplier_code ORDER BY buyer_code, supplier_code, updated_ts DESC, supplier_status) AS row_num
-      FROM ${slvr_dataset}.%s
+      FROM resilient_supp
       ) t
  WHERE t.row_num=1
 )
@@ -340,7 +356,7 @@ norm_loc.location_level_7,
 norm_loc.location_level_8,
 norm_loc.location_level_1a,
 norm_loc.location_level_2a
-FROM ${slvr_dataset}.%s job_posting_dist_data
+FROM resilient_req_dist job_posting_dist_data
 LEFT OUTER JOIN aggregates_min_req_dist_date ON job_posting_dist_data.supplier_code = aggregates_min_req_dist_date.supplier_code
 LEFT OUTER JOIN  job_posting_data ON job_posting_data.req_id = job_posting_dist_data.req_id
 LEFT OUTER JOIN  aggregates_jp_dist_supp ON job_posting_dist_data.req_id = aggregates_jp_dist_supp.req_id AND job_posting_dist_data.supplier = aggregates_jp_dist_supp.supplier
@@ -353,16 +369,14 @@ LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projec
     LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(job_posting_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(job_posting_data.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(job_posting_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(job_posting_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(job_posting_data.country, '') = COALESCE(norm_loc.country_code, ''))
 """,
-  gold_dataset,
+  "dev_gold_tr_eu_goldschemacheck",
   requisition_distribution_table_id,
+  resilient_req_dist_cte_sql,slvr_dataset,slvr_req_dist,
+  resilient_supp_cte_sql,slvr_dataset,slvr_supplier,
   gold_dataset,
   assignment_table_id,
-  slvr_req_dist,
-  slvr_req_dist,
   gold_dataset,
   candidate_table_id,
   gold_dataset,
-  requisition_table_id,
-  slvr_supplier,
-  slvr_req_dist
+  requisition_table_id
   );

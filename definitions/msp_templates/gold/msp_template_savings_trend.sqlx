@@ -50,11 +50,12 @@ SET
   gold_dataset = '${gold_dataset}';
 SET
   slvr_dataset = '${slvr_dataset}';
-
-SET savings_trend_table_id="stdrv_savings_trend_" || '${dataform.projectConfig.vars.client_code}';
-SET spend_table_id="stdrv_spend_" || '${dataform.projectConfig.vars.client_code}';
-SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
-
+SET
+  savings_trend_table_id="stdrv_savings_trend_" || '${dataform.projectConfig.vars.client_code}';
+SET
+  spend_table_id="stdrv_spend_" || '${dataform.projectConfig.vars.client_code}';
+SET
+  assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 EXECUTE IMMEDIATE
   FORMAT ("""
 CREATE OR REPLACE TABLE %s.%s AS (
@@ -348,4 +349,6 @@ LEFT JOIN fx_rates AS fx_usd
       AND trim(upper(fx_cad.to_currency)) = 'CAD'
       order by calendar_reporting_month_date
   )
-""",gold_dataset, savings_trend_table_id, gold_dataset,spend_table_id, gold_dataset,assignment_table_id);
+""","dev_gold_tr_eu_goldschemacheck", savings_trend_table_id,
+ gold_dataset,spend_table_id,
+ gold_dataset,assignment_table_id);

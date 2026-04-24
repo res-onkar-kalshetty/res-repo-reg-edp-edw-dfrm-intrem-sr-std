@@ -4,10 +4,11 @@ config {
     tags: 'msp_template_gold',
     dependencies: ['msp_template_requisition_gold', 'msp_template_assignment_gold'],
     description: 'This file creates the  stdrv layer'
-} 
+}
 
 js {
     const helper = require("/includes/helper");
+    const source_builder = require("/includes/resilient_source");
 
     const config_ds_name = helper.get_config_ds();
     const config_table_name = helper.get_config_table();
@@ -24,8 +25,13 @@ js {
         `dev_slvr_${dataset_id}`;
     const slvr_spend = helper.getSlvrTableName(config_ds_name, config_table_name, 'spend_src', dataset_id);
     const slvr_cand = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
+
 }
 
+DECLARE
+  resilient_spend_cte_sql STRING;
+DECLARE
+  resilient_cand_cte_sql STRING;
 DECLARE
   spend_table_id STRING;
 DECLARE
@@ -46,6 +52,10 @@ DECLARE
   slvr_spend STRING;
 DECLARE
   slvr_cand STRING;
+DECLARE
+  spend_query STRING;
+DECLARE
+  cand_query STRING;
 SET
   config_ds_name = '${config_ds_name}';
 SET
@@ -60,14 +70,26 @@ SET
   slvr_spend= 'v_' || ${slvr_spend};
 SET
   slvr_cand= 'v_' || ${slvr_cand};
-                           
-SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
-SET spend_table_id="stdrv_spend_" || '${dataform.projectConfig.vars.client_code}';
-SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
+SET
+  requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
+SET
+  spend_table_id="stdrv_spend_" || '${dataform.projectConfig.vars.client_code}';
+SET
+  assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
-EXECUTE IMMEDIATE FORMAT("""
+SET
+  spend_query = """${source_builder.resilient_source(slvr_spend, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'spend', 'gold_spend', 'fg')}""";
+SET
+  cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry','cand', 'gold_spend', 'fg')}""";
+EXECUTE IMMEDIATE
+  spend_query INTO resilient_spend_cte_sql;
+EXECUTE IMMEDIATE
+  cand_query INTO resilient_cand_cte_sql;
+EXECUTE IMMEDIATE
+  FORMAT("""
 CREATE OR REPLACE TABLE %s.%s AS (
-
+WITH resilient_spend AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_cand AS (SELECT %s FROM %s.%s AS T_SOURCE)
 SELECT buyer
 ,buyer_code
 ,main_document_id
@@ -533,7 +555,7 @@ WITH spend_data AS (
 	spend_in.business_unit_code,
 	spend_in.rsr_staffing_entity
     FROM
-      ${slvr_dataset}.%s AS spend_in
+      resilient_spend AS spend_in
 ), reqs_assignment_data AS (
   SELECT
       req_asg_in.buyer,
@@ -593,7 +615,7 @@ WITH spend_data AS (
   main_document_id from reqs_assignment_data group by main_document_id
 ),
 candidate as (select max(presented_bill_rate_st_hr) as maximum_presented_bill_rate_st_hr,
-req_id from ${slvr_dataset}.%s where cand_shortlisted_date is not null group by req_id)
+req_id from resilient_cand where cand_shortlisted_date is not null group by req_id)
 ,avg_bill_rate as (
   select
   assignment_id,
@@ -701,17 +723,17 @@ SELECT
     UPPER(FORMAT_DATETIME("%%B", DATETIME(spend_data.reporting_date))) AS `month_name_calendar`,
     CASE WHEN spend_data.bill_rate_st_hr IS NULL THEN (
          CASE WHEN SAFE_DIVIDE(ROUND(spend_data.line_item_amount, 4), ROUND(spend_data.view_billable_hours_st_hr, 4)) < 0.0000 THEN NULL
-              ELSE SAFE_DIVIDE(ROUND(spend_data.line_item_amount, 4), ROUND(spend_data.view_billable_hours_st_hr, 4)) END) 
+              ELSE SAFE_DIVIDE(ROUND(spend_data.line_item_amount, 4), ROUND(spend_data.view_billable_hours_st_hr, 4)) END)
          ELSE spend_data.bill_rate_st_hr END AS invoice_bill_rate_st_hr,
      ROUND(CASE
       WHEN spend_data.timesheet_regular_flag
-        AND COALESCE(reqs_assignment_data.bill_rate_st_hr_initial,0) != 0 
+        AND COALESCE(reqs_assignment_data.bill_rate_st_hr_initial,0) != 0
         THEN ((reqs_assignment_data.presented_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount
       ELSE CAST(0.0 AS FLOAT64)
     END, 4) AS negotiated_savings,
     ROUND((reqs_assignment_data.max_template_bill_rate_st_hr - reqs_assignment_data.bill_rate_st_hr_initial),4) AS savings_under_max_rate,
     ROUND(CASE
-      WHEN COALESCE(reqs_assignment_data.bill_rate_st_hr_initial,0) != 0 
+      WHEN COALESCE(reqs_assignment_data.bill_rate_st_hr_initial,0) != 0
         THEN ((reqs_assignment_data.max_requested_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount
       ELSE CAST(NULL AS NUMERIC)
     END, 4) AS savings_vs_requested_rate,
@@ -737,13 +759,13 @@ SELECT
     END AS spend_in_cad,
     reqs_assignment_data.sourcing_type_wo_mapped,
     reqs_assignment_data.sourcing_type_wk_mapped,
-     reqs_assignment_data.business_unit_code as business_unit_code, 
-    reqs_assignment_data.business_unit as business_unit, 
+     reqs_assignment_data.business_unit_code as business_unit_code,
+    reqs_assignment_data.business_unit as business_unit,
     reqs_assignment_data.site,
     reqs_assignment_data.city,
     reqs_assignment_data.state_province,
     reqs_assignment_data.country,
-    CASE 
+    CASE
       WHEN lower(spend_data.main_document_type) = lower('Contract') THEN 'Contingent'
       WHEN lower(spend_data.main_document_type) = lower('Service Request') THEN 'Contingent'
       WHEN lower(spend_data.main_document_type) = lower('Contingent Labor Request') THEN 'Contingent'
@@ -843,101 +865,93 @@ SELECT
     END AS invoice_approved_to_consolidated_bd,
 
 case 
-when reqs_assignment_data.max_requested_bill_rate_st_hr > 0 
+when reqs_assignment_data.max_requested_bill_rate_st_hr > 0
 and reqs_assignment_data.bill_rate_st_hr_initial > 0
-and spend_data.timesheet_regular_flag 
+and spend_data.timesheet_regular_flag
 and reqs_assignment_data.bill_rate_st_hr_initial < reqs_assignment_data.max_requested_bill_rate_st_hr
 then ROUND((((reqs_assignment_data.max_requested_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount), 4)
 ELSE CAST(NULL AS FLOAT64)
  end as savings_vs_max_rate,
-   
-CASE 
-WHEN reqs_assignment_data.presented_bill_rate_st_hr > 0 
-AND reqs_assignment_data.bill_rate_st_hr_initial > 0 
-and spend_data.timesheet_regular_flag  
+
+CASE
+WHEN reqs_assignment_data.presented_bill_rate_st_hr > 0
+AND reqs_assignment_data.bill_rate_st_hr_initial > 0
+and spend_data.timesheet_regular_flag
 and reqs_assignment_data.bill_rate_st_hr_initial< reqs_assignment_data.presented_bill_rate_st_hr
-THEN ROUND((((reqs_assignment_data.presented_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount), 4) ELSE CAST(NULL AS FLOAT64) END 
+THEN ROUND((((reqs_assignment_data.presented_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial) * spend_data.invoice_amount) - spend_data.invoice_amount), 4) ELSE CAST(NULL AS FLOAT64) END
 as initial_negotiated_savings,
- 
- case 
- when reqs_assignment_data.bill_rate_st_hr_initial > 0 
- and spend_data.bill_rate_st_hr > 0 
- and spend_data.bill_rate_st_hr < reqs_assignment_data.bill_rate_st_hr_initial 
- and spend_data.timesheet_regular_flag 
+
+ case
+ when reqs_assignment_data.bill_rate_st_hr_initial > 0
+ and spend_data.bill_rate_st_hr > 0
+ and spend_data.bill_rate_st_hr < reqs_assignment_data.bill_rate_st_hr_initial
+ and spend_data.timesheet_regular_flag
  then ROUND((((reqs_assignment_data.bill_rate_st_hr_initial / spend_data.bill_rate_st_hr) * spend_data.invoice_amount) - spend_data.invoice_amount), 4)
 ELSE CAST(NULL AS FLOAT64)
 end as extension_negotiated_savings,
 
-
-case 
-when (cost_saving.previous_rsr_payroll_markup_percent/100)  > 0 
-and (cost_saving.rsr_payroll_markup_percent/100) > 0 
-and reqs_assignment_data.rsr_sourced_type like "%%Payroll%%" 
-AND spend_data.timesheet_regular_flag 
+case
+when (cost_saving.previous_rsr_payroll_markup_percent/100)  > 0
+and (cost_saving.rsr_payroll_markup_percent/100) > 0
+and reqs_assignment_data.rsr_sourced_type like "%%Payroll%%"
+AND spend_data.timesheet_regular_flag
 then (spend_data.invoice_amount * (1+(cost_saving.previous_rsr_payroll_markup_percent/100))) / (1 + (cost_saving.rsr_payroll_markup_percent/100)) - spend_data.invoice_amount
 ELSE CAST(NULL AS FLOAT64)
 end as payroll_savings,
 
-
-case 
-when gbl_sup_map.suppliername_dw like '%%RSR%%' 
-and reqs_assignment_data.rsr_sourced_type like '%%Direct%%' 
+case
+when gbl_sup_map.suppliername_dw like '%%RSR%%'
+and reqs_assignment_data.rsr_sourced_type like '%%Direct%%'
 and spend_data.timesheet_regular_flag
-then (spend_data.invoice_amount * ((1+(cost_saving.supplier_markup_percent/100)) / (1+(cost_saving.rsr_direct_sourcing_markup_percent/100)))) - spend_data.invoice_amount 
+then (spend_data.invoice_amount * ((1+(cost_saving.supplier_markup_percent/100)) / (1+(cost_saving.rsr_direct_sourcing_markup_percent/100)))) - spend_data.invoice_amount
 ELSE CAST(NULL AS FLOAT64)
 end as direct_sourcing_savings,
 
-
-case 
+case
 when reqs_assignment_data.rsr_sourced_type like "%%Recruited%%" and
 gbl_sup_map.suppliername_dw not like '%%RSR%%'  and
 spend_data.timesheet_regular_flag and
 cost_saving.supplier_markup_percent < cost_saving.previous_supplier_markup_percent
-then (spend_data.invoice_amount / (1+(cost_saving.supplier_markup_percent/100))) * (1 + (cost_saving.previous_supplier_markup_percent/100) ) - spend_data.invoice_amount 
+then (spend_data.invoice_amount / (1+(cost_saving.supplier_markup_percent/100))) * (1 + (cost_saving.previous_supplier_markup_percent/100) ) - spend_data.invoice_amount
 ELSE CAST(NULL AS FLOAT64)
-end 
+end
 as prior_state_savings,
 
-
-case 
-when reqs_assignment_data.bill_rate_st_hr_initial<>0 
+case
+when reqs_assignment_data.bill_rate_st_hr_initial<>0
 and highest_assignment_bill_rate_st_hr_initial  > reqs_assignment_data.bill_rate_st_hr_initial
-and spend_data.timesheet_regular_flag  
-then ((highest_assignment_bill_rate_st_hr_initial  / reqs_assignment_data.bill_rate_st_hr_initial)  -1) * spend_data.invoice_amount 
-ELSE CAST(NULL AS FLOAT64) end 
+and spend_data.timesheet_regular_flag
+then ((highest_assignment_bill_rate_st_hr_initial  / reqs_assignment_data.bill_rate_st_hr_initial)  -1) * spend_data.invoice_amount
+ELSE CAST(NULL AS FLOAT64) end
 as savings_vs_highest_rate,
 
-
-case 
-when reqs_assignment_data.bill_rate_st_hr_initial<>0 
-and  spend_data.timesheet_regular_flag 
-then ((maximum_presented_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial )-1)* spend_data.invoice_amount 
-ELSE CAST(NULL AS FLOAT64) end 
+case
+when reqs_assignment_data.bill_rate_st_hr_initial<>0
+and  spend_data.timesheet_regular_flag
+then ((maximum_presented_bill_rate_st_hr / reqs_assignment_data.bill_rate_st_hr_initial )-1)* spend_data.invoice_amount
+ELSE CAST(NULL AS FLOAT64) end
 as qualified_cand_savings,
 
-
-case 
-when spend_data.bill_rate_st_hr <>0 
-and spend_data.timesheet_regular_flag 
+case
+when spend_data.bill_rate_st_hr <>0
+and spend_data.timesheet_regular_flag
 and spend_data.bill_rate_st_hr < avg_bill_rate.avg_bill_rate_st_hr
-then ((avg_bill_rate.avg_bill_rate_st_hr / spend_data.bill_rate_st_hr ) -1) * spend_data.invoice_amount 
-ELSE CAST(NULL AS FLOAT64) end 
+then ((avg_bill_rate.avg_bill_rate_st_hr / spend_data.bill_rate_st_hr ) -1) * spend_data.invoice_amount
+ELSE CAST(NULL AS FLOAT64) end
 as previous_years_bill_rate_savings,
 
-
-cast(Case 
-when cost_saving.tenure_discount_length_cd > 0 
-and reqs_assignment_data.assignment_original_start_date is not null 
-then date_add(reqs_assignment_data.assignment_original_start_date, interval cast(cost_saving.tenure_discount_length_cd as int) day) 
+cast(Case
+when cost_saving.tenure_discount_length_cd > 0
+and reqs_assignment_data.assignment_original_start_date is not null
+then date_add(reqs_assignment_data.assignment_original_start_date, interval cast(cost_saving.tenure_discount_length_cd as int) day)
 end as date) as tenure_discount_effective_date,
 
-
-Case 
-when Cast(spend_data.consolidated_invoice_approved_date as DATE) >=  
+Case
+when Cast(spend_data.consolidated_invoice_approved_date as DATE) >=
 (Cast(Case when cost_saving.tenure_discount_length_cd > 0 and reqs_assignment_data.assignment_original_start_date is not null then date_add(reqs_assignment_data.assignment_original_start_date, interval cast(cost_saving.tenure_discount_length_cd as int) day) end as  DATE))
 and spend_data.timesheet_regular_flag
 then ( spend_data.invoice_amount / (1 - (cost_saving.tenure_discount_percent/100)) ) - spend_data.invoice_amount
-ELSE CAST(NULL AS FLOAT64) 
+ELSE CAST(NULL AS FLOAT64)
 end as tenure_discount_savings,
 #winter_release 2025
 spend_data.rsr_staffing_entity,
@@ -980,37 +994,36 @@ norm_loc.location_level_8,
 norm_loc.location_level_1a,
 norm_loc.location_level_2a
 
-
   FROM spend_data
-    LEFT JOIN reqs_assignment_data 
+    LEFT JOIN reqs_assignment_data
       ON spend_data.assignment_id = reqs_assignment_data.assignment_id
     LEFT JOIN assignment_by_req on assignment_by_req.main_document_id = spend_data.main_document_id
     LEFT JOIN avg_bill_rate on spend_data.assignment_id=avg_bill_rate.assignment_id
     LEFT JOIN candidate on spend_data.main_document_id=candidate.req_id
-    LEFT JOIN gbl_sup_map 
+    LEFT JOIN gbl_sup_map
       ON trim(lower(spend_data.supplier)) = trim(lower(gbl_sup_map.supplier))
       AND trim(lower(spend_data.buyer)) = trim(lower(gbl_sup_map.buyer))
-    LEFT JOIN db_common${region}.global_calendar_445 AS global_calendar_445 
+    LEFT JOIN db_common${region}.global_calendar_445 AS global_calendar_445
       ON spend_data.reporting_date = PARSE_DATE("%%m/%%d/%%Y", global_calendar_445.day)
     LEFT JOIN %s.%s req
       on spend_data.main_document_id=req.req_id
-    LEFT JOIN fx_rates AS fx_usd 
+    LEFT JOIN fx_rates AS fx_usd
       ON trim(lower(spend_data.currency)) = trim(lower(fx_usd.from_currency))
       AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_usd.month
       AND trim(upper(fx_usd.to_currency)) = 'USD'
-    LEFT JOIN fx_rates AS fx_eur 
+    LEFT JOIN fx_rates AS fx_eur
       ON trim(lower(spend_data.currency)) = trim(lower(fx_eur.from_currency))
       AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_eur.Month
       AND trim(upper(fx_eur.to_currency)) = 'EUR'
-    LEFT JOIN fx_rates AS fx_gbp 
+    LEFT JOIN fx_rates AS fx_gbp
       ON trim(lower(spend_data.currency)) = trim(lower(fx_gbp.from_currency))
       AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_gbp.month
       AND trim(upper(fx_gbp.to_currency)) = 'GBP'
-    LEFT JOIN fx_rates AS fx_inr 
+    LEFT JOIN fx_rates AS fx_inr
       ON trim(lower(spend_data.currency)) = trim(lower(fx_inr.from_currency))
       AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_inr.month
       AND trim(upper(fx_inr.to_currency)) = 'INR'
-    LEFT JOIN fx_rates AS fx_cad 
+    LEFT JOIN fx_rates AS fx_cad
       ON trim(lower(spend_data.currency)) = trim(lower(fx_cad.from_currency))
       AND DATE_TRUNC(spend_data.reporting_date, MONTH) = fx_cad.month
       AND trim(upper(fx_cad.to_currency)) = 'CAD'
@@ -1023,9 +1036,10 @@ norm_loc.location_level_2a
   AND COALESCE(reqs_assignment_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( reqs_assignment_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(reqs_assignment_data.country, '') = COALESCE(norm_loc.country_code, '')
 
 ))
-""",gold_dataset,spend_table_id,
-slvr_spend,
-gold_dataset,assignment_table_id,
-slvr_cand,
-gold_dataset,requisition_table_id)
-;
+""","dev_gold_tr_eu_goldschemacheck",spend_table_id,
+resilient_spend_cte_sql,slvr_dataset,slvr_spend,
+resilient_cand_cte_sql,slvr_dataset,slvr_cand,
+--  slvr_spend,
+ gold_dataset,assignment_table_id, 
+--  slvr_cand, 
+ gold_dataset,requisition_table_id) ;

@@ -6,6 +6,7 @@ config {
 
 js {
     const helper = require("/includes/helper");
+    const source_builder = require("/includes/resilient_source");
 
     const config_ds_name = helper.get_config_ds();
     const config_table_name = helper.get_config_table();
@@ -26,8 +27,19 @@ js {
     const slvr_req_tmp = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_template_src', dataset_id);
     const slvr_assgn = helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_src', dataset_id);
     const slvr_req_dist = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_distribution_src', dataset_id);
+
 }
 
+DECLARE
+  resilient_req_cte_sql STRING;
+DECLARE
+  resilient_cand_cte_sql STRING;
+DECLARE
+  resilient_req_tmp_cte_sql STRING;
+DECLARE
+  resilient_assgn_cte_sql STRING;
+DECLARE
+  resilient_req_dist_cte_sql STRING;
 DECLARE
   requisition_table_id STRING;
 DECLARE
@@ -50,6 +62,17 @@ DECLARE
   slvr_assgn STRING;
 DECLARE
   slvr_req_dist STRING;
+  -- Declare temporary variables to hold the query strings
+DECLARE
+  req_query STRING;
+DECLARE
+  cand_query STRING;
+DECLARE
+  req_tmp_query STRING;
+DECLARE
+  assgn_query STRING;
+DECLARE
+  req_dist_query STRING;
 SET
   config_ds_name = '${config_ds_name}';
 SET
@@ -70,39 +93,64 @@ SET
   slvr_assgn = 'v_' || ${slvr_assgn};
 SET
   slvr_req_dist = 'v_' || ${slvr_req_dist};
-
-SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
-
+SET
+  requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
+SET
+  req_query = """${source_builder.resilient_source(slvr_req, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'req', 'gold_requisition','fg')}""";
+SET
+  cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'cand', 'gold_requisition','fg')}""";
+SET
+  req_tmp_query = """${source_builder.resilient_source(slvr_req_tmp, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'req_tmp', 'gold_requisition','fg')}""";
+SET
+  assgn_query = """${source_builder.resilient_source(slvr_assgn, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'asgn', 'gold_requisition','fg')}""";
+SET
+  req_dist_query = """${source_builder.resilient_source(slvr_req_dist, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'req_dist', 'gold_requisition','fg')}""";
+  -- Execute the variables into your CTE strings
+EXECUTE IMMEDIATE
+  req_query INTO resilient_req_cte_sql;
+EXECUTE IMMEDIATE
+  cand_query INTO resilient_cand_cte_sql;
+EXECUTE IMMEDIATE
+  req_tmp_query INTO resilient_req_tmp_cte_sql;
+EXECUTE IMMEDIATE
+  assgn_query INTO resilient_assgn_cte_sql;
+EXECUTE IMMEDIATE
+  req_dist_query INTO resilient_req_dist_cte_sql;
 EXECUTE IMMEDIATE
   FORMAT ("""
 CREATE OR REPLACE TABLE %s.%s AS (
-WITH candidate_data AS 
+WITH resilient_req AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_cand AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_req_tmp AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_assgn AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_req_dist AS (SELECT %s FROM %s.%s AS T_SOURCE),
+candidate_data AS
 (SELECT
 	buyer_code
 	,req_id
 	,min(cand_submit_date) as first_cand_submitted_date
 	,count(distinct cand_id) as cand_submitted_cnt
 	,count(DISTINCT supplier) AS suppliers_responded_cnt
-from `${slvr_dataset}.%s`
+from resilient_cand
 group by req_id,buyer_code
 ) ,
 req_temp_data AS
-(select 
+(select
 	req_id,
 	buyer_code,
 	max_template_bill_rate_st_hr,
 	max_template_bill_rate_st_day,
 	max_template_bill_rate_st_week,
 	max_template_bill_rate_st_month
-FROM ${slvr_dataset}.%s
+FROM resilient_req_tmp
 ),wo_data AS (
   SELECT
-  
+
       count(assignment_id) AS hired_cnt,
       buyer_code,
       main_document_id
     FROM
-      ${slvr_dataset}.%s
+      resilient_assgn
     GROUP BY buyer_code,main_document_id
 ),req_dist_data AS
 (
@@ -115,16 +163,15 @@ FROM ${slvr_dataset}.%s
       buyer_code,
       req_id
     FROM
-      ${slvr_dataset}.%s
+      resilient_req_dist
     GROUP BY buyer_code,req_id
 )
-
 
 select distinct
   req.buyer,
   req.buyer_code ,
   req.req_id ,
-  req.req_title , 
+  req.req_title ,
   req.labor_type ,
   req.sourcing_type,
   req.sourcing_type_template,
@@ -146,7 +193,7 @@ select distinct
   req.site,
   req.site_code,
   req.division,
-  req.location_code, 
+  req.location_code,
   req.location,
   req.req_category,
   req.city,
@@ -155,7 +202,7 @@ select distinct
   req.zip_postal_code,
   req.first_respond_date,
   req.req_approved_date,
-  req.req_closed_date, 
+  req.req_closed_date,
   req.req_create_date,
   req.req_end_date,
   req.req_respond_by_date as req_responded_by_date,
@@ -248,37 +295,37 @@ CASE
     ELSE NULL
 END AS max_template_bill_rate_st_hr,
   -- gjcr.closed_reason_dw as rsr_close_reason,
-  CASE 
+  CASE
     WHEN IFNULL(gjcr.closed_reason_dw, '') <> '' THEN gjcr.closed_reason_dw
     WHEN IFNULL(req.close_reason, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
   END AS rsr_close_reason,
-  CASE 
+  CASE
     WHEN IFNULL(glt.labor_type_dw, '') <> '' THEN glt.labor_type_dw
     WHEN IFNULL(req.labor_type, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
   END AS rsr_labor_type,
   -- gsm.rsr_state,
-  CASE 
+  CASE
     WHEN IFNULL(gsm.rsr_state, '') <> '' THEN gsm.rsr_state
     WHEN IFNULL(req.state_province, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
   END AS rsr_state,
   -- gcr.rsr_country,
-  CASE 
+  CASE
     WHEN IFNULL(gcr.rsr_country, '') <> '' THEN gcr.rsr_country
     WHEN IFNULL(req.country, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
   END AS rsr_country,
   -- gcr.rsr_region,
-  CASE 
+  CASE
     WHEN IFNULL(gcr.rsr_region, '') <> '' THEN gcr.rsr_region
     WHEN IFNULL(req.country, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
   END AS rsr_region,
   gcr.country AS rsr_country_code,
   CURRENT_DATE() as current_date,
-  
+
   CAST(Function_library${region}.f_calendarday(req.req_approved_date, CAST(current_timestamp() as DATETIME)) AS INT64) AS req_aging_cd,
   round(Function_library${region}.f_workday(req.req_approved_date, CAST(current_timestamp() as DATETIME)),2) AS req_aging_bd,
 
@@ -338,8 +385,8 @@ norm_loc.location_level_7,
 norm_loc.location_level_8,
 norm_loc.location_level_1a,
 norm_loc.location_level_2a
-	
-  from `${slvr_dataset}.%s` req
+
+  from resilient_req req
   left join req_dist_data as req_dist ON req.req_id = req_dist.req_id
   left join candidate_data AS cand ON req.req_id = cand.req_id
   left join req_temp_data AS req_temp ON req.req_id= req_temp.req_id
@@ -351,22 +398,27 @@ norm_loc.location_level_2a
   left join `db_common${region}.global_job_posting_status` grs on grs.job_posting_status = req.req_status
   left outer join db_common${region}.global_sourcing as gbl_src on TRIM(LOWER(gbl_src.sourcing_type)) = TRIM(LOWER(COALESCE(req.sourcing_type, req.sourcing_type_template, '')))
   LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on req.req_title = norm_jt.raw_job_title
-    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE 
+    LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(req.city, '') = COALESCE(norm_loc.city, '') AND COALESCE((CASE
     WHEN IFNULL(gsm.vms_state, '') <> '' THEN gsm.vms_state
     WHEN IFNULL(req.state_province, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
   END), '') = COALESCE(norm_loc.state, '')
-  AND COALESCE(req.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE((CASE 
+  AND COALESCE(req.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE((CASE
     WHEN IFNULL(gcr.rsr_country, '') <> '' THEN gcr.rsr_country
     WHEN IFNULL(req.country, '') = '' THEN 'Undisclosed'
     ELSE 'Unmapped'
   END), '') = COALESCE(norm_loc.country_name, '') AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, ''))
 ;
 
-""",gold_dataset,requisition_table_id,
-slvr_cand,
-slvr_req_tmp,
-slvr_assgn,
-slvr_req_dist,
-slvr_req
+""","dev_gold_tr_eu_goldschemacheck",requisition_table_id, 
+resilient_req_cte_sql,slvr_dataset, slvr_req, 
+resilient_cand_cte_sql,slvr_dataset, slvr_cand, 
+resilient_req_tmp_cte_sql,slvr_dataset, slvr_req_tmp, 
+resilient_assgn_cte_sql,slvr_dataset, slvr_assgn, 
+resilient_req_dist_cte_sql,slvr_dataset, slvr_req_dist
+-- slvr_cand,
+-- slvr_req_tmp,
+-- slvr_assgn,
+-- slvr_req_dist,
+-- slvr_req
 );

@@ -273,5 +273,5 @@ FROM
   LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on assign.main_document_title = norm_jt.raw_job_title
     LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(assign.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(assign.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(assign.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(assign.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(assign.country, '') = COALESCE(norm_loc.country_code, ''))
-""",gold_dataset,assignment_trend_table_id,gold_dataset,assignment_table_id,gold_dataset,assignment_table_id)
+""","dev_gold_tr_eu_goldschemacheck",assignment_trend_table_id,gold_dataset,assignment_table_id,gold_dataset,assignment_table_id)
 ;
