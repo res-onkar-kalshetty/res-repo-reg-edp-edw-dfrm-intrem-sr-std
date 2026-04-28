@@ -8,6 +8,7 @@ config {
 
 js {
     const helper = require("/includes/helper");
+    const source_builder = require("/includes/resilient_source");
 
     const config_ds_name = helper.get_config_ds();
     const config_table_name = helper.get_config_table();
@@ -31,6 +32,18 @@ js {
     const slvr_cand = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
 }
 
+DECLARE
+  resilient_asgn_cte_sql STRING;
+DECLARE
+  resilient_asgn_v0_cte_sql STRING;
+DECLARE
+  resilient_asgn_rt_cte_sql STRING;
+DECLARE
+  resilient_asgn_rtv0_cte_sql STRING;
+DECLARE
+  resilient_wrkr_cte_sql STRING;
+DECLARE
+  resilient_cand_cte_sql STRING;
 DECLARE
   assignment_table_id STRING;
 DECLARE
@@ -57,6 +70,18 @@ DECLARE
   slvr_assgn_rt_v0 STRING;
 DECLARE
   slvr_cand STRING;
+DECLARE
+  asgn_query STRING;
+DECLARE
+  asgn_v0_query STRING;
+DECLARE
+  asgn_rt_query STRING;
+DECLARE
+  asgn_rtv0_query STRING;
+DECLARE
+  wrkr_query STRING;
+DECLARE
+  cand_query STRING;
 SET
   config_ds_name = '${config_ds_name}';
 SET
@@ -84,12 +109,43 @@ SET
 SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
 SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
+SET
+  asgn_query = """${source_builder.resilient_source(slvr_assgn, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'asgn', 'gold_assignment', 'vn')}""";
+SET
+  asgn_v0_query = """${source_builder.resilient_source(slvr_assgn_v0, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry','asgn_v0', 'gold_assignment', 'vn')}""";
+SET
+  asgn_rt_query = """${source_builder.resilient_source(slvr_assgn_rt, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'asgn_rt', 'gold_assignment', 'vn')}""";
+SET
+  asgn_rtv0_query = """${source_builder.resilient_source(slvr_assgn_rt_v0, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry','asgn_rtv0', 'gold_assignment', 'vn')}""";
+SET
+  wrkr_query = """${source_builder.resilient_source(slvr_worker, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'wrkr', 'gold_assignment', 'vn')}""";
+SET
+  cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry','cand', 'gold_assignment', 'vn')}""";
+
+EXECUTE IMMEDIATE
+  asgn_query INTO resilient_asgn_cte_sql;
+EXECUTE IMMEDIATE
+  asgn_v0_query INTO resilient_asgn_v0_cte_sql;
+EXECUTE IMMEDIATE
+  asgn_rt_query INTO resilient_asgn_rt_cte_sql;
+EXECUTE IMMEDIATE
+  asgn_rtv0_query INTO resilient_asgn_rtv0_cte_sql;
+EXECUTE IMMEDIATE
+  wrkr_query INTO resilient_wrkr_cte_sql;
+EXECUTE IMMEDIATE
+  cand_query INTO resilient_cand_cte_sql;
+
 
 EXECUTE IMMEDIATE
   FORMAT ("""
 CREATE OR REPLACE TABLE `%s.%s` AS (
-
-WITH fx_rates AS (
+with resilient_asgn AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_asgn_v0 AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_asgn_rt AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_asgn_rtv0 AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_wrkr AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_cand AS (SELECT %s FROM %s.%s AS T_SOURCE),
+fx_rates AS (
   SELECT
       CAST(fx_rate AS FLOAT64) AS fx_rate,
       from_currency,
@@ -105,7 +161,7 @@ asg_curr_rev AS (
     select *,
     '${dataform.projectConfig.vars.client_code}' as rsr_client_code,
     ROW_NUMBER() OVER (PARTITION BY assignment_id ORDER BY COALESCE(revision_number,1) DESC, row_id DESC) as row_num
-    FROM  ${slvr_dataset}.%s) asg_rev
+    FROM  resilient_asgn) asg_rev
     WHERE asg_rev.row_num=1 and  asg_rev.assignment_status IN ('Active','Ended')
 ),
 -- Vyndly specific logic to identify latest/current revision
@@ -114,7 +170,7 @@ asg_rts_curr_rev AS (
   FROM (
     select *,
     ROW_NUMBER() OVER (PARTITION BY assignment_id ORDER BY COALESCE(revision_number,1) DESC, row_id DESC) as row_num
-    FROM  ${slvr_dataset}.%s) asg_rts_rev
+    FROM  resilient_asgn_rt) asg_rts_rev
     WHERE asg_rts_rev.row_num=1
 ), asg_asg_v0 AS (
   select asg.*,
@@ -139,7 +195,7 @@ asg_rts_curr_rev AS (
       ELSE 'Unmapped'
     END AS rsr_country
   FROM asg_curr_rev AS asg
-    LEFT OUTER JOIN  ${slvr_dataset}.%s AS asg_v0 ON asg.assignment_id = asg_v0.assignment_id
+    LEFT OUTER JOIN  resilient_asgn_v0 AS asg_v0 ON asg.assignment_id = asg_v0.assignment_id
     LEFT JOIN db_common${region}.msp_cost_saving savings on savings.client_code=asg.rsr_client_code and cast(asg_v0.assignment_create_date as date) BETWEEN savings.date_from AND savings.date_to
     LEFT JOIN db_common${region}.global_state_mapping AS global_state_mapping ON asg.state_province = global_state_mapping.vms_state
     left join db_common${region}.global_countries gcr on lower(asg.country) = lower(gcr.country)
@@ -532,11 +588,11 @@ norm_loc.location_level_2a
   FROM
     asg_asg_v0 AS assign
     LEFT OUTER JOIN %s.%s AS req ON assign.main_document_id = req.req_id
-    LEFT OUTER JOIN  ${slvr_dataset}.%s worker ON assign.assignment_id = worker.assignment_id 
+    LEFT OUTER JOIN  resilient_wrkr worker ON assign.assignment_id = worker.assignment_id 
     left join db_common${region}.global_countries gcr_worker on lower(worker.country) = lower(gcr_worker.country) 
     LEFT OUTER JOIN asg_rts_curr_rev AS assign_rates ON assign.assignment_id = assign_rates.assignment_id
-    LEFT OUTER JOIN  ${slvr_dataset}.%s AS assign_v0_rates ON assign.assignment_id = assign_v0_rates.assignment_id
-    LEFT OUTER JOIN  ${slvr_dataset}.%s AS cand ON assign.main_document_id = cand.req_id
+    LEFT OUTER JOIN  resilient_asgn_rtv0 AS assign_v0_rates ON assign.assignment_id = assign_v0_rates.assignment_id
+    LEFT OUTER JOIN  resilient_cand AS cand ON assign.main_document_id = cand.req_id
      AND assign.cand_id = cand.cand_id
     LEFT OUTER JOIN db_common${region}.global_wo_term_reason AS global_wo_term_reason ON assign.close_reason = global_wo_term_reason.work_order_close_reason -- vndly specific change, approved by Sawyer/John 3/8/24
     LEFT OUTER JOIN db_common${region}.global_state_mapping AS global_state_mapping ON assign.state_province = global_state_mapping.vms_state
@@ -558,4 +614,19 @@ norm_loc.location_level_2a
     LEFT JOIN fx_rates fx_cad_savings ON assign.rsr_savings_currency = fx_cad_savings.from_currency AND assign.rsr_assignment_control_date_monthstart=fx_cad_savings.month AND fx_cad_savings.to_currency = 'CAD'
     LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on assign.main_document_title = norm_jt.raw_job_title
      LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(assign.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(assign.rsr_state, '') = COALESCE(norm_loc.state, '')
-  AND COALESCE(assign.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( assign.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(assign.country, '') = COALESCE(norm_loc.country_code, ''))""", gold_dataset,assignment_table_id,slvr_assgn,slvr_assgn_rt,slvr_assgn_v0,gold_dataset,requisition_table_id,slvr_worker,slvr_assgn_rt_v0,slvr_cand);
+  AND COALESCE(assign.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( assign.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(assign.country, '') = COALESCE(norm_loc.country_code, ''))""",
+  "dev_gold_tr_eu_goldschemacheck",assignment_table_id,
+  resilient_asgn_cte_sql,slvr_dataset,slvr_assgn,
+  resilient_asgn_v0_cte_sql,slvr_dataset,slvr_assgn_v0,
+  resilient_asgn_rt_cte_sql,slvr_dataset,slvr_assgn_rt,
+  resilient_asgn_rtv0_cte_sql,slvr_dataset,slvr_assgn_rt_v0,
+  resilient_wrkr_cte_sql,slvr_dataset,slvr_worker,
+  resilient_cand_cte_sql,slvr_dataset,slvr_cand,
+  -- slvr_assgn,
+  -- slvr_assgn_rt,
+  -- slvr_assgn_v0,
+  gold_dataset,requisition_table_id
+  -- slvr_worker,
+  -- slvr_assgn_rt_v0,
+  -- slvr_cand
+  );

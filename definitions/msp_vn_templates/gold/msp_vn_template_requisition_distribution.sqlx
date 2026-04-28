@@ -8,6 +8,7 @@ config {
 
 js {
     const helper = require("/includes/helper");
+    const source_builder = require("/includes/resilient_source");
 
     const config_ds_name = helper.get_config_ds();
     const config_table_name = helper.get_config_table();
@@ -27,6 +28,13 @@ js {
     const slvr_supplier = helper.getSlvrTableName(config_ds_name, config_table_name, 'supplier_src', dataset_id);
     const slvr_cand = helper.getSlvrTableName(config_ds_name, config_table_name, 'candidate_src', dataset_id);
 }
+
+DECLARE
+  resilient_req_dist_cte_sql STRING;
+DECLARE
+  resilient_supp_cte_sql STRING;
+DECLARE
+  resilient_cand_cte_sql STRING;
 DECLARE
   requisition_distribution_table_id STRING;
 DECLARE
@@ -49,6 +57,10 @@ DECLARE
   slvr_supplier STRING;
 DECLARE
   slvr_cand STRING;
+--  Declare temporary variables to hold the query strings
+DECLARE req_dist_query STRING;
+DECLARE supp_query STRING;
+DECLARE cand_query STRING;
 SET
   config_ds_name = '${config_ds_name}';
 SET
@@ -71,17 +83,28 @@ SET requisition_distribution_table_id="stdrv_requisition_distribution_" || '${da
 SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
 SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
+SET req_dist_query = """${source_builder.resilient_source(slvr_req_dist, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'req_dist', 'gold_requisition_distribution','vn')}""";
+SET supp_query = """${source_builder.resilient_source(slvr_supplier, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'supp', 'gold_requisition_distribution','vn')}""";
+SET cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'cand', 'gold_requisition_distribution','vn')}""";
+
+-- Execute the variables into your CTE strings
+EXECUTE IMMEDIATE req_dist_query INTO resilient_req_dist_cte_sql;
+EXECUTE IMMEDIATE supp_query INTO resilient_supp_cte_sql;
+EXECUTE IMMEDIATE cand_query INTO resilient_cand_cte_sql;
+
 
 EXECUTE IMMEDIATE FORMAT("""
 CREATE OR REPLACE TABLE `%s.%s` AS (
-WITH
+WITH resilient_req_dist AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_supp AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_cand AS (SELECT %s FROM %s.%s AS T_SOURCE),
 -- Vyndly specific logic to identify one row by req_id_supplier_code in case of duplicates
-  job_posting_dist_data AS (
+job_posting_dist_data AS (
   SELECT *
   FROM (
     SELECT *,updated_ts as rsr_processed_date,
       ROW_NUMBER() OVER (PARTITION BY req_id, supplier_code ORDER BY req_distribution_date) AS rn
-    FROM ${slvr_dataset}.%s) AS ranked WHERE rn = 1),
+    FROM resilient_req_dist) AS ranked WHERE rn = 1),
   wo_data AS (
   SELECT
     wo_in.buyer,
@@ -114,7 +137,7 @@ WITH
       MIN(req_initial_distribution_date) AS min_req_initial_distribution_date,
       MAX(req_initial_distribution_date) AS max_req_initial_distribution_date
   FROM
-	${slvr_dataset}.%s
+	resilient_req_dist
   GROUP BY
 	supplier_code),
   aggregates_jp_dist_supp AS (
@@ -159,7 +182,7 @@ WITH
     CAST(global_js_status_mapping.withdrawn AS NUMERIC) AS withdrawn
   FROM
     --[ds_name].temp_stdrv_candidate_[client_code] AS js_in
-    ${slvr_dataset}.%s AS js_in
+    resilient_cand AS js_in
   LEFT OUTER JOIN
     global_js_status_mapping ON TRIM(LOWER(js_in.cand_status)) = global_js_status_mapping.job_seeker_status ),
   aggregates_job_seekers_wsupp AS (
@@ -353,10 +376,20 @@ LEFT OUTER JOIN  job_posting_data ON job_posting_data.req_id = job_posting_dist_
 LEFT OUTER JOIN  aggregates_jp_dist_supp ON job_posting_dist_data.req_id = aggregates_jp_dist_supp.req_id AND job_posting_dist_data.supplier = aggregates_jp_dist_supp.supplier
 LEFT OUTER JOIN  aggregates_wo_wsupp ON  job_posting_dist_data.req_id = aggregates_wo_wsupp.main_document_id AND job_posting_dist_data.supplier_code = aggregates_wo_wsupp.supplier_code
 LEFT OUTER JOIN  aggregates_job_seekers_wsupp ON  job_posting_dist_data.req_id = aggregates_job_seekers_wsupp.req_id AND job_posting_dist_data.supplier_code = aggregates_job_seekers_wsupp.supplier_code
-LEFT OUTER JOIN  ${slvr_dataset}.%s supplier_data ON job_posting_dist_data.supplier_code = supplier_data.supplier_code
+LEFT OUTER JOIN  resilient_supp supplier_data ON job_posting_dist_data.supplier_code = supplier_data.supplier_code
 LEFT OUTER JOIN  global_supplier_mapping ON  TRIM(LOWER(job_posting_dist_data.supplier)) = global_supplier_mapping.supplier  AND TRIM(LOWER(job_posting_dist_data.buyer)) = global_supplier_mapping.buyer
 LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON lower(div_supp.customer_code)=lower(job_posting_dist_data.buyer_code) AND div_supp.supplier_code=job_posting_dist_data.supplier_code AND div_supp.fiscal_year=CAST(EXTRACT(YEAR FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER) AND div_supp.accounting_period=CAST(EXTRACT(MONTH FROM CAST(job_posting_dist_data.req_initial_distribution_date AS DATE)) AS INTEGER)
 LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on job_posting_data.req_title = norm_jt.raw_job_title
     LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(job_posting_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(job_posting_data.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(job_posting_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(job_posting_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(job_posting_data.country, '') = COALESCE(norm_loc.country_code, ''))""",
-  gold_dataset,requisition_distribution_table_id,slvr_req_dist,gold_dataset,assignment_table_id,slvr_req_dist,slvr_cand,gold_dataset,requisition_table_id,slvr_supplier);
+  "dev_gold_tr_eu_goldschemacheck",requisition_distribution_table_id,
+  resilient_req_dist_cte_sql,slvr_dataset,slvr_req_dist,
+  resilient_supp_cte_sql,slvr_dataset,slvr_supplier,
+  resilient_cand_cte_sql,slvr_dataset,slvr_cand,
+  -- slvr_req_dist,
+  gold_dataset,assignment_table_id,
+  -- slvr_req_dist,
+  -- slvr_cand,
+  gold_dataset,requisition_table_id
+  -- slvr_supplier
+  );

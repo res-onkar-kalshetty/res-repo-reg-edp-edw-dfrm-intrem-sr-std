@@ -8,6 +8,7 @@ config {
 
 js {
     const helper = require("/includes/helper");
+    const source_builder = require("/includes/resilient_source");
 
     const config_ds_name = helper.get_config_ds();
     const config_table_name = helper.get_config_table();
@@ -28,6 +29,10 @@ js {
 }
 
 DECLARE
+  resilient_spend_cte_sql STRING;
+DECLARE
+  resilient_cand_cte_sql STRING;
+DECLARE
   spend_table_id STRING;
 DECLARE
   requisition_table_id STRING;
@@ -47,6 +52,10 @@ DECLARE
   slvr_spend STRING;
 DECLARE
   slvr_cand STRING;
+DECLARE
+  spend_query STRING;
+DECLARE
+  cand_query STRING;
 SET
   config_ds_name = '${config_ds_name}';
 SET
@@ -67,10 +76,21 @@ SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.
 SET spend_table_id="stdrv_spend_" || '${dataform.projectConfig.vars.client_code}';
 SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
+SET
+  spend_query = """${source_builder.resilient_source(slvr_spend, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'spend', 'gold_spend', 'vn')}""";
+SET
+  cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry','cand', 'gold_spend', 'vn')}""";
+
+EXECUTE IMMEDIATE
+  spend_query INTO resilient_spend_cte_sql;
+EXECUTE IMMEDIATE
+  cand_query INTO resilient_cand_cte_sql;
+
 EXECUTE IMMEDIATE
   FORMAT("""
 CREATE OR REPLACE TABLE `%s.%s` AS (
-
+WITH resilient_spend AS (SELECT %s FROM %s.%s AS T_SOURCE),
+resilient_cand AS (SELECT %s FROM %s.%s AS T_SOURCE)
 SELECT buyer
 ,buyer_code
 ,main_document_id
@@ -531,7 +551,7 @@ WITH spend_data AS (
 	spend_in.business_unit_code,
 	spend_in.rsr_staffing_entity
     FROM
-      ${slvr_dataset}.%s AS spend_in
+      resilient_spend AS spend_in
 ), reqs_assignment_data AS (
   SELECT
       req_asg_in.buyer,
@@ -592,7 +612,7 @@ WITH spend_data AS (
   main_document_id from reqs_assignment_data group by main_document_id
 ),
 candidate as (select max(presented_bill_rate_st_hr) as maximum_presented_bill_rate_st_hr,
-req_id from ${slvr_dataset}.%s where cand_shortlisted_date is not null group by req_id)
+req_id from resilient_cand where cand_shortlisted_date is not null group by req_id)
 ,avg_bill_rate as (
   select
   assignment_id,
@@ -1009,4 +1029,10 @@ norm_loc.location_level_2a
      LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(reqs_assignment_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(reqs_assignment_data.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(reqs_assignment_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( reqs_assignment_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(reqs_assignment_data.country, '') = COALESCE(norm_loc.country_code, '')
     )
-)""",gold_dataset,spend_table_id,slvr_spend,gold_dataset,assignment_table_id,slvr_cand,gold_dataset,requisition_table_id);
+)""","dev_gold_tr_eu_goldschemacheck",spend_table_id,
+resilient_spend_cte_sql,slvr_dataset,slvr_spend,
+resilient_cand_cte_sql,slvr_dataset,slvr_cand,
+-- slvr_spend,
+gold_dataset,assignment_table_id,
+-- slvr_cand,
+gold_dataset,requisition_table_id);
