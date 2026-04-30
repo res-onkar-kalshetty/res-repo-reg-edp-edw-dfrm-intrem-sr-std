@@ -78,15 +78,10 @@ SET
   assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
 SET
-<<<<<<< HEAD
   spend_query = """${source_builder.resilient_source(slvr_spend, slvr_dataset, config_ds_name, 'spend_src', 'gold_spend', 'fg')}""";
 SET
   cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, config_ds_name,'candidate_src', 'gold_spend', 'fg')}""";
-=======
-  spend_query = """${source_builder.resilient_source(slvr_spend, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'spend', 'gold_spend', 'fg')}""";
-SET
-  cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry','cand', 'gold_spend', 'fg')}""";
->>>>>>> 67c5513 (missing silver column handling)
+
 EXECUTE IMMEDIATE
   spend_query INTO resilient_spend_cte_sql;
 EXECUTE IMMEDIATE
