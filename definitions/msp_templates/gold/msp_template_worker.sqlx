@@ -1,0 +1,193 @@
+config {
+    type: "operations",
+    name: 'msp_template_worker_gold',
+    tags: 'msp_template_gold',
+    dependencies: ['msp_template_requisition_gold', 'msp_template_assignment_gold'],
+    description: 'This file creates the stdrv worker layer for Fieldglass clients'
+}
+
+js {
+    const helper = require("/includes/helper");
+
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ? `gold_${dataset_id}` : `dev_gold_${dataset_id}`;
+    const slvr_dataset = (env == "prd") ? `slvr_${dataset_id}` : `dev_slvr_${dataset_id}`;
+
+    // Resolving dynamic Silver view names
+    const slvr_worker = helper.getSlvrTableName(config_ds_name, config_table_name, 'worker_src', dataset_id);
+    const slvr_assgn = helper.getSlvrTableName(config_ds_name, config_table_name, 'assignment_src', dataset_id);
+    const slvr_req = helper.getSlvrTableName(config_ds_name, config_table_name, 'requisition_src', dataset_id);
+}
+
+DECLARE gold_dataset STRING;
+DECLARE slvr_dataset STRING;
+DECLARE region STRING;
+DECLARE worker_table_id STRING;
+DECLARE slvr_worker STRING;
+DECLARE slvr_assgn STRING;
+DECLARE slvr_req STRING;
+
+SET region = '${region}';
+SET gold_dataset = '${gold_dataset}';
+SET slvr_dataset = '${slvr_dataset}';
+
+-- Apply the "v_" prefix standard
+SET slvr_worker = 'v_' || ${slvr_worker};
+SET slvr_assgn = 'v_' || ${slvr_assgn};
+SET slvr_req = 'v_' || ${slvr_req};
+
+SET worker_table_id = "stdrv_worker_" || '${dataform.projectConfig.vars.client_code}';
+
+EXECUTE IMMEDIATE
+  FORMAT ("""
+CREATE OR REPLACE TABLE %s.%s AS (
+
+WITH wrkr_assign_data AS(
+  SELECT
+  wrkr.consolidated_worker_id,
+  wrkr.worker_id,
+  wrkr.worker,
+  wrkr.supplier_code,
+  wrkr.location,
+  wrkr.buyer,
+  wrkr.buyer_code,
+  wrkr.assignment_id,
+  wrkr.worker_type,
+  wrkr.country,
+  wrkr.worker_start_date,
+  wrkr.worker_end_date,
+  wrkr.worker_closed_date,
+  COALESCE(wrkr.labor_type, assign.labor_type, req.labor_type) AS labor_type
+  FROM `${slvr_dataset}.%s` wrkr
+  LEFT JOIN `${slvr_dataset}.%s` assign on wrkr.assignment_id=assign.assignment_id
+  LEFT JOIN `${slvr_dataset}.%s` req on wrkr.main_document_id=req.req_id
+),
+wrk_data AS (
+  SELECT
+    CASE
+      WHEN NULLIF(consolidated_worker_id, '') IS NOT NULL THEN consolidated_worker_id
+      WHEN worker IS NOT NULL AND supplier_code IS NOT NULL AND location IS NOT NULL THEN CONCAT(
+        REGEXP_REPLACE(TRIM(COALESCE(worker, '')), r'\\s+', ''),
+        COALESCE(supplier_code, ''),
+        REGEXP_REPLACE(TRIM(COALESCE(location, '')), r'\\s+', '')
+      )
+      ELSE worker_id
+    END AS unique_worker_id,
+    buyer,
+    buyer_code,
+    worker_id,
+    worker,
+    consolidated_worker_id,
+    assignment_id,
+    supplier_code,
+    location,
+    worker_type,
+    country,
+    worker_start_date,
+    worker_end_date,
+    worker_closed_date,
+    ROW_NUMBER() OVER (
+      PARTITION BY (
+        CASE
+          WHEN NULLIF(consolidated_worker_id, '') IS NOT NULL THEN consolidated_worker_id
+          WHEN worker IS NOT NULL AND supplier_code IS NOT NULL AND location IS NOT NULL THEN CONCAT(
+            REGEXP_REPLACE(TRIM(COALESCE(worker, '')), r'\\s+', ''),
+            COALESCE(supplier_code, ''),
+            REGEXP_REPLACE(TRIM(COALESCE(location, '')), r'\\s+', '')
+          )
+          ELSE worker_id
+        END
+      )
+      ORDER BY
+        worker_end_date DESC
+    ) AS rnk_end_date,
+    MIN(worker_start_date) OVER (
+      PARTITION BY (
+        CASE
+          WHEN NULLIF(consolidated_worker_id, '') IS NOT NULL THEN consolidated_worker_id
+          WHEN worker IS NOT NULL AND supplier_code IS NOT NULL AND location IS NOT NULL THEN CONCAT(
+            REGEXP_REPLACE(TRIM(COALESCE(worker, '')), r'\\s+', ''),
+            COALESCE(supplier_code, ''),
+            REGEXP_REPLACE(TRIM(COALESCE(location, '')), r'\\s+', '')
+          )
+          ELSE worker_id
+        END
+      )
+    ) AS worker_start_date_earliest,
+    labor_type
+  FROM
+    wrkr_assign_data
+),
+latest_worker_record AS (
+  SELECT
+    *
+  FROM
+    wrk_data
+  WHERE
+    rnk_end_date = 1
+),
+joined_with_reference_tables AS (
+  SELECT
+    lw.*,
+    gwt.rsr_worker_type AS rsr_worker_type_ref,
+    gcr.rsr_country AS rsr_country_ref,
+    gcr.rsr_region AS rsr_region_ref,
+    glt.labor_type_dw as rsr_labor_type_ref
+  FROM
+    latest_worker_record AS lw
+    LEFT JOIN `db_common${region}.global_worker_type_temp` AS gwt ON lw.worker_type = gwt.worker_type
+    LEFT JOIN `db_common${region}.global_countries` AS gcr ON LOWER(lw.country) = LOWER(gcr.country)
+    left join `db_common${region}.global_labor_type` glt on lw.labor_type = glt.vms_labor_type
+)
+SELECT
+  buyer,
+  buyer_code,
+  worker_id,
+  worker,
+  consolidated_worker_id,
+  supplier_code,
+  location,
+  country,
+  labor_type,
+  worker_type,
+  unique_worker_id,
+  worker_start_date_earliest,
+  worker_end_date AS worker_end_date_latest,
+  worker_closed_date AS worker_closed_date_latest,
+  CASE
+    WHEN worker_start_date_earliest IS NULL THEN NULL
+    WHEN (worker_end_date >= CURRENT_DATE() OR worker_end_date IS NULL) AND worker_start_date_earliest <= CURRENT_DATE() THEN 'Open'
+    ELSE 'Closed'
+  END AS worker_current_status,
+  CASE
+    WHEN worker_id LIKE '%%PW%%' OR worker_type = 'Profile Worker' THEN 'Profile Worker'
+    WHEN IFNULL(rsr_worker_type_ref, '') <> '' THEN rsr_worker_type_ref
+    ELSE worker_type
+  END AS rsr_worker_type,
+  CAST(Function_library${region}.f_calendarday(worker_start_date_earliest, worker_end_date) AS INT64) AS tenure_cd,
+  CAST(Function_library${region}.f_workday(worker_start_date_earliest, worker_end_date) AS INT64) AS tenure_bd,
+  CASE
+    WHEN IFNULL(rsr_country_ref, '') <> '' THEN rsr_country_ref
+    WHEN IFNULL(country, '') = '' THEN 'Undisclosed'
+    ELSE 'Unmapped'
+  END AS rsr_country,
+  CASE
+    WHEN IFNULL(rsr_region_ref, '') <> '' THEN rsr_region_ref
+    WHEN IFNULL(country, '') = '' THEN 'Undisclosed'
+    ELSE 'Unmapped'
+  END AS rsr_region,
+  CASE
+    WHEN IFNULL(rsr_labor_type_ref, '') <> '' THEN rsr_labor_type_ref
+    WHEN IFNULL(labor_type, '') = '' THEN 'Undisclosed'
+    ELSE 'Unmapped'
+    END AS rsr_labor_type,
+  COALESCE(LEAST(worker_end_date, worker_closed_date), worker_end_date, worker_closed_date) AS reporting_date_ends
+FROM
+  joined_with_reference_tables
+)
+""", gold_dataset, worker_table_id, slvr_worker, slvr_assgn, slvr_req);
