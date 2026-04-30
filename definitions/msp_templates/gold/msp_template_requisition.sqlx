@@ -96,15 +96,15 @@ SET
 SET
   requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
 SET
-  req_query = """${source_builder.resilient_source(slvr_req, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'req', 'gold_requisition','fg')}""";
+  req_query = """${source_builder.resilient_source(slvr_req, slvr_dataset, config_ds_name, 'requisition_src', 'gold_requisition','fg')}""";
 SET
-  cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'cand', 'gold_requisition','fg')}""";
+  cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, config_ds_name, 'candidate_src', 'gold_requisition','fg')}""";
 SET
-  req_tmp_query = """${source_builder.resilient_source(slvr_req_tmp, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'req_tmp', 'gold_requisition','fg')}""";
+  req_tmp_query = """${source_builder.resilient_source(slvr_req_tmp, slvr_dataset, config_ds_name, 'requisition_template_src', 'gold_requisition','fg')}""";
 SET
-  assgn_query = """${source_builder.resilient_source(slvr_assgn, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'asgn', 'gold_requisition','fg')}""";
+  assgn_query = """${source_builder.resilient_source(slvr_assgn, slvr_dataset, config_ds_name, 'assignment_src', 'gold_requisition','fg')}""";
 SET
-  req_dist_query = """${source_builder.resilient_source(slvr_req_dist, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'req_dist', 'gold_requisition','fg')}""";
+  req_dist_query = """${source_builder.resilient_source(slvr_req_dist, slvr_dataset, config_ds_name, 'requisition_distribution_src', 'gold_requisition','fg')}""";
   -- Execute the variables into your CTE strings
 EXECUTE IMMEDIATE
   req_query INTO resilient_req_cte_sql;
@@ -416,9 +416,4 @@ resilient_cand_cte_sql,slvr_dataset, slvr_cand,
 resilient_req_tmp_cte_sql,slvr_dataset, slvr_req_tmp, 
 resilient_assgn_cte_sql,slvr_dataset, slvr_assgn, 
 resilient_req_dist_cte_sql,slvr_dataset, slvr_req_dist
--- slvr_cand,
--- slvr_req_tmp,
--- slvr_assgn,
--- slvr_req_dist,
--- slvr_req
 );

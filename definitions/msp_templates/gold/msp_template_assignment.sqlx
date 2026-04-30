@@ -105,12 +105,12 @@ SET
 SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
 SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
-SET asgn_query = """${source_builder.resilient_source(slvr_assgn, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'asgn', 'gold_assignment','fg')}""";
-SET asgn_v0_query = """${source_builder.resilient_source(slvr_assgn_v0, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'asgn_v0', 'gold_assignment','fg')}""";
-SET asgn_rt_query = """${source_builder.resilient_source(slvr_assgn_rt, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'asgn_rt', 'gold_assignment','fg')}""";
-SET asgn_rtv0_query = """${source_builder.resilient_source(slvr_assgn_rt_v0, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'asgn_rtv0', 'gold_assignment','fg')}""";
-SET wrkr_query = """${source_builder.resilient_source(slvr_worker, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'wrkr', 'gold_assignment','fg')}""";
-SET cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'cand', 'gold_assignment','fg')}""";
+SET asgn_query = """${source_builder.resilient_source(slvr_assgn, slvr_dataset, config_ds_name, 'assignment_src', 'gold_assignment','fg')}""";
+SET asgn_v0_query = """${source_builder.resilient_source(slvr_assgn_v0, slvr_dataset, config_ds_name, 'assignment_v0_src', 'gold_assignment','fg')}""";
+SET asgn_rt_query = """${source_builder.resilient_source(slvr_assgn_rt, slvr_dataset, config_ds_name, 'assignment_rates_src', 'gold_assignment','fg')}""";
+SET asgn_rtv0_query = """${source_builder.resilient_source(slvr_assgn_rt_v0, slvr_dataset, config_ds_name, 'assignment_rates_v0_src', 'gold_assignment','fg')}""";
+SET wrkr_query = """${source_builder.resilient_source(slvr_worker, slvr_dataset, config_ds_name, 'worker_src', 'gold_assignment','fg')}""";
+SET cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, config_ds_name, 'candidate_src', 'gold_assignment','fg')}""";
 
 
 -- Execute the variables into your CTE strings

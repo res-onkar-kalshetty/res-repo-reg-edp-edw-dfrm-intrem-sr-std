@@ -75,8 +75,8 @@ SET candidate_table_id="stdrv_candidate_" || '${dataform.projectConfig.vars.clie
 SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
 SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
-SET cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'cand', 'gold_candidate','bee')}""";
-SET req_dist_query = """${source_builder.resilient_source(slvr_req_dist, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'req_dist', 'gold_candidate','bee')}""";
+SET cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, config_ds_name, 'candidate_src', 'gold_candidate','bee')}""";
+SET req_dist_query = """${source_builder.resilient_source(slvr_req_dist, slvr_dataset, config_ds_name, 'requisition_distribution_src', 'gold_candidate','bee')}""";
 
 -- Execute the variables into your CTE strings
 EXECUTE IMMEDIATE cand_query INTO resilient_cand_cte_sql;
@@ -436,9 +436,7 @@ LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON low
 "dev_gold_tr_eu_goldschemacheck",candidate_table_id,
 resilient_cand_cte_sql,slvr_dataset,slvr_cand,
 resilient_req_dist_cte_sql,slvr_dataset,slvr_req_dist,
--- slvr_cand,
 gold_dataset,assignment_table_id,
 gold_dataset,requisition_table_id
--- slvr_req_dist
 )
 ;

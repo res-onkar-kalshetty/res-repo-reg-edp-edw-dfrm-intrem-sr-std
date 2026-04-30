@@ -78,8 +78,8 @@ SET candidate_table_id="stdrv_candidate_" || '${dataform.projectConfig.vars.clie
 SET requisition_table_id="stdrv_requisition_" || '${dataform.projectConfig.vars.client_code}';
 SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
-SET req_dist_query = """${source_builder.resilient_source(slvr_req_dist, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'req_dist', 'gold_requisition_distribution','fg')}""";
-SET supp_query = """${source_builder.resilient_source(slvr_supplier, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'supp', 'gold_requisition_distribution','fg')}""";
+SET req_dist_query = """${source_builder.resilient_source(slvr_req_dist, slvr_dataset, config_ds_name, 'requisition_distribution_src', 'gold_requisition_distribution','fg')}""";
+SET supp_query = """${source_builder.resilient_source(slvr_supplier, slvr_dataset, config_ds_name, 'supplier_src', 'gold_requisition_distribution','fg')}""";
 
 -- Execute the variables into your CTE strings
 EXECUTE IMMEDIATE req_dist_query INTO resilient_req_dist_cte_sql;

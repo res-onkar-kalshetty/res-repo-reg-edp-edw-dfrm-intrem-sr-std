@@ -19,7 +19,7 @@
 
 
 
-function resilient_source(source_table_name, source_dataset, registry_table, entity_type, gold_template_id, source) {
+function resilient_source(source_table_name, source_dataset, registry_dataset, entity_type, gold_template_id, source) {
     return `
     SELECT
         STRING_AGG(
@@ -32,7 +32,7 @@ function resilient_source(source_table_name, source_dataset, registry_table, ent
             ELSE '/* INFO: Awaiting ' || T1.slvr_column_name || ' */ CAST(NULL AS ' || T1.slvr_data_type || ') AS ' || T1.slvr_column_name
           END
         )
-    FROM ${registry_table} AS T1
+    FROM ${registry_dataset}.ext_gold_schema_registry AS T1
     LEFT JOIN (
         SELECT column_name FROM ${source_dataset}.INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'v_' || ${source_table_name}
     ) AS T2 ON T1.slvr_column_name = T2.column_name

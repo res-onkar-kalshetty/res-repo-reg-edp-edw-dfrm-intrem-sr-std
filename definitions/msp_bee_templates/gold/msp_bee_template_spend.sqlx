@@ -76,9 +76,9 @@ SET spend_table_id="stdrv_spend_" || '${dataform.projectConfig.vars.client_code}
 SET assignment_table_id="stdrv_assignment_" || '${dataform.projectConfig.vars.client_code}';
 
 SET
-  spend_query = """${source_builder.resilient_source(slvr_spend, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry', 'spend', 'gold_spend', 'bee')}""";
+  spend_query = """${source_builder.resilient_source(slvr_spend, slvr_dataset, config_ds_name, 'spend_src', 'gold_spend', 'bee')}""";
 SET
-  cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, 'shubham_test_eu.ext_gold_schema_registry','cand', 'gold_spend', 'bee')}""";
+  cand_query = """${source_builder.resilient_source(slvr_cand, slvr_dataset, config_ds_name,'candidate_src', 'gold_spend', 'bee')}""";
 
 EXECUTE IMMEDIATE spend_query INTO resilient_spend_cte_sql;
 EXECUTE IMMEDIATE cand_query INTO resilient_cand_cte_sql;
@@ -1082,7 +1082,5 @@ norm_loc.location_level_2a
 ))""","dev_gold_tr_eu_goldschemacheck",spend_table_id,
 resilient_spend_cte_sql,slvr_dataset,slvr_spend,
 resilient_cand_cte_sql,slvr_dataset,slvr_cand,
--- slvr_spend,
 gold_dataset,assignment_table_id
--- slvr_cand
 );
