@@ -26,16 +26,16 @@ function resilient_source(source_table_name, source_dataset, registry_dataset, e
           CASE 
             -- Column exists in physical Silver table: Select it normally
             WHEN T2.column_name IS NOT NULL 
-              THEN 'T_SOURCE.' || T1.slvr_column_name || ' AS ' || T1.slvr_column_name
+              THEN 'T_SOURCE.' || T1.slvr_field_name || ' AS ' || T1.slvr_field_name
               
             -- Column does NOT exist yet (Scrum team hasn't added it): Inject NULL
-            ELSE '/* INFO: Awaiting ' || T1.slvr_column_name || ' */ CAST(NULL AS ' || T1.slvr_data_type || ') AS ' || T1.slvr_column_name
+            ELSE '/* INFO: Awaiting ' || T1.slvr_field_name || ' */ CAST(NULL AS ' || T1.data_type || ') AS ' || T1.slvr_field_name
           END
         )
     FROM ${registry_dataset}.ext_gold_schema_registry AS T1
     LEFT JOIN (
         SELECT column_name FROM ${source_dataset}.INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'v_' || ${source_table_name}
-    ) AS T2 ON T1.slvr_column_name = T2.column_name
+    ) AS T2 ON T1.slvr_field_name = T2.column_name
     WHERE T1.entity_type = '${entity_type}' 
       AND T1.gold_template_id = '${gold_template_id}'
       AND T1.source = '${source}'`;
