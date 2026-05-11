@@ -233,7 +233,7 @@ SELECT
   job_posting_dist_data.buyer_code,
   job_posting_dist_data.req_id,
   job_posting_dist_data.decline_reason,
-  job_posting_dist_data.req_distribution_date,
+  COALESCE(job_posting_dist_data.req_distribution_date, job_posting_dist_data.vendor_assigned_date) AS req_distribution_date,
   job_posting_dist_data.req_initial_distribution_date,
   job_posting_dist_data.dist_list,
   job_posting_dist_data.supplier,
@@ -278,9 +278,11 @@ SELECT
   aggregates_job_seekers_wsupp.no_hired AS hired_cnt_supplier,
   aggregates_jp_dist_supp.no_of_suppliers_posted AS posted_cnt_supplier,
   aggregates_job_seekers_wsupp.no_of_suppliers_responded AS responded_cnt_supplier,
-  CAST(Function_library${region}.f_calendarday(job_posting_dist_data.req_distribution_date,
+  CAST(Function_library${region}.f_calendarday(
+	  COALESCE(job_posting_dist_data.req_distribution_date, job_posting_dist_data.vendor_assigned_date),
       aggregates_job_seekers_wsupp.first_candidate_submitted_date) AS INT64) AS dist_to_submit_first_cand_in_cd,
-  CAST(Function_library${region}.f_calendarday(job_posting_dist_data.req_distribution_date,
+  CAST(Function_library${region}.f_calendarday(
+	   COALESCE(job_posting_dist_data.req_distribution_date, job_posting_dist_data.vendor_assigned_date),
       aggregates_job_seekers_wsupp.first_candidate_interview_date) AS INT64) AS dist_to_interview_first_cand_in_cd,
   job_posting_data.max_template_bill_rate,
   job_posting_data.req_type,
