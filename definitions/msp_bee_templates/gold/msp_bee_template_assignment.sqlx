@@ -102,6 +102,7 @@ WITH fx_rates AS (
   asg_v0.assignment_create_date AS assignment_create_date_initial,
   asg_v0.assignment_activation_date AS assignment_activation_date_initial,
   asg_v0.cand_offer_accepted_date AS cand_offer_accepted_date_initial,
+  asg_v0.assignment_start_date AS assignment_start_date_initial,
   EXTRACT(DATE FROM Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])) AS rsr_assignment_control_date,
   DATE_TRUNC(EXTRACT(DATE FROM Function_library${region}.least_array([asg.assignment_create_date,asg_v0.assignment_create_date])),MONTH) AS rsr_assignment_control_date_monthstart,
   #cost_savings 2024 Fall Release
@@ -255,10 +256,11 @@ SELECT
     worker.country AS worker_country,
     worker.consolidated_worker_id,
     worker.worker,
-    req.labor_type,
+    COALESCE(assign.labor_type, req.labor_type) AS labor_type,
     req.dist_list,
     assign.assignment_create_date_initial,
     assign.assignment_activation_date_initial,
+    assign.assignment_start_date_initial, 
     --worker.worker_close_reason,
     CASE
         WHEN LOWER(worker.worker_status) = 'closed' THEN COALESCE(worker.worker_close_reason,assign.close_reason)
@@ -405,6 +407,13 @@ SELECT
 	CAST(Function_library${region}.f_calendarday(assign.assignment_create_date_initial, worker.worker_start_date) AS INT64) AS create_to_start_cd,
     ROUND(Function_library${region}.f_workday(assign.assignment_create_date_initial, worker.worker_start_date), 4) AS create_to_start_bd,
     CAST(NULL AS STRING) AS vendor_id,
+
+    -- New Length Calculations below:
+    ROUND(Function_library[region].f_workday(assign.assignment_start_date_initial, assign.assignment_end_date), 4) AS assignment_planned_length_bd, 
+    CAST(Function_library[region].f_calendarday(assign.assignment_start_date_initial, assign.assignment_end_date) AS INT64) AS assignment_planned_length_cd, 
+    ROUND(Function_library[region].f_workday(assign.assignment_start_date_initial, CURRENT_DATE()), 4) AS assignment_current_length_bd,
+    CAST(Function_library[region].f_calendarday(assign.assignment_start_date_initial, CURRENT_DATE()) AS INT64) AS assignment_current_length_cd,
+
 	-- Fields needed for other MSTs
     CASE
       WHEN LOWER(cand.presented_bill_rate_st_basis) = 'hourly' THEN cand.presented_bill_rate 
@@ -414,7 +423,7 @@ SELECT
       ELSE CAST(NULL AS NUMERIC)
     END AS presented_bill_rate_st_hr, -- needed for Spend MST
     req.max_requested_bill_rate_st_hr, -- needed for Spend, Cand MST
-    req.primary_cost_center, -- needed for Cand MST
+    COALESCE(assign.primary_cost_center, req.primary_cost_center) AS primary_cost_center, -- needed for Cand MST
 	assign.main_document_type, -- needed for Assgn trend
 	req.req_title_classification, -- needed for Assgn trend
 	req.req_type, -- needed for Assgn trend
