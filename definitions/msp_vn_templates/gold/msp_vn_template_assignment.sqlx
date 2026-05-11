@@ -345,10 +345,10 @@ SELECT
     CAST(NULL AS STRING) AS vendor_id,
     
     -- New Length Calculations below Q1 26:
-    ROUND(Function_library[region].f_workday(assign.assignment_start_date_initial, assign.assignment_end_date), 4) AS assignment_planned_length_bd,
-    CAST(Function_library[region].f_calendarday(assign.assignment_start_date_initial, assign.assignment_end_date) AS INT64) AS assignment_planned_length_cd, 
-    ROUND(Function_library[region].f_workday(assign.assignment_start_date_initial, CURRENT_DATE()), 4) AS assignment_current_length_bd, 
-    CAST(Function_library[region].f_calendarday(assign.assignment_start_date_initial, CURRENT_DATE()) AS INT64) AS assignment_current_length_cd, 
+    ROUND(Function_library${region}.f_workday(assign.assignment_start_date_initial, assign.assignment_end_date), 4) AS assignment_planned_length_bd,
+    CAST(Function_library${region}.f_calendarday(assign.assignment_start_date_initial, assign.assignment_end_date) AS INT64) AS assignment_planned_length_cd, 
+    ROUND(Function_library${region}.f_workday(assign.assignment_start_date_initial, CURRENT_DATE()), 4) AS assignment_current_length_bd, 
+    CAST(Function_library${region}.f_calendarday(assign.assignment_start_date_initial, CURRENT_DATE()) AS INT64) AS assignment_current_length_cd, 
 
 	-- fields needed for other msts
     req.max_requested_bill_rate_st_hr,
