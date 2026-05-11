@@ -220,10 +220,11 @@ SELECT
     worker.country AS worker_country,
     worker.consolidated_worker_id,
     worker.worker,
-    req.labor_type,
+    COALESCE(assign.labor_type, req.labor_type) AS labor_type,
     req.dist_list,
     assign.assignment_create_date_initial,
     cand.assignment_activation_date AS assignment_activation_date_initial, -- vndly specific change, requested by Sawyer/John 4/12/24
+    assign.assignment_start_date_initial,
     assign.close_reason AS worker_close_reason,-- vndly specific change, approved by Sawyer/John 3/8/24
     -- worker.close_comments,
     gcr_worker.rsr_country as rsr_worker_country,
@@ -342,6 +343,13 @@ SELECT
 	CAST(Function_library${region}.f_calendarday(assign.assignment_create_date_initial, assign.assignment_start_date_initial) AS INT64) AS create_to_start_cd, -- Vndly specific update on 3/22/24
     ROUND(Function_library${region}.f_workday(assign.assignment_create_date_initial, assign.assignment_start_date_initial), 4) AS create_to_start_bd, -- Vndly specific update on 3/22/24
     CAST(NULL AS STRING) AS vendor_id,
+    
+    -- New Length Calculations below Q1 26:
+    ROUND(Function_library[region].f_workday(assign.assignment_start_date_initial, assign.assignment_end_date), 4) AS assignment_planned_length_bd,
+    CAST(Function_library[region].f_calendarday(assign.assignment_start_date_initial, assign.assignment_end_date) AS INT64) AS assignment_planned_length_cd, 
+    ROUND(Function_library[region].f_workday(assign.assignment_start_date_initial, CURRENT_DATE()), 4) AS assignment_current_length_bd, 
+    CAST(Function_library[region].f_calendarday(assign.assignment_start_date_initial, CURRENT_DATE()) AS INT64) AS assignment_current_length_cd, 
+
 	-- fields needed for other msts
     req.max_requested_bill_rate_st_hr,
     req.primary_cost_center,
