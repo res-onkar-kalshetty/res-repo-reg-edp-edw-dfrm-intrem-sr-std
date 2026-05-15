@@ -488,7 +488,7 @@ WITH spend_data AS (
       spend_in.invoice_id,
       spend_in.invoice_line_item_id,
       spend_in.hash_key,
-	    spend_in.invoice_submit_date, 
+      spend_in.invoice_submit_date, 
       spend_in.invoice_approved_date,
       spend_in.consolidated_invoice_approved_date,
       spend_in.invoice_line_item_date,
