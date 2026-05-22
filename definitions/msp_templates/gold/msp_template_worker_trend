@@ -1,0 +1,139 @@
+config {
+    type: "operations",
+    name: 'msp_template_worker_trend_gold',
+    tags: 'msp_template_gold',
+    dependencies: ['msp_template_worker_gold'],
+    description: 'This file creates the stdrv worker trend layer for Fieldglass clients'
+}
+
+js {
+    const helper = require("/includes/helper");
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ? `gold_${dataset_id}` : `dev_gold_${dataset_id}`;
+}
+
+DECLARE gold_dataset STRING;
+DECLARE region STRING;
+DECLARE worker_table_id STRING;
+DECLARE worker_trend_table_id STRING;
+
+SET region = '${region}';
+SET gold_dataset = '${gold_dataset}';
+
+SET worker_table_id = "stdrv_worker_" || '${dataform.projectConfig.vars.client_code}';
+
+SET worker_trend_table_id = "stdrv_worker_trend_" || '${dataform.projectConfig.vars.client_code}';
+
+EXECUTE IMMEDIATE
+  FORMAT ("""
+CREATE OR REPLACE TABLE `%s.%s` AS (
+
+WITH
+worker_cte AS(
+  select
+	wk.unique_worker_id,
+    wk.worker_start_date_earliest,
+    wk.reporting_date_ends,
+    r_dates,
+    gbl_cal_445.reporting_month_date,
+    gbl_cal_445.calendar_reporting_month_date,
+    gbl_cal_445.calendar_reporting_month,
+    gbl_cal_445.reporting_month,
+    gbl_cal_445.calendar_year,
+	gbl_cal_445.reporting_week_date as reporting_date_445_week,
+    gbl_cal_445.week
+    FROM  `%s.%s` wk
+	CROSS JOIN UNNEST(GENERATE_DATE_ARRAY(DATE_TRUNC(CAST(wk.worker_start_date_earliest AS DATE), WEEK), CAST(wk.reporting_date_ends AS DATE), INTERVAL 1 WEEK)) r_dates
+    LEFT JOIN db_common${region}.global_calendar_445 gbl_cal_445 ON r_dates = PARSE_DATE('%%m/%%d/%%Y',gbl_cal_445.day)
+),
+min_week_cte AS (
+    SELECT
+      wk_temp.unique_worker_id,
+      wk_temp.reporting_month,
+      wk_temp.calendar_year,
+      min(wk_temp.week) AS min_week_no
+    FROM worker_cte wk_temp
+    WHERE wk_temp.reporting_month IS NOT NULL
+    GROUP BY  wk_temp.unique_worker_id,wk_temp.reporting_month, wk_temp.calendar_year
+),
+max_reporting_week_by_month_cte AS (
+    SELECT
+      wk_temp.unique_worker_id,
+      wk_temp.calendar_reporting_month_date,
+      wk_temp.calendar_year,
+      max(wk_temp.r_dates) AS max_reporting_date_week_start
+    FROM worker_cte wk_temp
+    WHERE wk_temp.calendar_reporting_month IS NOT NULL
+    GROUP BY wk_temp.unique_worker_id,wk_temp.calendar_reporting_month_date,wk_temp.calendar_year
+),
+max_reporting_overall_cte AS (
+    SELECT
+      wk_temp.unique_worker_id,
+      max(wk_temp.r_dates) AS max_reporting_date_week_start
+    FROM worker_cte wk_temp
+    GROUP BY wk_temp.unique_worker_id
+),
+cal_cte As(
+    select
+      wk.unique_worker_id,
+      wk.r_dates,
+      wk.reporting_month_date,
+      wk.calendar_reporting_month_date,
+      wk.calendar_reporting_month,
+      wk.calendar_year,
+      CASE
+          WHEN wk.week = min_week_cte.min_week_no THEN 1
+          WHEN wk.week <> min_week_cte.min_week_no AND min_week_cte.reporting_month IS NOT NULL THEN 0
+          ELSE NULL
+      END AS month_filter,
+	  wk.reporting_date_445_week,
+	  wk.reporting_month,
+	  CASE
+	      WHEN wk.r_dates=max_reporting_week_by_month_cte.max_reporting_date_week_start THEN 1
+	      ELSE 0
+	  END AS max_reporting_week_by_month_flag,
+      CASE
+          WHEN wk.r_dates=max_reporting_overall_cte.max_reporting_date_week_start THEN 1
+          ELSE 0
+      END AS max_reporting_week_overall_flag
+	FROM worker_cte AS wk
+    LEFT JOIN min_week_cte ON wk.unique_worker_id = min_week_cte.unique_worker_id AND wk.reporting_month = min_week_cte.reporting_month AND wk.calendar_year = min_week_cte.calendar_year
+	LEFT JOIN max_reporting_week_by_month_cte ON  wk.unique_worker_id=max_reporting_week_by_month_cte.unique_worker_id AND wk.calendar_reporting_month_date=max_reporting_week_by_month_cte.calendar_reporting_month_date AND wk.calendar_year=max_reporting_week_by_month_cte.calendar_year
+	LEFT JOIN max_reporting_overall_cte ON wk.unique_worker_id=max_reporting_overall_cte.unique_worker_id
+)
+SELECT
+    wk.buyer,
+    wk.buyer_code,
+    wk.worker_id,
+    wk.worker,
+    wk.consolidated_worker_id,
+    wk.supplier_code,
+	wk.location,
+	wk.worker_type,
+	wk.unique_worker_id,
+    wk.worker_start_date_earliest,
+    wk.worker_end_date_latest,
+    wk.worker_closed_date_latest,
+	wk.rsr_worker_type,
+    wk.rsr_country,
+    wk.rsr_region,
+    wk.labor_type,
+	wk.rsr_labor_type,
+    wk.reporting_date_ends,
+    cal_cte.r_dates as reporting_date_week_start,
+    PARSE_DATE("%%m/%%d/%%Y",cal_cte.reporting_month_date) as reporting_date_445_month,
+    PARSE_DATE("%%m/%%d/%%Y", cal_cte.calendar_reporting_month_date) as reporting_date_month_calendar,
+    cal_cte.calendar_reporting_month,
+    cal_cte.month_filter,
+    PARSE_DATE("%%m/%%d/%%Y",cal_cte.reporting_date_445_week) as reporting_date_445_week,
+    cal_cte.reporting_month,
+    cal_cte.max_reporting_week_by_month_flag,
+	cal_cte.max_reporting_week_overall_flag
+
+FROM `%s.%s` wk
+LEFT JOIN cal_cte ON wk.unique_worker_id = cal_cte.unique_worker_id
+)
+""", gold_dataset, worker_trend_table_id, gold_dataset, worker_table_id, gold_dataset, worker_table_id);
