@@ -1037,7 +1037,7 @@ norm_loc.location_level_2a
   AND COALESCE(reqs_assignment_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( reqs_assignment_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(reqs_assignment_data.country, '') = COALESCE(norm_loc.country_code, '')
 
 ))
-""","dev_gold_tr_eu_goldschemacheck",spend_table_id,
+""","dev_gold_tr_us_goldschemacheck",spend_table_id,
 resilient_spend_cte_sql,slvr_dataset,slvr_spend,
 resilient_cand_cte_sql,slvr_dataset,slvr_cand,
  gold_dataset,assignment_table_id,
