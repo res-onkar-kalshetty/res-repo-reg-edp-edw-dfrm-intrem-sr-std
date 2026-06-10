@@ -408,7 +408,7 @@ SELECT
 
 	-- fields needed for other msts
     req.max_requested_bill_rate_st_hr,
-    req.primary_cost_center,
+    COALESCE(assign.primary_cost_center, req.primary_cost_center) AS primary_cost_center,
     cand.presented_bill_rate_st_hr,
 	assign.main_document_type,
 	-- worker.worker_job_code,
