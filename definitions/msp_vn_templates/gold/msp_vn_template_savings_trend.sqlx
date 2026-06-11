@@ -348,4 +348,4 @@ LEFT JOIN fx_rates AS fx_usd
       AND savings.reporting_date = fx_cad.month
       AND trim(upper(fx_cad.to_currency)) = 'CAD'
       order by calendar_reporting_month_date
-)""","dev_gold_tr_eu_goldschemacheck",savings_trend_table_id,gold_dataset,spend_table_id,gold_dataset,assignment_table_id);
+)""",gold_dataset,savings_trend_table_id,gold_dataset,spend_table_id,gold_dataset,assignment_table_id);

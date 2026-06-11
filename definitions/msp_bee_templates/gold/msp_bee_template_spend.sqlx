@@ -1079,7 +1079,7 @@ norm_loc.location_level_2a
      LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on reqs_assignment_data.main_document_title = norm_jt.raw_job_title
      LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(reqs_assignment_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(reqs_assignment_data.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(reqs_assignment_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE( reqs_assignment_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(reqs_assignment_data.country, '') = COALESCE(norm_loc.country_code, '')
-))""","dev_gold_tr_eu_goldschemacheck",spend_table_id,
+))""",gold_dataset,spend_table_id,
 resilient_spend_cte_sql,slvr_dataset,slvr_spend,
 resilient_cand_cte_sql,slvr_dataset,slvr_cand,
 gold_dataset,assignment_table_id

@@ -412,7 +412,7 @@ norm_loc.location_level_2a
   END), '') = COALESCE(norm_loc.country_name, '') AND COALESCE(req.country, '') = COALESCE(norm_loc.country_code, ''))
 ;
 
-""","dev_gold_tr_us_goldschemacheck",requisition_table_id, 
+""",gold_dataset,requisition_table_id, 
 resilient_req_cte_sql,slvr_dataset, slvr_req, 
 resilient_cand_cte_sql,slvr_dataset, slvr_cand, 
 resilient_req_tmp_cte_sql,slvr_dataset, slvr_req_tmp, 

@@ -382,7 +382,7 @@ LEFT JOIN db${region}_aptus.aptus_suppio_supplier_diversity_data div_supp ON low
 LEFT JOIN db${region}_yellowdata_normalization.job_titles_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_jt on job_posting_data.req_title = norm_jt.raw_job_title
     LEFT JOIN db${region}_yellowdata_normalization.locations_gold_${dataform.projectConfig.vars.dataset_id}_normalised norm_loc on COALESCE(job_posting_data.city, '') = COALESCE(norm_loc.city, '') AND COALESCE(job_posting_data.rsr_state, '') = COALESCE(norm_loc.state, '')
   AND COALESCE(job_posting_data.state_province, '') = COALESCE(norm_loc.province, '') AND COALESCE(job_posting_data.rsr_country, '') = COALESCE(norm_loc.country_name, '') AND COALESCE(job_posting_data.country, '') = COALESCE(norm_loc.country_code, ''))""",
-  "dev_gold_tr_eu_goldschemacheck",requisition_distribution_table_id,
+  gold_dataset,requisition_distribution_table_id,
   resilient_req_dist_cte_sql,slvr_dataset,slvr_req_dist,
   resilient_supp_cte_sql,slvr_dataset,slvr_supplier,
   resilient_cand_cte_sql,slvr_dataset,slvr_cand,
