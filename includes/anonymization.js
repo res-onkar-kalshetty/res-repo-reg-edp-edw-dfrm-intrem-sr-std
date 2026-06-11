@@ -20,6 +20,9 @@ function get_anonymized_select_clause({
     SELECT
       STRING_AGG(
         CASE
+          /* For hash_key: Bypasses anonymization and default casting */
+          WHEN stdz_field_name = 'hash_key' THEN CONCAT('TO_BASE64(\`', stdz_field_name, '\`)')
+          
           WHEN anmyz_flag = 1 THEN
             CASE
               WHEN stdz_field_type = 'DATE'     THEN 'CAST("2020-01-01" AS DATE)'
