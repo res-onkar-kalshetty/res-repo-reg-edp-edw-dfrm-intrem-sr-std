@@ -7,71 +7,21 @@ config {
 
 js {
     const helper = require("/includes/helper");
-
-    const config_ds_name = helper.get_config_ds();
-    const config_table_name = helper.get_config_table();
     const env = helper.get_env();
-    const region = helper.get_region();
     const dataset_id = dataform.projectConfig.vars.dataset_id;
-
-    const gold_dataset = (env == "prd") ?
-        `gold_${dataset_id}` :
-        `dev_gold_${dataset_id}`;
 
     const slvr_dataset = (env == "prd") ?
         `slvr_${dataset_id}` :
         `dev_slvr_${dataset_id}`;
-
-    const ph1_r = dataform.projectConfig.vars.ph1_r;
-    const ph2_r = dataform.projectConfig.vars.ph2_r;
-
-    const ds_r_c = ph1_r.includes("stdrv") ? gold_dataset : slvr_dataset;
-    const ds_r_r = ph2_r.includes("stdrv") ? gold_dataset : slvr_dataset;
-
-    const ph1 = (ds_r_c === slvr_dataset) ? `${ph1_r}` : ph1_r;
-    const ph2 = (ds_r_r === slvr_dataset) ? `${ph2_r}` : ph2_r;
 }
 
 DECLARE
   candidate_table_id STRING;
 DECLARE
-  gold_dataset STRING;
-DECLARE
   slvr_dataset STRING;
-DECLARE
-  ds_r_c STRING;
-DECLARE
-  ds_r_r STRING;
-DECLARE
-  config_ds_name STRING;
-DECLARE
-  config_table_name STRING;
-DECLARE
-  region STRING;
-DECLARE
-  ph1 STRING;
-DECLARE
-  ph2 STRING;
 
-SET
-  config_ds_name = '${config_ds_name}';
-SET
-  config_table_name = '${config_table_name}';
-SET
-  region = '${region}';
-SET
-  gold_dataset = '${gold_dataset}';
 SET
   slvr_dataset = '${slvr_dataset}';
-SET
-  ds_r_c = '${ds_r_c}';
-SET
-  ds_r_r = '${ds_r_r}';
-SET 
-  ph1 = '${ph1}';
-SET
-  ph2 = '${ph2}';
-
 SET candidate_table_id = "interim_candidate_" || '${dataform.projectConfig.vars.client_code}';
 
 EXECUTE IMMEDIATE FORMAT ("""
