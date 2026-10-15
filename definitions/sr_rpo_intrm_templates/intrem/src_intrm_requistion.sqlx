@@ -1,0 +1,216 @@
+config {
+    type: "operations",
+    name: "rpo_template_requisition_interim",
+    dependencies: "rpo_template_candidate_interim",
+    tags: 'rpo_template_interim',
+    description: 'This file creates the stdrv interim/silver layer'
+}
+
+js {
+    const helper = require("/includes/helper");
+
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const slvr_dataset = (env == "prd") ?
+        `slvr_${dataset_id}` :
+        `dev_slvr_${dataset_id}`;
+
+    const ph1_r = dataform.projectConfig.vars.ph1_r;
+    const ph2_r = dataform.projectConfig.vars.ph2_r;
+
+    const ds_r_c = ph1_r.includes("stdrv") ? gold_dataset : slvr_dataset;
+    const ds_r_r = ph2_r.includes("stdrv") ? gold_dataset : slvr_dataset;
+
+    const ph1 = (ds_r_c === slvr_dataset) ? `${ph1_r}` : ph1_r;
+    const ph2 = (ds_r_r === slvr_dataset) ? `${ph2_r}` : ph2_r;
+}
+
+DECLARE
+  requisition_table_id STRING;
+DECLARE
+  gold_dataset STRING;
+DECLARE
+  slvr_dataset STRING;
+DECLARE
+  ds_r_c STRING;
+DECLARE
+  ds_r_r STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  region STRING;
+DECLARE
+  ph1 STRING;
+DECLARE
+  ph2 STRING;
+
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region = '${region}';
+SET
+  gold_dataset = '${gold_dataset}';
+SET
+  slvr_dataset = '${slvr_dataset}';
+SET
+  ds_r_c = '${ds_r_c}';
+SET
+  ds_r_r = '${ds_r_r}';
+SET 
+  ph1 = '${ph1}';
+SET
+  ph2 = '${ph2}';
+
+SET requisition_table_id = "interim_requisition_" || '${dataform.projectConfig.vars.client_code}';
+
+EXECUTE IMMEDIATE FORMAT ("""
+
+CREATE OR REPLACE TABLE `%s.%s` AS (
+/* QUERY DOCUMENTATION
+-- TYPE: requisition, interim / silver layer
+-- PURPOSE: Maps Silver requisition attributes with activity status transition dates and hired position counts.
+*/
+WITH activity_ordered AS (
+    SELECT
+        req_id,
+        LOWER(job_status_change_value) AS job_status_change_value,
+        job_status_change_date,
+        -- LEAD gets the next status change date for each row
+        LEAD(job_status_change_date) OVER (
+            PARTITION BY req_id 
+            ORDER BY job_status_change_date
+        ) AS next_status_date
+    FROM `%s.v_emea_sr_api_rpo_req_actvy_dy`
+),
+
+req_activity_dates AS (
+    SELECT
+        req_id,
+        MIN(CASE WHEN lower(job_status_change_value) = 'sourcing' THEN job_status_change_date END) AS rsr_recruiting_start_date,
+        MIN(CASE WHEN lower(job_status_change_value) = 'closed' THEN job_status_change_date END) AS raw_closed_date,
+        MIN(CASE WHEN lower(job_status_change_value) = 'filled' THEN job_status_change_date END) AS raw_filled_date,
+        MIN(CASE WHEN lower(job_status_change_value) = 'cancelled' THEN job_status_change_date END) AS raw_cancelled_date,
+        
+        -- Pick status change date when on_hold
+        MIN(CASE WHEN lower(job_status_change_value) = 'on_hold' THEN job_status_change_date END) AS raw_on_hold_date,
+        
+        -- Pick the LEAD date calculated in the CTE
+        MIN(CASE 
+            WHEN lower(job_status_change_value) = 'on_hold' 
+            THEN COALESCE(next_status_date, CURRENT_DATE()) 
+        END) AS raw_off_hold_date
+    FROM activity_ordered
+    GROUP BY req_id
+),
+
+-- Aggregate hired positions from Silver positions table
+hired_positions_summary AS (
+    SELECT
+        req_id,
+        COUNT(position_hire_date) AS hired_positions_cnt
+    FROM `%s.v_emea_sr_api_rpo_positions_dy`
+    GROUP BY req_id
+)
+
+SELECT
+    ------------------------------------------------------------------------
+    -- STANDARD FIELDS FROM SOURCE (SILVER)
+    ------------------------------------------------------------------------
+    sr.buyer,
+    sr.client_req_id,
+    sr.currency,
+    sr.compensation_lower_limit_job_field,
+    sr.compensation_upper_limit_job_field,
+    sr.confidential_role,
+    sr.coordinators,
+    sr.business_unit,
+    sr.department_org_field_value,
+    
+    ------------------------------------------------------------------------
+    -- REQUISITION DATES
+    ------------------------------------------------------------------------
+    sr.earliest_position_creation_date,
+    sr.earliest_position_open_date,
+    sr.job_creation_date,
+    sr.req_publish_date,
+    
+    -- Activity Status Dates (Calculated from req_activity_dates CTE)
+    act.rsr_recruiting_start_date,
+    act.raw_filled_date AS filled_date,
+    act.raw_cancelled_date AS cancelled_date,
+    COALESCE(act.raw_closed_date, act.raw_filled_date, act.raw_cancelled_date) AS closed_date,
+    
+    -- Apply condition: Only populate hold dates if requisition has opened
+    IF(act.rsr_recruiting_start_date IS NOT NULL, act.raw_on_hold_date, NULL) AS on_hold_date,
+    IF(act.rsr_recruiting_start_date IS NOT NULL, act.raw_off_hold_date, NULL) AS off_hold_date,
+
+    ------------------------------------------------------------------------
+    -- DETAILS & CLASSIFICATIONS
+    ------------------------------------------------------------------------
+    sr.eeo_category,
+    sr.evergreen_role,
+    sr.gr8_job_id,
+    sr.hiring_manager_full_name,
+    sr.hiring_team_role_sourcer_list,
+    sr.is_job_deleted,
+    sr.is_job_published,
+    
+    ------------------------------------------------------------------------
+    -- LOCATION DETAILS
+    ------------------------------------------------------------------------
+    sr.city,
+    sr.job_complexity,
+    sr.country,
+    sr.job_grade,
+    sr.job_id,
+    sr.zip_postal_code,
+    sr.state_province,
+    
+    ------------------------------------------------------------------------
+    -- REQUISITION HEADER & STATUS
+    ------------------------------------------------------------------------
+    sr.req_id,
+    sr.req_status,
+    sr.activity_status,
+    sr.req_title,
+    sr.legal_entity,
+    
+    ------------------------------------------------------------------------
+    -- POSITIONS & TEAM
+    ------------------------------------------------------------------------
+    sr.positions_requested_cnt,
+    sr.recruiter_name,
+    sr.requisition_priority,
+    sr.rsr_service_type,
+    sr.rsr_staffing_entity,
+    sr.labor_type,
+    sr.pay_details,
+    sr.reason_for_req,
+    
+    -- Positions Remaining = Requested Positions - Hired Positions
+    COALESCE(sr.positions_requested_cnt, 0) - COALESCE(hp.hired_positions_cnt, 0) AS positions_remaining_cnt,
+    
+    sr.positions_canceled_cnt,
+    sr.days_on_hold_bd,
+    sr.days_on_hold_cd,
+    sr.type_of_employment
+
+FROM `%s.v_emea_sr_api_rpo_req_dy` sr
+LEFT JOIN req_activity_dates act
+    ON sr.req_id = act.req_id
+LEFT JOIN hired_positions_summary hp
+    ON sr.req_id = hp.req_id
+
+)""", slvr_dataset, requisition_table_id, slvr_dataset, slvr_dataset, slvr_dataset);

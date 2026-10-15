@@ -1,0 +1,212 @@
+config {
+    type: "operations",
+    name: "rpo_template_candidate_interim",
+    tags: 'rpo_template_interim',
+    description: 'This file creates the stdrv interim/silver candidate layer'
+}
+
+js {
+    const helper = require("/includes/helper");
+
+    const config_ds_name = helper.get_config_ds();
+    const config_table_name = helper.get_config_table();
+    const env = helper.get_env();
+    const region = helper.get_region();
+    const dataset_id = dataform.projectConfig.vars.dataset_id;
+
+    const gold_dataset = (env == "prd") ?
+        `gold_${dataset_id}` :
+        `dev_gold_${dataset_id}`;
+
+    const slvr_dataset = (env == "prd") ?
+        `slvr_${dataset_id}` :
+        `dev_slvr_${dataset_id}`;
+
+    const ph1_r = dataform.projectConfig.vars.ph1_r;
+    const ph2_r = dataform.projectConfig.vars.ph2_r;
+
+    const ds_r_c = ph1_r.includes("stdrv") ? gold_dataset : slvr_dataset;
+    const ds_r_r = ph2_r.includes("stdrv") ? gold_dataset : slvr_dataset;
+
+    const ph1 = (ds_r_c === slvr_dataset) ? `${ph1_r}` : ph1_r;
+    const ph2 = (ds_r_r === slvr_dataset) ? `${ph2_r}` : ph2_r;
+}
+
+DECLARE
+  candidate_table_id STRING;
+DECLARE
+  gold_dataset STRING;
+DECLARE
+  slvr_dataset STRING;
+DECLARE
+  ds_r_c STRING;
+DECLARE
+  ds_r_r STRING;
+DECLARE
+  config_ds_name STRING;
+DECLARE
+  config_table_name STRING;
+DECLARE
+  region STRING;
+DECLARE
+  ph1 STRING;
+DECLARE
+  ph2 STRING;
+
+SET
+  config_ds_name = '${config_ds_name}';
+SET
+  config_table_name = '${config_table_name}';
+SET
+  region = '${region}';
+SET
+  gold_dataset = '${gold_dataset}';
+SET
+  slvr_dataset = '${slvr_dataset}';
+SET
+  ds_r_c = '${ds_r_c}';
+SET
+  ds_r_r = '${ds_r_r}';
+SET 
+  ph1 = '${ph1}';
+SET
+  ph2 = '${ph2}';
+
+SET candidate_table_id = "interim_candidate_" || '${dataform.projectConfig.vars.client_code}';
+
+EXECUTE IMMEDIATE FORMAT ("""
+
+CREATE OR REPLACE TABLE `%s.%s` AS (
+/* QUERY DOCUMENTATION
+-- TYPE: candidate, interim / silver layer
+-- BASE TABLE: v_emea_sr_api_rpo_cand_dy
+-- ACTIVITY TABLE: v_emea_sr_api_rpo_cand_actvy_dy
+-- PURPOSE: Maps direct Silver candidate attributes and derives milestone dates via a single activity table CTE.
+*/
+
+WITH candidate_activity_dates AS (
+    SELECT
+        cand_id,
+        
+        -- Derive cand_submit_date (MIN date where status = 'new')
+        CAST(MIN(
+            CASE 
+            WHEN LOWER(activity_status) = 'new' THEN activity_status_date END) AS DATE) 
+            AS cand_submit_date,
+
+        -- Derive cand_advisor_review_date (MIN date for in_review statuses)
+        CAST(MIN(
+            CASE 
+            WHEN LOWER(activity_status) IN ('in_review/submitted to talent advisor','in_review/resume review','in_review') 
+            THEN activity_status_date END ) AS DATE) 
+            AS cand_advisor_review_date,
+        CAST(MIN(
+            CASE WHEN LOWER(activity_status) = 'in_review/phone screen' THEN activity_status_date 
+            END ) AS DATE) AS cand_screen_date,
+        CAST(MIN(
+            CASE 
+                WHEN LOWER(activity_status) = 'in_review/submitted to manager' 
+                THEN activity_status_date 
+            END
+        ) AS DATE) AS cand_shortlisted_date,
+        CAST(MIN(
+            CASE WHEN LOWER(activity_status) IN (
+                    'interview/interview 1',
+                    'interview/interview 2',
+                    'interview/interview 3',
+                    'interview'
+                ) THEN activity_status_date  END ) AS DATE) AS cand_interview_date,
+
+        CAST(MIN(CASE WHEN LOWER(activity_status) IN (
+                    'offer/offer accepted',
+                    'offer/offer pending',
+                    'offer'
+                ) 
+                THEN activity_status_date END) AS DATE) AS cand_offer_accepted_date,
+
+        CAST(MIN(CASE WHEN LOWER(activity_status) IN (
+                    'hired',
+                    'offer/onboarding'
+                ) THEN activity_status_date END) AS DATE) AS cand_hired_date,
+
+        CAST(MIN(CASE WHEN LOWER(activity_status) = 'rejected' 
+                THEN activity_status_date END ) AS DATE) AS cand_rejected_date,
+
+        CAST(MIN(CASE WHEN LOWER(activity_status) = 'withdrawn' 
+                THEN activity_status_date END ) AS DATE) AS cand_withdrawn_date
+
+    FROM `%s.v_emea_sr_api_rpo_cand_actvy_dy`
+    GROUP BY cand_id
+)
+
+SELECT
+    ------------------------------------------------------------------------
+    -- CANDIDATE & REQUISITION IDENTIFIERS
+    ------------------------------------------------------------------------
+    cand.cand_id,
+    cand.application_field_gr8_candidate_id,
+    cand.rsr_unique_identifier,
+    cand.job_id,
+    cand.req_id,
+    cand.client_req_id,
+    cand.gr8_job_id,
+    cand.hired_position_id,
+
+    ------------------------------------------------------------------------
+    -- CANDIDATE PROFILE & DEMOGRAPHICS
+    ------------------------------------------------------------------------
+    cand.cand_name,
+    cand.candidate_email,
+    cand.candidate_city,
+    cand.candidate_country_or_region,
+    cand.candidate_creation_date,
+    cand.last_education_degree,
+    cand.internal_external,
+    cand.is_candidate_deleted,
+    cand.buyer,
+    cand.rsr_staffing_entity,
+
+    -- Demographics
+    cand.race,
+    cand.ethnicity,
+    cand.gender,
+    cand.disabled,
+    cand.veteran,
+    cand.salary,
+
+    ------------------------------------------------------------------------
+    -- APPLICATION STATUS & ACTIVITY FIELDS
+    ------------------------------------------------------------------------
+    cand.application_status,
+    cand.application_status_last_change_date,
+    cand.activity_status,
+    cand.activity_status_date,
+
+    ------------------------------------------------------------------------
+    -- SOURCE & REASON DETAILS
+    ------------------------------------------------------------------------
+    cand.source_detail,
+    cand.rejected_reason,
+    cand.withdrawn_reason,
+
+    ------------------------------------------------------------------------
+    -- STAGE MILESTONE DATES
+    ------------------------------------------------------------------------
+    -- Primary: Derived MIN date from activity log; Fallback: base candidate view
+    cad.cand_submit_date cand_submit_date,
+    cad.cand_advisor_review_date AS cand_advisor_review_date,
+    cad.cand_screen_date,
+    cad.cand_shortlisted_date AS cand_shortlisted_date,
+    cand.cand_interview_scheduled_date,
+    cad.cand_interview_date AS cand_interview_date,
+    cand.cand_offer_extended_date,
+    cad.cand_offer_accepted_date AS cand_offer_accepted_date,
+    cad.cand_hired_date AS cand_hired_date,
+    cad.cand_rejected_date AS cand_rejected_date,
+    cad.cand_withdrawn_date AS cand_withdrawn_date
+
+FROM `%s.v_emea_sr_api_rpo_cand_dy` cand
+LEFT JOIN candidate_activity_dates cad
+    ON cand.cand_id = cad.candidate_id
+
+)""", slvr_dataset, candidate_table_id, slvr_dataset, slvr_dataset);
