@@ -2,7 +2,7 @@ config {
     type: "operations",
     name: "rpo_template_requisition_interim",
     dependencies: "rpo_template_candidate_interim",
-    tags: "rpo_template_interim",
+    tags: ["rpo_template_interim"],
     description: 'This file creates the stdrv interim/silver requisition layer'
 }
 
