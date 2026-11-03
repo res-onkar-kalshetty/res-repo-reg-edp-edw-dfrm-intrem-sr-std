@@ -1,7 +1,7 @@
 config {
     type: "operations",
     name: "rpo_template_candidate_interim",
-    tags: ["interim_std"],
+    tags: "rpo_template_interim",
     description: 'This file creates the stdrv interim/silver candidate layer'
 }
 
