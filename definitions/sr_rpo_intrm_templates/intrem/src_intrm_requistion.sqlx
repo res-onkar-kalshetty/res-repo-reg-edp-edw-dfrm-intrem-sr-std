@@ -2,8 +2,8 @@ config {
     type: "operations",
     name: "rpo_template_requisition_interim",
     dependencies: "rpo_template_candidate_interim",
-    tags: 'rpo_template_interim',
-    description: 'This file creates the stdrv interim/silver layer'
+    tags: ["interim_std"],
+    description: 'This file creates the stdrv interim/silver requisition layer'
 }
 
 js {
@@ -25,7 +25,7 @@ DECLARE
 SET
   slvr_dataset = '${slvr_dataset}';
 
-SET requisition_table_id = "interim_requisition_" || '${dataform.projectConfig.vars.client_code}';
+SET requisition_table_id = "interim_requisition_tr_" || '${dataform.projectConfig.vars.client_code}';
 
 EXECUTE IMMEDIATE FORMAT ("""
 
@@ -157,7 +157,8 @@ SELECT
     sr.positions_canceled_cnt,
     sr.days_on_hold_bd,
     sr.days_on_hold_cd,
-    sr.type_of_employment
+    sr.type_of_employment,
+    sr.updated_ts
 
 FROM `%s.v_emea_sr_api_rpo_req_dy` sr
 LEFT JOIN req_activity_dates act
