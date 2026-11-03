@@ -1,7 +1,7 @@
 config {
     type: "operations",
     name: "rpo_template_candidate_interim",
-    tags: 'rpo_template_interim',
+    tags: ["rpo_template_interim"],
     description: 'This file creates the stdrv interim/silver candidate layer'
 }
 
@@ -22,7 +22,7 @@ DECLARE
 
 SET
   slvr_dataset = '${slvr_dataset}';
-SET candidate_table_id = "interim_candidate_" || '${dataform.projectConfig.vars.client_code}';
+SET candidate_table_id = "interim_candidate_tr_" || '${dataform.projectConfig.vars.client_code}';
 
 EXECUTE IMMEDIATE FORMAT ("""
 
@@ -153,10 +153,11 @@ SELECT
     cad.cand_offer_accepted_date AS cand_offer_accepted_date,
     cad.cand_hired_date AS cand_hired_date,
     cad.cand_rejected_date AS cand_rejected_date,
-    cad.cand_withdrawn_date AS cand_withdrawn_date
+    cad.cand_withdrawn_date AS cand_withdrawn_date,
+    cand.updated_ts
 
 FROM `%s.v_emea_sr_api_rpo_cand_dy` cand
 LEFT JOIN candidate_activity_dates cad
-    ON cand.cand_id = cad.candidate_id
+    ON cand.cand_id = cad.cand_id
 
 )""", slvr_dataset, candidate_table_id, slvr_dataset, slvr_dataset);

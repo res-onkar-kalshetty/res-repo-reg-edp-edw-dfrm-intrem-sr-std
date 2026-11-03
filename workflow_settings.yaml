@@ -4,5 +4,5 @@ defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
 dataformCoreVersion: 3.0.0
 vars:
-    client_code: ""
-    dataset_id: ""
+    client_code: "rpo_sr_emea_testsr"
+    dataset_id: "tr_eu_testsr"
